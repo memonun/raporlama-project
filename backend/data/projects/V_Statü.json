@@ -1,0 +1,15 @@
+{
+  "project_name": "V Statü",
+  "created_at": "2025-03-26T10:35:24.132928",
+  "last_updated": "2025-04-03T10:06:06.109322",
+  "active_report": {
+    "report_id": "V_Statü_20250402",
+    "report_date": "2025-04-02",
+    "created_at": "2025-04-02T16:36:35.921057",
+    "last_updated": "2025-04-02T16:36:35.921057",
+    "components": {},
+    "status": "in_progress",
+    "report_generated": false
+  },
+  "finalized_reports": []
+}

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yatırımcı Raporu Bilgi Talebi</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .header img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .content {
+            padding: 20px;
+            background-color: white;
+            border-left: 1px solid #ddd;
+            border-right: 1px solid #ddd;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-radius: 0 0 5px 5px;
+            border-top: 1px solid #ddd;
+        }
+        .highlight {
+            color: #0056b3;
+            font-weight: bold;
+        }
+        .logo {
+            height: 60px;
+            margin-bottom: 10px;
+        }
+        .cover-image {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <!-- Logo için CID referansı -->
+        <img src="{{logo_cid}}" alt="İSRA HOLDİNG" class="logo">
+        <!-- Kapak görseli için CID referansı -->
+        <img src="{{cover_cid}}" alt="Yatırımcı Raporu" class="cover-image">
+    </div>
+    
+    <div class="content">
+        <p>Sayın İlgili,</p>
+        
+        <p><span class="highlight">{{project_display}}</span> için yatırımcı raporundaki <span class="highlight">{{component_display}}</span> eksik bilgilerin tamamlanması rica olunur, iyi çalışmalar.</p>
+        
+        <p>Saygılarımızla,<br>
+        <strong>İSRA HOLDİNG</strong></p>
+    </div>
+    
+    <div class="footer">
+        <p>Yardım talepleriniz için: <a href="mailto:israreport@israholding.com.tr">israreport@israholding.com.tr</a></p>
+        <p>&copy; {{current_year}} İSRA HOLDİNG. Tüm hakları saklıdır.</p>
+    </div>
+</body>
+</html> 

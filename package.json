@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "@headlessui/react": "^2.2.0",
+    "@mui/material": "^7.0.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react-hot-toast": "^2.5.2",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "@babel/preset-react": "^7.26.3"
+  }
+}
