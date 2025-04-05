@@ -54,3 +54,7 @@ Thumbs.db
 frontend/dist/
 backend/data/raw_pdfs/
 backend/data/reports/
+backend/data/projects/
+
+# Vite
+.vite/
