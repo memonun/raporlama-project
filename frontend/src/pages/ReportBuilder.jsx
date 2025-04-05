@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { projectService, componentService, mailService } from '../services/api';
-import { reportService } from '../services/reportService';
-import { axiosInstance } from '../services/api';
+import { projectService, componentService, mailService, reportService } from '../services/api';
 import { useToast } from '../context/ToastContext';
 
 const ReportBuilder = () => {
@@ -27,23 +25,24 @@ const ReportBuilder = () => {
   const [reportData, setReportData] = useState(null);
 
   // Component state tanımlamalarına eklemeler
-  const [userInput, setUserInput] = useState('');
-  const [pdfFile, setPdfFile] = useState(null);
-  const [pdfContent, setPdfContent] = useState('');
   const [pdfLoading, setPdfLoading] = useState(false);
   
   // Sahte dosya oluşturucu helper
-  const initializeFakePdf = (content) => {
-    if (!content) return;
+  const initializeFakePdf = (content, filename, component, questionId) => {
+    console.log(`initializeFakePdf çağrıldı - bileşen: ${component}, dosya: "${filename}"`);
     
-    const fakeFile = {
-      name: 'Kaydedilmiş PDF',
-      size: content.length,
-      type: 'application/pdf',
-    };
-    setPdfFile(fakeFile);
-    setPdfContent(content);
-    console.log('initializeFakePdf - Sahte PDF objesi oluşturuldu:', fakeFile);
+    if (!content || content.trim() === '') {
+      console.log(`${component} - PDF içeriği boş olduğu için initializeFakePdf işlemi atlanıyor`);
+      return;
+    }
+    
+    // Dosya adını componentData içine kaydet
+    handleAnswerChange(component, questionId, filename || 'Kaydedilmiş PDF');
+    
+    // PDF içeriğini componentData içine kaydet
+    handleAnswerChange(component, questionId + '_content', content);
+    
+    console.log(`${component} - PDF dosyası ve içeriği state'e kaydedildi: ${filename}`);
   };
 
   // Tarayıcıdan tamamen çıkış için uyarı gösterme (browser window/tab close)
@@ -82,15 +81,6 @@ const ReportBuilder = () => {
         }
         
         setActiveReport(reportData);
-        
-        // PDF içeriğini al ve state'e yükle
-        if (reportData.pdf_content) {
-          console.log('useEffect - Saved PDF content found:', reportData.pdf_content.substring(0, 100) + '...');
-          // initializeFakePdf helper fonksiyonunu kullan
-          initializeFakePdf(reportData.pdf_content);
-        } else {
-           console.log('useEffect - No saved pdf_content found in reportData.');
-        }
         
         // Bileşenleri getir
         const componentsData = await componentService.getComponents();
@@ -131,6 +121,22 @@ const ReportBuilder = () => {
               questions: questions,
               answers: savedAnswers
             };
+
+            // Bu bileşende PDF içerikleri varsa yükle
+            if (reportData && reportData.components && reportData.components[component] && reportData.components[component].pdf_contents) {
+              const pdfContents = reportData.components[component].pdf_contents;
+              
+              // Her PDF için
+              for (const pdfInfo of pdfContents) {
+                if (pdfInfo.content && pdfInfo.questionId) {
+                  // PDF içeriği ve dosya adını ilgili soru ID'sine yerleştir
+                  componentDataObj[component].answers[pdfInfo.questionId] = pdfInfo.fileName || 'Kaydedilmiş PDF';
+                  componentDataObj[component].answers[pdfInfo.questionId + '_content'] = pdfInfo.content;
+                  
+                  console.log(`${component} bileşeninde PDF yüklendi: ${pdfInfo.fileName}`);
+                }
+              }
+            }
           } catch (error) {
             console.error(`${component} bileşeni soruları yüklenirken hata:`, error);
             toast.error(`${component} bileşeni soruları yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
@@ -244,15 +250,126 @@ const ReportBuilder = () => {
   };
 
   // Bileşen için PDF dosyası yükleme
-  // const handleComponentPdfUpload = async (component, questionId, event) => {
-  //   // ... implementation ...
-  // };
+  const handleComponentPdfUpload = async (component, questionId, event) => {
+    // Tarayıcı konsoluna test mesajı
+    console.log(`%c ${component} - PDF YÜKLEME BAŞLATILDI! (${questionId})`, 'background: red; color: white; font-size: 16px;');
+    
+    const file = event.target.files[0];
+    if (!file) {
+      console.log(`${component} - Dosya seçilmedi`);
+      return;
+    }
+    
+    console.log(`${component} - Seçilen dosya: ${file.name}, ${file.type}, ${file.size} bytes`);
+    
+    // PDF dosya türünü kontrol et
+    if (file.type !== 'application/pdf') {
+      console.error(`${component} - Geçersiz dosya türü: ${file.type}`);
+      toast.error('Lütfen sadece PDF dosyası yükleyin.');
+      return;
+    }
+    
+    // Dosya boyutunu kontrol et (10MB limit)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_FILE_SIZE) {
+      console.error(`${component} - Dosya boyutu çok büyük: ${file.size} bytes`);
+      toast.error('Dosya boyutu 10MB\'dan küçük olmalıdır.');
+      return;
+    }
+    
+    // PDF yükleme durumunu göster
+    setPdfLoading(true);
+    
+    try {
+      console.log(`${component} - PDF içeriği çıkarma işlemi başlatılıyor...`);
+      
+      // FormData oluştur
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      console.log(`${component} - FormData oluşturuldu, PDF içeriğini çıkarmak için API isteği gönderiliyor`);
+      
+      // PDF içeriğini çıkarmak için API'ya istek gönder
+      const response = await reportService.extractPdf(formData, {
+        timeout: 60000 // 60 saniye timeout
+      });
+      
+      console.log(`${component} - API yanıtı alındı:`, response.data);
+      
+      if (!response.data || !response.data.content) {
+        throw new Error('PDF içeriği boş döndü veya hatalı format');
+      }
+      
+      // PDF içeriğini component answers içine kaydet (özel bir alan olarak)
+      const extractedContent = response.data.content;
+      console.log(`${component} - PDF içeriği çıkarıldı (${extractedContent.length} karakter)`);
+      
+      // İçeriği kontrol et
+      if (extractedContent.trim() === '') {
+        throw new Error('PDF içeriği boş olarak çıkarıldı. Lütfen farklı bir PDF dosyası deneyin.');
+      }
+
+      // Yeni PDF obje formatını oluştur
+      const pdfObject = {
+        fileName: file.name,
+        content: extractedContent,
+        questionId: questionId
+      };
+
+      // Obje'yi JSON string'ine çevir
+      const pdfJsonString = JSON.stringify(pdfObject);
+
+      // Önce state'i güncelle (JSON string ile)
+      handleAnswerChange(component, questionId, pdfJsonString);
+
+      // Backend'e güncellenmiş cevapları (sadece bu JSON string'i içeren) kaydet
+      await componentService.saveComponentData(
+        projectName,
+        component,
+        { [questionId]: pdfJsonString } // Sadece değişen JSON string'ini gönder
+      );
+      
+      // Başarı mesajı
+      toast.success(`${file.name} başarıyla yüklendi ve içeriği ${component} bileşenine kaydedildi.`);
+    } catch (error) {
+      console.error(`${component} - PDF işleme hatası:`, error);
+      toast.error(`PDF yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+      
+      // Hata durumunda cevabı temizle
+      handleAnswerChange(component, questionId, ''); // Boş string ata
+      
+      // Hata detaylarını loglama
+      if (error.response) {
+        console.error(`${component} - API yanıt detayı:`, error.response.data);
+        console.error(`${component} - Status kodu:`, error.response.status);
+      }
+    } finally {
+      // PDF yükleme durumunu kapat
+      setPdfLoading(false);
+    }
+  };
   
   // Bileşen PDF dosyasını kaldırma
-  // const handleRemoveComponentPdf = (component, questionId) => {
-  //   // ... implementation ...
-  // };
+  const handleRemoveComponentPdf = async (component, questionId) => {
+    try {
+      // Önce state'i güncelle
+      handleAnswerChange(component, questionId, ''); // Boş string ata
 
+      // Backend'e boş değeri kaydet
+      await componentService.saveComponentData(
+        projectName,
+        component,
+        { [questionId]: '' } // Boş string göndererek temizle
+      );
+      
+      console.log(`${component} bileşeninden PDF dosyası kaldırıldı (${questionId})`);
+      toast.info('PDF dosyası kaldırıldı');
+    } catch (error) {
+      console.error(`${component} - PDF kaldırma hatası:`, error);
+      toast.error(`PDF kaldırılırken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+    }
+  };
+  
   const validateRequiredFields = () => {
     let isValid = true;
     let missingComponents = [];
@@ -263,7 +380,7 @@ const ReportBuilder = () => {
       // PDF alanı zorunlu, diğerleri opsiyonel
       const pdfQuestion = questions.find(q => q.type === 'file' && q.required);
       
-      if (pdfQuestion && (!answers[pdfQuestion.id] || answers[pdfQuestion.id] === '')) {
+      if (pdfQuestion && (!answers[pdfQuestion.id] || answers[pdfQuestion.id] === null)) {
         isValid = false;
         missingComponents.push(component);
       }
@@ -276,64 +393,7 @@ const ReportBuilder = () => {
     return isValid;
   };
 
-  // PDF dosyasını yükleyip içeriğini çıkaran fonksiyon
-  const handlePdfUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // Sadece PDF dosyalarını kabul et
-    if (file.type !== 'application/pdf') {
-      toast.error('Lütfen sadece PDF dosyası yükleyin.');
-      return;
-    }
-    
-    setPdfFile(file);
-    setPdfLoading(true);
-    
-    try {
-      // PDF içeriğini çıkar
-      const extractedContent = await reportService.extractPdfContent(file);
-      console.log('handlePdfUpload - PDF içeriği çıkarıldı:', extractedContent.substring(0, 100) + '...');
-      
-      // PDF içeriğini state'e ve backend'e kaydet
-      setPdfContent(extractedContent);
-      
-      // PDF içeriğini projeye kalıcı olarak kaydet
-      try {
-        await reportService.savePdfContent(projectName, extractedContent);
-        console.log('handlePdfUpload - PDF içeriği proje verisine kaydedildi');
-      } catch (saveError) {
-        console.error('PDF içeriği kalıcı kaydetme hatası:', saveError);
-        toast.warning('PDF içeriği kalıcı olarak kaydedilemedi, sayfa yenilenirse kaybolabilir.');
-      }
-      
-      toast.success('PDF içeriği başarıyla çıkarıldı');
-    } catch (error) {
-      console.error('PDF yükleme hatası:', error);
-      toast.error(`PDF işleme hatası: ${error.message}`);
-      setPdfFile(null);
-    } finally {
-      setPdfLoading(false);
-    }
-  };
-
-  // PDF dosyasını kaldırma işlevi
-  const handleRemovePdf = () => {
-    // PDF state'lerini temizle
-    setPdfFile(null);
-    setPdfContent('');
-    
-    // PDF içeriğini backend'den de temizle
-    try {
-      reportService.savePdfContent(projectName, '');
-      console.log('handleRemovePdf - PDF içeriği backend\'den silindi');
-    } catch (error) {
-      console.error('PDF içeriği backend\'den silme hatası:', error);
-      toast.warning('PDF içeriği kalıcı olarak silinirken hata oluştu.');
-    }
-  };
-
-  // Rapor oluşturma fonksiyonunu güncelleme
+  // Rapor oluşturma fonksiyonunu
   const handleGenerateReport = async () => {
     if (!validateRequiredFields()) {
       return;
@@ -345,7 +405,7 @@ const ReportBuilder = () => {
       // Arka planda işlem başlatıldı bildirimi
       toast.info('Rapor oluşturma işlemi başlatıldı. Bu işlem arka planda gerçekleşecektir.');
       
-      // Tüm bileşenlerin verilerini kaydet
+      // Tüm bileşenlerin güncel verilerini kaydet (her ihtimale karşı)
       const savedComponents = [];
       for (const component of components) {
         try {
@@ -353,7 +413,7 @@ const ReportBuilder = () => {
           await componentService.saveComponentData(
             projectName,
             component,
-            componentData[component].answers
+            componentData[component].answers // Tüm cevapları gönder
           );
           console.log(`${component} bileşeni başarıyla kaydedildi.`);
           savedComponents.push(component);
@@ -368,23 +428,40 @@ const ReportBuilder = () => {
         throw new Error("Hiçbir bileşen verisi kaydedilemedi. Lütfen tekrar deneyin.");
       }
       
-      // Bileşen verilerini hazırla
-      const componentsData = {};
+      // Bileşen verilerini backend'e gönderilecek formata getir
+      // Artık PDF'leri ayırmaya gerek yok, backend halledecek
+      const componentsDataForBackend = {};
       savedComponents.forEach(component => {
-        componentsData[component] = componentData[component].answers;
+        // Sadece "answers" objesini al, içindeki PDF objeleriyle birlikte
+        componentsDataForBackend[component] = {
+            answers: componentData[component].answers
+        }; 
       });
       
-      console.log('Rapor oluşturmak için bileşen verileri:', componentsData);
-      console.log('PDF içeriği gönderilecek mi?', pdfContent ? 'Evet' : 'Hayır');
+      console.log('Rapor oluşturmak için backend\'e gönderilecek veriler:', componentsDataForBackend);
+      
+      // PDF içeriklerinin sayısını kontrol et (opsiyonel debug log)
+      let totalPdfCount = 0;
+      Object.values(componentsDataForBackend).forEach(compData => {
+        Object.values(compData.answers || {}).forEach(answer => {
+          if (typeof answer === 'object' && answer !== null && answer.content && answer.fileName) {
+            totalPdfCount++;
+          }
+        });
+      });
+      console.log(`Toplam ${totalPdfCount} adet PDF nesnesi bulundu ve gönderiliyor`);
       
       // Raporu oluştur
       try {
-        // Genişletilmiş generateReport fonksiyonunu kullan (üç veri kaynağı ile)
+        console.log('Rapor oluşturma isteği gönderiliyor:', { projectName });
+        
+        // generateReport fonksiyonunu yeni formatta çağır
+        // user_input ve pdf_content artık gönderilmiyor (null)
         const result = await reportService.generateReport(
           projectName, 
-          componentsData,
-          userInput || null,  // Kullanıcı girdisi varsa gönder, yoksa null
-          pdfContent || null  // PDF içeriği varsa gönder, yoksa null
+          componentsDataForBackend, // Yeni formatta veri
+          null, 
+          null  
         );
         
         // PDF dosya adını al
@@ -403,13 +480,38 @@ const ReportBuilder = () => {
         
       } catch (error) {
         console.error('Rapor oluşturma hatası:', error);
-        toast.error(`Rapor oluşturulamadı: ${error.message}`);
+        let errorMessage = 'Bilinmeyen bir hata';
+        
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (Array.isArray(error)) {
+          errorMessage = error.map(e => e?.message || e).join(', ');
+        } else if (typeof error === 'object') {
+          errorMessage = JSON.stringify(error);
+        } else {
+          errorMessage = String(error);
+        }
+        
+        toast.error(`Rapor oluşturulamadı: ${errorMessage}`);
         throw error; // Hatayı yukarı taşı
       }
       
     } catch (error) {
       console.error('Rapor oluşturma işlemi başarısız:', error);
-      toast.error(`Rapor oluşturulamadı: ${error.message}`);
+      
+      let errorMessage = 'Bilinmeyen bir hata';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (Array.isArray(error)) {
+        errorMessage = error.map(e => e?.message || e).join(', ');
+      } else if (typeof error === 'object') {
+        errorMessage = JSON.stringify(error);
+      } else {
+        errorMessage = String(error);
+      }
+      
+      toast.error(`Rapor oluşturulamadı: ${errorMessage}`);
     } finally {
       setSavingReport(false);
     }
@@ -665,44 +767,61 @@ const ReportBuilder = () => {
                         {question.type === 'file' && (
                           <div className="mt-1">
                             <div className="flex flex-col space-y-2">
-                              {componentData[component]?.answers[question.id] ? (
-                                // Yüklenmiş dosyayı göster
-                                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
-                                  <div className="flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <span className="text-sm font-medium text-gray-700">
-                                      {/* Display the string value directly */}
-                                      {componentData[component].answers[question.id]}
-                                    </span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleAnswerChange(component, question.id, '')}
-                                    className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
-                                    title="Dosyayı kaldır"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              ) : (
-                                // Dosya yükleme alanı
-                                <input
-                                  type="file"
-                                  accept="application/pdf"
-                                  onChange={(e) => handleAnswerChange(component, question.id, e.target.files[0]?.name)}
-                                  className="block w-full text-sm text-gray-500
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-md file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-blue-50 file:text-blue-700
-                                    hover:file:bg-blue-100"
-                                  required={question.required}
-                                />
-                              )}
+                              {/* PDF JSON string'i var mı ve parse edilebiliyor mu kontrol et */}
+                              {(() => {
+                                const answerString = componentData[component]?.answers[question.id];
+                                let pdfData = null;
+                                if (answerString && typeof answerString === 'string') {
+                                  try {
+                                    pdfData = JSON.parse(answerString);
+                                  } catch (e) {
+                                    console.error('PDF JSON parse hatası:', e);
+                                    // Hata durumunda null bırak, dosya yükleme alanı görünsün
+                                  }
+                                }
+                                
+                                if (pdfData && pdfData.fileName) {
+                                  // Yüklenmiş dosyayı göster (JSON'dan parse edilen fileName)
+                                  return (
+                                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
+                                      <div className="flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span className="text-sm font-medium text-gray-700">
+                                          {pdfData.fileName}
+                                        </span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveComponentPdf(component, question.id)}
+                                        className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
+                                        title="Dosyayı kaldır"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  );
+                                } else {
+                                  // Dosya yükleme alanı
+                                  return (
+                                    <input
+                                      type="file"
+                                      accept="application/pdf"
+                                      onChange={(e) => handleComponentPdfUpload(component, question.id, e)}
+                                      className="block w-full text-sm text-gray-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-md file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-blue-50 file:text-blue-700
+                                        hover:file:bg-blue-100"
+                                      required={question.required}
+                                    />
+                                  );
+                                }
+                              })()}
                             </div>
                           </div>
                         )}
@@ -718,166 +837,6 @@ const ReportBuilder = () => {
                 )}
               </div>
             ))}
-          </div>
-
-          {/* Ek Rapor Girdileri Bölümü - Kullanıcı notu ve PDF yükleme için */}
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Ek Rapor Girdileri</h2>
-            
-            {/* Kullanıcı Notu */}
-            <div className="mb-6">
-              <h3 className="text-md font-semibold text-gray-700 mb-2">Kullanıcı Notu</h3>
-              <p className="text-sm text-gray-500 mb-2">
-                Rapora eklemek istediğiniz ek notları buraya yazabilirsiniz. Bu alan opsiyoneldir.
-              </p>
-              <textarea
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                rows={4}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="Rapora eklemek istediğiniz ek notlar..."
-              />
-            </div>
-            
-            {/* PDF Yükleme */}
-            <div>
-              <h3 className="text-md font-semibold text-gray-700 mb-2">PDF Dosyası</h3>
-              <p className="text-sm text-gray-500 mb-2">
-                Rapora dahil etmek istediğiniz bir PDF dosyası yükleyebilirsiniz. Bu alan opsiyoneldir.
-              </p>
-              
-              {!pdfFile?.name ? (
-                <div className="mt-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    PDF Dosyası Seçin
-                  </label>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={handlePdfUpload}
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100"
-                  />
-                </div>
-              ) : (
-                <div className="mt-2 p-3 bg-gray-50 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{pdfFile.name}</p>
-                      <p className="text-xs text-gray-500">{(pdfFile.size / 1024).toFixed(2)} KB</p>
-                    </div>
-                    
-                    <button
-                      onClick={handleRemovePdf}
-                      className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700 focus:outline-none"
-                      title="Dosyayı kaldır"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  {pdfLoading ? (
-                    <div className="mt-2 flex items-center text-sm text-blue-600">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      İçerik çıkarılıyor...
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-green-600">
-                      PDF içeriği başarıyla çıkarıldı ({pdfContent.length} karakter)
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Rapor İşlemleri ve Sonuç Bölümü */}
-          <div className="mt-8">
-            {/* Oluşturulan Rapor Görüntüleme Bölümü */}
-            {activeReport && activeReport.report_generated && (
-              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h2 className="text-lg font-bold text-gray-800 mb-4">Oluşturulan Rapor</h2>
-                <p className="text-gray-600 mb-4">
-                  Raporunuz başarıyla oluşturuldu. Aşağıdaki butonlarla raporu görüntüleyebilir, indirebilir veya sonlandırabilirsiniz.
-                </p>
-                
-                {/* PDF Dosya adı gösterimi */}
-                {activeReport.pdfFileName && (
-                  <div className="bg-gray-50 rounded-md p-3 mb-4">
-                    <p className="text-sm text-gray-600">PDF Dosya Adı:</p>
-                    <p className="text-md font-medium text-gray-800">{activeReport.pdfFileName}</p>
-                    <p className="text-xs text-gray-500 mt-1">Dosya adı otomatik olarak [proje adı]__[rapor tarihi].pdf formatında oluşturulmuştur.</p>
-                  </div>
-                )}
-                
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={handleDownloadReport}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Raporu İndir
-                  </button>
-                  
-                  {!activeReport.is_finalized && (
-                    <button
-                      onClick={() => setShowFinalizeDialog(true)}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Raporu Sonlandır
-                    </button>
-                  )}
-                </div>
-                
-                {activeReport.is_finalized ? (
-                  <p className="mt-4 text-sm font-medium text-green-600">
-                    Bu rapor sonlandırılmış ve düzenlenemez durumda.
-                  </p>
-                ) : (
-                  <p className="mt-4 text-sm text-amber-600">
-                    Rapor düzenlenebilir durumda. Düzenlemeyi tamamladıktan sonra sonlandırabilirsiniz.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Ana Butonlar */}
-            <div className="flex justify-center space-x-4">
-              <button
-                onClick={() => navigate(`/project/${projectName}`)}
-                className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                İptal
-              </button>
-              
-              <button
-                onClick={handleGenerateReport}
-                disabled={savingReport || (activeReport && activeReport.is_finalized)}
-                className="px-6 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
-              >
-                {savingReport && (
-                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                {savingReport ? 'Rapor Oluşturuluyor...' : (activeReport && activeReport.report_generated) ? 'Raporu Yeniden Oluştur' : 'Raporu Oluştur'}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -904,10 +863,90 @@ const ReportBuilder = () => {
         </div>
       </div>
 
+      {/* Rapor İşlemleri ve Sonuç Bölümü */}
+      <div className="mt-8">
+        {/* Oluşturulan Rapor Görüntüleme Bölümü */}
+        {activeReport && activeReport.report_generated && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Oluşturulan Rapor</h2>
+            <p className="text-gray-600 mb-4">
+              Raporunuz başarıyla oluşturuldu. Aşağıdaki butonlarla raporu görüntüleyebilir, indirebilir veya sonlandırabilirsiniz.
+            </p>
+            
+            {/* PDF Dosya adı gösterimi */}
+            {activeReport.pdfFileName && (
+              <div className="bg-gray-50 rounded-md p-3 mb-4">
+                <p className="text-sm text-gray-600">PDF Dosya Adı:</p>
+                <p className="text-md font-medium text-gray-800">{activeReport.pdfFileName}</p>
+                <p className="text-xs text-gray-500 mt-1">Dosya adı otomatik olarak [proje adı]__[rapor tarihi].pdf formatında oluşturulmuştur.</p>
+              </div>
+            )}
+            
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleDownloadReport}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Raporu İndir
+              </button>
+              
+              {!activeReport.is_finalized && (
+                <button
+                  onClick={() => setShowFinalizeDialog(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Raporu Sonlandır
+                </button>
+              )}
+            </div>
+            
+            {activeReport.is_finalized ? (
+              <p className="mt-4 text-sm font-medium text-green-600">
+                Bu rapor sonlandırılmış ve düzenlenemez durumda.
+              </p>
+            ) : (
+              <p className="mt-4 text-sm text-amber-600">
+                Rapor düzenlenebilir durumda. Düzenlemeyi tamamladıktan sonra sonlandırabilirsiniz.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Ana Butonlar */}
+        <div className="flex justify-center space-x-4">
+          <button
+            onClick={() => navigate(`/project/${projectName}`)}
+            className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            İptal
+          </button>
+          
+          <button
+            onClick={handleGenerateReport}
+            disabled={savingReport || (activeReport && activeReport.is_finalized)}
+            className="px-6 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
+          >
+            {savingReport && (
+              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {savingReport ? 'Rapor Oluşturuluyor...' : (activeReport && activeReport.report_generated) ? 'Raporu Yeniden Oluştur' : 'Raporu Oluştur'}
+          </button>
+        </div>
+      </div>
+
       {/* Sonlandırma onay dialog'u */}
       {showFinalizeDialog && <FinalizeDialog />}
     </div>
   );
 };
 
-export default ReportBuilder; 
+export default ReportBuilder;

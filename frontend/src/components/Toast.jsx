@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 /**
  * Toast component for displaying notifications
  */
-const Toast = ({ type, message, title, duration, onClose }) => {
+const Toast = ({ type, message, title = '', duration = 3000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
@@ -110,11 +110,6 @@ Toast.propTypes = {
   title: PropTypes.string,
   duration: PropTypes.number,
   onClose: PropTypes.func.isRequired
-};
-
-Toast.defaultProps = {
-  title: '',
-  duration: 3000
 };
 
 export default Toast; 

@@ -238,7 +238,17 @@ def save_component_data(project_name: str, component_name: str, answers: Dict[st
         if component_name == "pdf_content" and "content" in answers:
             # PDF içeriğini doğrudan active_report'a kaydet
             print("PDF içeriği algılandı, rapor verisine kaydediliyor...")
+            content_length = len(answers["content"]) if answers["content"] else 0
+            print(f"Kaydedilecek PDF içeriği uzunluğu: {content_length} karakter")
             active_report["pdf_content"] = answers["content"]
+            
+            # PDF dosya adını da kaydet
+            if "filename" in answers:
+                active_report["pdf_filename"] = answers["filename"]
+                print(f"PDF dosya adı kaydedildi: '{answers['filename']}'")
+                print(f"Aktif raporda pdf_filename anahtarı var mı: {'pdf_filename' in active_report}")
+            else:
+                print("PDF dosya adı bulunamadı, sadece içerik kaydedildi")
         else:
             # Normal bileşen cevaplarını kaydet
             active_report["components"][component_name] = {

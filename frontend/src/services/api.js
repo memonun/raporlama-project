@@ -44,62 +44,6 @@ export const projectService = {
     }
   },
   
-  // Aktif raporu getir
-  getActiveReport: async (projectName) => {
-    if (!projectName) {
-      console.error('projectService.getActiveReport: Proje adı belirtilmedi');
-      throw new Error('Proje adı belirtilmedi');
-    }
-    
-    try {
-      console.log(`projectService.getActiveReport: ${projectName} projesinin aktif raporu getiriliyor`);
-      const response = await axiosInstance.get(`/project/${encodeURIComponent(projectName)}/report/active`);
-      return response.data;
-    } catch (error) {
-      console.error('Aktif rapor getirme hatası:', error);
-      return null; // Aktif rapor yoksa null döndür
-    }
-  },
-  
-  // Tamamlanmamış raporları getir
-  getUnfinalizedReports: async (projectName) => {
-    if (!projectName) {
-      console.error('projectService.getUnfinalizedReports: Proje adı belirtilmedi');
-      throw new Error('Proje adı belirtilmedi');
-    }
-    
-    try {
-      console.log(`projectService.getUnfinalizedReports: ${projectName} projesinin tamamlanmamış raporları getiriliyor`);
-      const response = await axiosInstance.get(`/project/${encodeURIComponent(projectName)}/unfinalized-reports`);
-      return response.data.reports || [];
-    } catch (error) {
-      console.error('Tamamlanmamış raporlar getirme hatası:', error);
-      return []; // Hata durumunda boş array döndür
-    }
-  },
-  
-  // Yeni rapor oluştur
-  createReport: async (projectName) => {
-    if (!projectName) {
-      console.error('projectService.createReport: Proje adı belirtilmedi');
-      throw new Error('Proje adı belirtilmedi');
-    }
-    
-    try {
-      console.log(`projectService.createReport: ${projectName} projesi için yeni rapor oluşturuluyor`);
-      const response = await axiosInstance.post('/project/create-report', {
-        project_name: projectName
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Rapor oluşturma hatası:', error);
-      if (error.response && error.response.status === 409) {
-        throw new Error('Aktif bir raporunuz bulunuyor. Lütfen mevcut raporu tamamlayın veya silin.');
-      }
-      throw new Error('Rapor oluşturulurken bir hata oluştu');
-    }
-  },
-  
   // Projeyi sil
   deleteProject: async (projectName) => {
     if (!projectName) {
@@ -141,6 +85,50 @@ export const projectService = {
         throw new Error(`"${projectName}" projesi bulunamadı`);
       }
       throw new Error('Proje arşivlenirken bir hata oluştu');
+    }
+  },
+  
+  // Aktif raporu getir - reportService'ten alias olarak eklendi
+  getActiveReport: async (projectName) => {
+    if (!projectName) {
+      console.error('projectService.getActiveReport: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+
+    try {
+      console.log(`projectService.getActiveReport: ${projectName} projesi için aktif rapor getiriliyor`);
+      
+      const response = await axiosInstance.get(`/project/${projectName}/report/active`);
+      
+      // Eğer aktif rapor varsa ve finalized değilse döndür
+      if (response.data && !response.data.is_finalized) {
+        console.log('Aktif rapor getirme başarılı:', response.data);
+        return response.data;
+      } else if (response.data && response.data.is_finalized) {
+        console.log('Aktif rapor finalized olduğu için null dönülüyor:', response.data);
+        return null;
+      }
+      
+      console.log('Aktif rapor getirme başarılı:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Aktif rapor getirme hatası:', error);
+      
+      if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.data);
+        console.error('Durum Kodu:', error.response.status);
+        
+        // 404 hatası rapor bulunamadığında normaldir
+        if (error.response.status === 404) {
+          return null;
+        }
+        
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+      }
+      
+      throw new Error('Aktif rapor getirilirken bir hata oluştu');
     }
   }
 };
@@ -276,10 +264,373 @@ export const mailService = {
   },
 };
 
+// Rapor servisi
+export const reportService = {
+  // Rapor oluştur
+  generateReport: async (projectName, componentsData, userInput = null, pdfContent = null) => {
+    if (!projectName) {
+      console.error('reportService.generateReport: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+
+    try {
+      console.log(`reportService.generateReport: ${projectName} projesi için rapor oluşturuluyor`);
+      console.log('Gönderilen bileşen verileri (özet):', Object.keys(componentsData));
+      
+      // Debug için PDF içeriklerini kontrol edelim
+      const pdfContentKeys = Object.keys(componentsData).filter(k => k.endsWith('_pdf_contents'));
+      if (pdfContentKeys.length > 0) {
+        console.log('PDF içerikleri mevcut:', pdfContentKeys);
+        pdfContentKeys.forEach(key => {
+          const pdfs = componentsData[key];
+          console.log(`${key} içinde ${pdfs.length} adet PDF mevcut`);
+          console.log('İlk PDF örneği:', JSON.stringify(pdfs[0], null, 2));
+        });
+      } else {
+        console.warn('Hiç PDF içeriği bulunamadı!');
+      }
+      
+      // Veri formatı dönüşümü yapmadan doğrudan API'ye gönder
+      const requestPayload = { 
+        project_name: projectName,
+        components_data: componentsData,
+        user_input: userInput,
+        pdf_content: pdfContent
+      };
+      
+      console.log('API isteği hazırlandı:', JSON.stringify(requestPayload, null, 2).substring(0, 1000) + '...');
+      
+      const response = await axiosInstance.post(`/project/generate-report`, requestPayload);
+      
+      console.log('Rapor oluşturma yanıtı:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Rapor oluşturma hatası:', error);
+      
+      if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.data);
+        console.error('Durum Kodu:', error.response.status);
+        
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+        if (error.response.status === 404) {
+           throw new Error('Rapor oluşturma uç noktası bulunamadı veya proje verisi eksik.');
+        } 
+        if (error.response.status === 422) {
+          throw new Error('İstek formatı hatalı: API validasyon hatası. Geliştirici ile iletişime geçin.');
+        }
+        if (error.response.status === 500) {
+          throw new Error('Rapor oluşturulurken sunucu hatası oluştu. Geliştirici ile iletişime geçin.');
+        }
+      } else if (error.request) {
+        // İstek yapıldı ama yanıt alınamadı
+        console.error('Yanıt alınamadı:', error.request);
+        throw new Error('Sunucudan yanıt alınamadı. Lütfen internet bağlantınızı kontrol edin.');
+      } else if (error.message) {
+        // İstek ayarlarında sorun var
+        console.error('İstek hatası:', error.message);
+        throw new Error(`İstek hatası: ${error.message}`);
+      } else {
+        // Beklenmeyen hata
+        console.error('Beklenmeyen hata:', error);
+        throw new Error('Beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+      }
+      
+      throw new Error('Rapor oluşturulurken bir sunucu hatası oluştu.');
+    }
+  },
+
+  // Tamamlanmamış raporları getir
+  getUnfinalizedReports: async (projectName) => {
+    if (!projectName) {
+      console.error('reportService.getUnfinalizedReports: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+    
+    try {
+      console.log(`reportService.getUnfinalizedReports: ${projectName} projesinin tamamlanmamış raporları getiriliyor`);
+      const response = await axiosInstance.get(`/project/${encodeURIComponent(projectName)}/unfinalized-reports`);
+      return response.data.reports || [];
+    } catch (error) {
+      console.error('Tamamlanmamış raporlar getirme hatası:', error);
+      return []; // Hata durumunda boş array döndür
+    }
+  },
+
+  // Yeni rapor oluştur (başlatır)
+  createReport: async (projectName) => {
+    if (!projectName) {
+      console.error('reportService.createReport: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+
+    try {
+      console.log(`reportService.createReport: ${projectName} projesi için yeni rapor başlatılıyor`);
+      
+      const requestData = {
+        project_name: projectName
+      };
+      
+      console.log('Gönderilen veri:', requestData);
+      
+      const response = await axiosInstance.post('/project/create-report', requestData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Rapor başlatma başarılı:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Rapor başlatma hatası:', error);
+      
+      if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.data);
+        console.error('Durum Kodu:', error.response.status);
+        
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+        if (error.response.status === 409) {
+          throw new Error('Aktif bir raporunuz bulunuyor. Lütfen mevcut raporu tamamlayın veya silin.');
+        }
+      }
+      
+      throw new Error('Yeni rapor oluşturulurken bir hata oluştu');
+    }
+  },
+
+  // Rapor indir
+  downloadReport: async (projectName, reportId) => {
+    if (!projectName) {
+      console.error('reportService.downloadReport: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+    if (!reportId) {
+      console.error('reportService.downloadReport: Rapor ID\'si belirtilmedi');
+      throw new Error('Rapor ID\'si belirtilmedi');
+    }
+
+    try {
+      console.log(`reportService.downloadReport: ${projectName} projesi için ${reportId} ID'li PDF indiriliyor`);
+      
+      const endpoint = `/project/${projectName}/report/${reportId}/download`;
+      
+      const response = await axiosInstance.get(endpoint, {
+        responseType: 'blob'
+      });
+      
+      console.log('PDF indirme başarılı');
+      return response.data;
+    } catch (error) {
+      console.error('PDF indirme hatası:', error);
+      
+      if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.status, error.response.data);
+        
+        if (error.response.data && error.response.data.detail) {
+            throw new Error(error.response.data.detail); 
+        }
+        if (error.response.status === 404) {
+          throw new Error('Rapor veya PDF dosyası bulunamadı');
+        } else if (error.response.status === 400) {
+          throw new Error('Rapor henüz oluşturulmamış veya istek geçersiz');
+        }
+      }
+      
+      throw new Error('Rapor indirilirken bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
+    }
+  },
+
+  // PDF içeriğini çıkarma servisi (backend'deki /extract-pdf endpoint'ine istek atar)
+  extractPdf: async (formData, config = {}) => {
+    if (!formData || !(formData instanceof FormData)) {
+      console.error('reportService.extractPdf: Geçersiz FormData');
+      throw new Error('PDF içeriği çıkarmak için geçerli bir dosya verisi gereklidir');
+    }
+    
+    console.log('reportService.extractPdf: PDF içeriği çıkarma isteği gönderiliyor...');
+    
+    try {
+      const response = await axiosInstance.post('/extract-pdf', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+        },
+        ...config // Timeout gibi ek ayarlar için
+      });
+      
+      console.log('PDF içeriği çıkarma başarılı:', response.data);
+      return response; // response.data yerine tüm yanıtı döndür
+    } catch (error) {
+      console.error('PDF içeriği çıkarma hatası:', error);
+      
+      if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.data);
+        console.error('Durum Kodu:', error.response.status);
+        
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(`PDF içeriği çıkarılamadı: ${error.response.data.detail}`);
+        }
+      }
+      
+      throw new Error('PDF içeriği çıkarılırken bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
+    }
+  },
+
+  // Rapor sil (Aktif Raporu)
+  deleteReport: async (projectName) => {
+    if (!projectName) {
+      console.error('reportService.deleteReport: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+
+    try {
+      console.log(`reportService.deleteReport: ${projectName} projesi için aktif rapor siliniyor`);
+      
+      // DELETE method kullan ve projectName'i yola dahil et
+      const response = await axiosInstance.delete(`/project/${encodeURIComponent(projectName)}/delete-report`);
+      
+      console.log('Aktif rapor silme başarılı:', response.data);
+      return response.data;
+    } catch (error) {
+      // Detaylı hata nesnesini logla
+      console.error('reportService.deleteReport - Detaylı Hata:', error);
+      let errorMessage = 'Rapor silinirken bir hata oluştu'; // Default mesaj
+
+      if (error.response) {
+        console.error('reportService.deleteReport - API Yanıt Detayı:', error.response.data);
+        console.error('reportService.deleteReport - Durum Kodu:', error.response.status);
+        
+        // Backend'den özel mesajı almaya çalış
+        if (error.response.data && error.response.data.detail) {
+            errorMessage = error.response.data.detail; 
+        } else if (error.response.status === 404) {
+            // 404 için daha spesifik bir mesaj
+            errorMessage = 'Silinecek rapor veya proje bulunamadı.';
+        }
+        // Gerekirse buraya daha fazla durum kodu kontrolü eklenebilir
+      } else if (error.message) {
+        // Axios hatası değil ancak standart message özelliği varsa
+        errorMessage = error.message;
+      }
+      
+      // Her zaman için standart bir Error nesnesi fırlat
+      throw new Error(errorMessage);
+    }
+  },
+
+  // Raporu sonlandır
+  finalizeReport: async (projectName) => {
+    if (!projectName) {
+      console.error('reportService.finalizeReport: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+    
+    try {
+      console.log(`reportService.finalizeReport: ${projectName} projesi raporu sonlandırılıyor`);
+      
+      const response = await axiosInstance.post('/project/finalize-report', {
+        project_name: projectName
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Rapor sonlandırma hatası:', error);
+      
+      if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.data);
+        console.error('Durum Kodu:', error.response.status);
+        
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+      }
+      
+      throw new Error('Rapor sonlandırılırken bir hata oluştu');
+    }
+  },
+
+  // Sonlandırılmış raporları getir
+  getFinalizedReports: async (projectName) => {
+    if (!projectName) {
+      console.error('reportService.getFinalizedReports: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+
+    try {
+      console.log(`reportService.getFinalizedReports: ${projectName} projesi için sonlandırılmış raporlar getiriliyor`);
+      
+      const response = await axiosInstance.get(`/project/${projectName}/finalized-reports`);
+      
+      console.log('Sonlandırılmış raporlar başarıyla getirildi:', response.data);
+    return response.data;
+  } catch (error) {
+      console.error('Sonlandırılmış raporları getirme hatası:', error);
+    
+    if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.data);
+        console.error('Durum Kodu:', error.response.status);
+        
+        if (error.response.status === 404) {
+          return [];
+        }
+        
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+      }
+      
+      throw new Error('Sonlandırılmış raporlar getirilirken bir hata oluştu');
+    }
+  },
+
+  // Sonlandırılmış raporu sil
+  deleteFinalizedReport: async (projectName, fileName) => {
+    if (!projectName) {
+      console.error('reportService.deleteFinalizedReport: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+    
+    if (!fileName) {
+      console.error('reportService.deleteFinalizedReport: Dosya adı belirtilmedi');
+      throw new Error('Dosya adı belirtilmedi');
+    }
+
+    try {
+      console.log(`reportService.deleteFinalizedReport: ${projectName} projesi için ${fileName} raporu siliniyor`);
+      
+      const response = await axiosInstance.post('/project/delete-finalized-report', {
+        project_name: projectName,
+        file_name: fileName
+      });
+      
+      console.log('Finalized rapor silme başarılı:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Finalized rapor silme hatası:', error);
+      
+      if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.data);
+        console.error('Durum Kodu:', error.response.status);
+        
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        } else if (error.response.status === 404) {
+          throw new Error('Silinecek rapor veya proje bulunamadı.');
+        }
+      }
+      
+      throw new Error('Finalized rapor silinirken bir hata oluştu.');
+    }
+  },
+};
+
 export { axiosInstance };
 
 export default {
   projectService,
   componentService,
-  mailService
+  mailService,
+  reportService
 }; 

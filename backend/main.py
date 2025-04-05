@@ -141,6 +141,19 @@ def get_active_report(project_name: str):
         if not active_report:
             # 404 yerine null dönüşü ile frontend'in kontrol etmesine izin veriyoruz
             return None
+            
+        # Debug için PDF bilgilerini kontrol et ve logla
+        if "pdf_content" in active_report:
+            pdf_content_len = len(active_report["pdf_content"]) if active_report["pdf_content"] else 0
+            print(f"Active report contains pdf_content of length: {pdf_content_len}")
+        else:
+            print("Active report does NOT contain pdf_content")
+            
+        if "pdf_filename" in active_report:
+            print(f"Active report contains pdf_filename: {active_report['pdf_filename']}")
+        else:
+            print("Active report does NOT contain pdf_filename")
+            
         return active_report
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Proje bulunamadı: {project_name}")
@@ -263,31 +276,65 @@ def generate_report_endpoint(request: GenerateReportRequest):
             # Yeni rapor oluştur
             report_id = get_report_id(request.project_name)
             new_report = create_new_report(request.project_name, report_id)
-            project_data = get_project_data(request.project_name)
+            project_data = get_project_data(request.project_name) # Yeniden yükle
             print(f"Aktif rapor bulunamadı. Yeni rapor oluşturuldu: {report_id}")
+            
+        active_report = project_data.get("active_report")
+        if not active_report:
+            # Bu durum oluşmamalı ama ek kontrol
+             raise ValueError("Aktif rapor oluşturulamadı veya bulunamadı.")
+             
+        # user_input ve eski pdf_content parametreleri artık kullanılmıyor
+        user_input = None # Eski request.user_input yerine
         
-        # Rapor içeriğini oluştur - Pass user_input and pdf_content
+        # PDF içeriklerini components_data'dan ayıkla
+        pdf_blocks = []
+        components_data_clean = {} # PDF objesi olmayan cevapları tutmak için (opsiyonel)
+        
+        for component_name, component_data in request.components_data.items():
+            component_answers = component_data.get("answers", {})
+            components_data_clean[component_name] = {"answers": {}}
+            
+            for key, value in component_answers.items():
+                # Değer string mi ve JSON objesi olarak parse edilebilir mi kontrol et
+                potential_pdf_obj = None
+                if isinstance(value, str) and value.startswith('{') and value.endswith('}'):
+                    try:
+                        potential_pdf_obj = json.loads(value)
+                    except json.JSONDecodeError:
+                        potential_pdf_obj = None # Parse edilemezse, normal string gibi davran
+                
+                if isinstance(potential_pdf_obj, dict) and "content" in potential_pdf_obj and "fileName" in potential_pdf_obj:
+                    # Bu parse edilmiş bir PDF nesnesi, içeriği ayıkla
+                    pdf_blocks.append(potential_pdf_obj["content"])
+                    # Temizlenmiş veriye orijinal JSON string'ini ekle (veya parse edilmiş objeyi)
+                    # AI'ye gönderirken string veya obje olması generate_report'un nasıl işlediğine bağlı
+                    # Şimdilik orijinal string'i bırakalım, generate_report içinde parse edilebilir
+                    components_data_clean[component_name]["answers"][key] = value 
+                else:
+                    # Bu normal bir cevap veya parse edilemeyen string
+                    components_data_clean[component_name]["answers"][key] = value
+
+        print(f"{len(pdf_blocks)} adet PDF içeriği ayıklandı.")
+
+        # Rapor içeriğini oluştur - gpt_handler.generate_report'u güncellenmiş verilerle çağır
+        # generate_report fonksiyonu prompt'u bu pdf_blocks ve components_data'ya göre hazırlamalı
         report_content = generate_report(
             request.project_name, 
-            request.components_data,
-            request.user_input,
-            request.pdf_content 
+            components_data_clean, # Temizlenmiş veya orijinal components_data (içinde PDF objeleri var)
+            user_input, # Artık null
+            pdf_blocks # Ayıklanmış PDF içerik listesi
         )
         
         # PDF oluştur - proje adı ve tarih bazlı benzersiz isimlendirme
         pdf_path = save_report_as_pdf(report_content, request.project_name)
         
         # Rapor bilgilerini kaydet
-        active_report = project_data.get("active_report")
-        if not active_report:
-            raise ValueError("Aktif bir rapor bulunamadı. Bu hata oluşmamalıydı.")
-            
-        report_id = active_report.get("report_id") # Use report_id from active_report
+        report_id = active_report.get("report_id") 
         if not report_id:
-             # Fallback, though should exist if active_report exists
-            report_id = get_report_id(request.project_name) 
-            active_report["report_id"] = report_id
-            print(f"Rapor ID'si bulunamadı. Yeni ID oluşturuldu: {report_id}")
+             report_id = get_report_id(request.project_name) 
+             active_report["report_id"] = report_id
+             print(f"Aktif raporda ID yoktu, yeni ID atandı: {report_id}")
         
         # Oluşturulan raporu kaydet
         return save_generated_report(
@@ -726,6 +773,20 @@ async def extract_pdf_endpoint(file: UploadFile = File(...)):
         # Diğer hataları logla ve genel bir hata mesajı döndür
         print(f"PDF içeriği çıkarılırken hata: {str(e)}")
         raise HTTPException(status_code=500, detail=f"PDF içeriği çıkarılamadı: {str(e)}")
+
+@app.post("/api/extract-pdf")
+async def extract_pdf_api_endpoint(file: UploadFile = File(...)):
+    """
+    PDF dosyasından içerik çıkarır ve metin olarak döndürür.
+    /api/ prefix'i ile aynı işlevselliği sunar.
+    
+    Args:
+        file: Yüklenecek PDF dosyası
+        
+    Returns:
+        Çıkarılan metin içeriği
+    """
+    return await extract_pdf_endpoint(file)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

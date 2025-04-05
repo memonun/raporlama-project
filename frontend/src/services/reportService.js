@@ -20,14 +20,32 @@ export const reportService = {
 
     try {
       console.log(`reportService.generateReport: ${projectName} projesi için rapor oluşturuluyor`);
-      console.log('Gönderilen bileşen verileri:', componentsData);
+      console.log('Gönderilen bileşen verileri (özet):', Object.keys(componentsData));
       
-      const response = await axiosInstance.post(`/project/generate-report`, { 
+      // Debug için PDF içeriklerini kontrol edelim
+      const pdfContentKeys = Object.keys(componentsData).filter(k => k.endsWith('_pdf_contents'));
+      if (pdfContentKeys.length > 0) {
+        console.log('PDF içerikleri mevcut:', pdfContentKeys);
+        pdfContentKeys.forEach(key => {
+          const pdfs = componentsData[key];
+          console.log(`${key} içinde ${pdfs.length} adet PDF mevcut`);
+          console.log('İlk PDF örneği:', JSON.stringify(pdfs[0], null, 2));
+        });
+      } else {
+        console.warn('Hiç PDF içeriği bulunamadı!');
+      }
+      
+      // Veri formatı dönüşümü yapmadan doğrudan API'ye gönder
+      const requestPayload = { 
         project_name: projectName,
         components_data: componentsData,
         user_input: userInput,
         pdf_content: pdfContent
-      });
+      };
+      
+      console.log('API isteği hazırlandı:', JSON.stringify(requestPayload, null, 2).substring(0, 1000) + '...');
+      
+      const response = await axiosInstance.post(`/project/generate-report`, requestPayload);
       
       console.log('Rapor oluşturma yanıtı:', response.data);
       return response.data;
@@ -44,6 +62,24 @@ export const reportService = {
         if (error.response.status === 404) {
            throw new Error('Rapor oluşturma uç noktası bulunamadı veya proje verisi eksik.');
         } 
+        if (error.response.status === 422) {
+          throw new Error('İstek formatı hatalı: API validasyon hatası. Geliştirici ile iletişime geçin.');
+        }
+        if (error.response.status === 500) {
+          throw new Error('Rapor oluşturulurken sunucu hatası oluştu. Geliştirici ile iletişime geçin.');
+        }
+      } else if (error.request) {
+        // İstek yapıldı ama yanıt alınamadı
+        console.error('Yanıt alınamadı:', error.request);
+        throw new Error('Sunucudan yanıt alınamadı. Lütfen internet bağlantınızı kontrol edin.');
+      } else if (error.message) {
+        // İstek ayarlarında sorun var
+        console.error('İstek hatası:', error.message);
+        throw new Error(`İstek hatası: ${error.message}`);
+      } else {
+        // Beklenmeyen hata
+        console.error('Beklenmeyen hata:', error);
+        throw new Error('Beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
       }
       
       throw new Error('Rapor oluşturulurken bir sunucu hatası oluştu.');
@@ -360,12 +396,14 @@ export const reportService = {
       throw new Error('Sadece PDF dosyaları işlenebilir');
     }
 
+    console.log(`[PDF Çıkarma] İşlem başlatılıyor: ${pdfFile.name}, ${pdfFile.size} bytes`);
+    
     try {
-      console.log(`reportService.extractPdfContent: ${pdfFile.name} dosyasından içerik çıkarılıyor...`);
-      
       // FormData ile dosya gönderimi
       const formData = new FormData();
       formData.append('file', pdfFile);
+      
+      console.log('[PDF Çıkarma] FormData oluşturuldu, istek gönderiliyor');
       
       const response = await axiosInstance.post('/extract-pdf', formData, {
         headers: {
@@ -373,21 +411,28 @@ export const reportService = {
         }
       });
       
-      console.log('PDF içeriği başarıyla çıkarıldı');
+      console.log('[PDF Çıkarma] Başarılı yanıt. İçerik uzunluğu:', 
+                 response.data?.content?.length || 'İçerik yok');
+      
+      if (!response.data || !response.data.content) {
+        console.error('[PDF Çıkarma] Yanıtta içerik alanı yok:', response.data);
+        throw new Error('PDF içeriği sunucudan boş döndü');
+      }
+      
       return response.data.content;
     } catch (error) {
-      console.error('PDF içeriği çıkarma hatası:', error);
+      console.error('[PDF Çıkarma] Hata:', error);
       
       if (error.response) {
-        console.error('API Yanıt Detayı:', error.response.data);
-        console.error('Durum Kodu:', error.response.status);
+        console.error('[PDF Çıkarma] API Yanıt Detayı:', error.response.data);
+        console.error('[PDF Çıkarma] Status kodu:', error.response.status);
         
         if (error.response.data && error.response.data.detail) {
-          throw new Error(error.response.data.detail);
+          throw new Error(`PDF çıkarma hatası: ${error.response.data.detail}`);
         }
       }
       
-      throw new Error('PDF içeriği çıkarılırken bir hata oluştu');
+      throw new Error('PDF içeriği çıkarılırken bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
     }
   },
 
@@ -395,41 +440,56 @@ export const reportService = {
    * PDF içeriğini proje verisine kaydetmek için
    * @param {string} projectName - Proje adı
    * @param {string} pdfContent - PDF içeriği
+   * @param {string} filename - PDF dosyasının adı (opsiyonel)
    * @returns {Promise<Object>} İşlem sonucu
    */
-  savePdfContent: async (projectName, pdfContent) => {
+  savePdfContent: async (projectName, pdfContent, filename = null) => {
     if (!projectName) {
       console.error('reportService.savePdfContent: Proje adı belirtilmedi');
       throw new Error('Proje adı belirtilmedi');
     }
     
+    console.log(`[PDF Kaydetme] İşlem başlatılıyor: ${projectName}`);
+    console.log(`[PDF Kaydetme] İçerik uzunluğu: ${pdfContent ? pdfContent.length : 0} karakter`);
+    console.log(`[PDF Kaydetme] Dosya adı: "${filename || 'belirtilmemiş'}"`);
+    
     try {
-      console.log(`reportService.savePdfContent: ${projectName} projesi için PDF içeriği kaydediliyor...`);
-      
       // PDF içeriğini component verisi olarak kaydet
-      const response = await axiosInstance.post('/component/save-data', {
+      const payload = {
         project_name: projectName,
         component_name: 'pdf_content', // Backend'de özel olarak işlenecek
         answers: {
           content: pdfContent
         }
-      });
+      };
       
-      console.log('PDF içeriği başarıyla kaydedildi');
+      // Dosya adı varsa ekle
+      if (filename) {
+        payload.answers.filename = filename;
+        console.log(`[PDF Kaydetme] Dosya adı payload'a eklendi: "${filename}"`);
+      } else {
+        console.log('[PDF Kaydetme] Dosya adı belirtilmediği için eklenmedi');
+      }
+      
+      console.log('[PDF Kaydetme] Backend isteği gönderiliyor:', JSON.stringify(payload).substring(0, 100) + '...');
+      
+      const response = await axiosInstance.post('/component/save-data', payload);
+      
+      console.log('[PDF Kaydetme] Backend yanıtı:', response.data);
       return response.data;
     } catch (error) {
-      console.error('PDF içeriği kaydetme hatası:', error);
+      console.error('[PDF Kaydetme] Hata:', error);
       
       if (error.response) {
-        console.error('API Yanıt Detayı:', error.response.data);
-        console.error('Durum Kodu:', error.response.status);
+        console.error('[PDF Kaydetme] API Yanıt Detayı:', error.response.data);
+        console.error('[PDF Kaydetme] Status kodu:', error.response.status);
         
         if (error.response.data && error.response.data.detail) {
-          throw new Error(error.response.data.detail);
+          throw new Error(`PDF kaydetme hatası: ${error.response.data.detail}`);
         }
       }
       
-      throw new Error('PDF içeriği kaydedilirken bir hata oluştu.');
+      throw new Error('PDF içeriği kaydedilirken bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
     }
   }
 };

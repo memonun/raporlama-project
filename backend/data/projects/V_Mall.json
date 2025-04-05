@@ -1,18 +1,48 @@
 {
   "project_name": "V Mall",
   "created_at": "2025-03-24T15:16:27.646702",
-  "last_updated": "2025-04-03T16:56:33.927710",
+  "last_updated": "2025-04-05T18:12:53.755723",
   "components": {},
-  "active_report": {
-    "report_id": "V_Mall_20250403",
-    "report_date": "2025-04-03",
-    "created_at": "2025-04-03T16:56:33.927710",
-    "last_updated": "2025-04-03T16:56:33.927710",
-    "components": {},
-    "status": "in_progress",
-    "report_generated": false
-  },
+  "active_report": null,
   "reports": [
+    {
+      "report_id": "V_Mall_20250405",
+      "report_date": "2025-04-05",
+      "created_at": "2025-04-05T18:05:00.368478",
+      "last_updated": "2025-04-05T18:12:53.755723",
+      "components": {
+        "İşletme": {
+          "answers": {
+            "business_report": "{\"fileName\":\"İşletme_Raporu.pdf\",\"content\":\"## Sayfa 1\\n\\n    İşletme Raporu - ECE Türkiye\\n    Proje Adı: V Metroway\\n    Kiralanabilir Alan: 25.000 m²\\n    Mağaza Sayısı: 81\\n    Yönetim: ECE Türkiye tarafından devralınacak\\n    Beklenen Açılış Tarihi: 20 Haziran 2025\",\"questionId\":\"business_report\"}"
+          },
+          "last_updated": "2025-04-05T18:12:32.320386"
+        },
+        "Finans": {
+          "answers": {
+            "finance_report": "{\"fileName\":\"Finans_Raporu.pdf\",\"content\":\"## Sayfa 1\\n\\n    Finans Raporu - Mutaz Bey\\n    Proje: İsra Holding Yatırım Portföyü\\n    2024 Yılı Kar: 12.500.000 TL\\n    2025 Projeksiyonu: 18.000.000 TL\\n    Gelir Kaynakları: AVM Kiralamaları, Tatil Köyü Gelirleri, Ticari İşletmeler\",\"questionId\":\"finance_report\"}"
+          },
+          "last_updated": "2025-04-05T18:12:32.335369"
+        },
+        "İnşaat": {
+          "answers": {
+            "construction_images": "{\"fileName\":\"İnşaat_Raporu.pdf\",\"content\":\"## Sayfa 1\\n\\n    İnşaat Raporu - ImperiumSoft\\n    Proje Adı: V Mall İstanbul\\n    İnşaat Durumu: %75 Tamamlandı\\n    Yapı Alanı: 126.000 m²\\n    Kiralanabilir Alan: 45.000 m²\\n    Tamamlanma Tarihi: 15 Mayıs 2025\",\"questionId\":\"construction_images\"}"
+          },
+          "last_updated": "2025-04-05T18:12:32.341148"
+        },
+        "Kurumsal İletişim": {
+          "answers": {
+            "corporate_report": "{\"fileName\":\"Kurumsal_İletişim_Raporu.pdf\",\"content\":\"## Sayfa 1\\n\\n    Kurumsal İletişim Raporu - Pazarlama\\n    Proje: V Orman Resort\\n    Tanıtım Kampanyaları: Sosyal Medya, Basılı Medya, Etkinlikler\\n    Hedef Kitle: Doğa Turizmi Meraklıları\\n    Vizyon: Bolu’nun doğal güzellikleri ile konforu bir araya getirmek\",\"questionId\":\"corporate_report\"}"
+          },
+          "last_updated": "2025-04-05T18:12:32.347887"
+        }
+      },
+      "status": "completed",
+      "report_generated": true,
+      "report_content": "### Yatırımcı Raporu: V Mall Projesi\n\n#### 1. Yönetici Özeti\nV Mall, İstanbul'da yer alan, modern ve kapsamlı bir alışveriş ve yaşam merkezi projesidir. Toplamda 126.000 m² yapı alanına ve 45.000 m² kiralanabilir alana sahiptir. Projenin inşaatı şu anda %75 tamamlanmış durumda ve mağaza sayısı 81 olarak planlanmıştır. Beklenen açılış tarihi 15 Mayıs 2025'tir.\n\n#### 2. Proje Durumu\nProje, İstanbul'un stratejik bir konumunda bulunmakta olup, şu ana kadar önemli bir inşaat ilerlemesi kaydedilmiştir. İnşaatın %75'i tamamlanmış olup, geri kalan kısmının plana uygun şekilde ilerlediği gözlemlenmektedir. Yönetimi ECE Türkiye tarafından üstlenilecek olan bu kompleks, modern altyapısı ve geniş kiralanabilir alanları ile dikkat çekmektedir.\n\n#### 3. Finansal Analiz\nV Mall projesi, İsra Holding Yatırım Portföyü'nün bir parçası olarak finansal açıdan büyük bir potansiyele sahiptir. 2024 yılında 12.500.000 TL kar elde edilmesi beklenirken, 2025 yılında bu rakamın 18.000.000 TL'ye ulaşması öngörülmektedir. Gelir kaynakları arasında AVM kiralamaları, tatil köyü gelirleri ve diğer ticari işletmeler bulunmaktadır.\n\n#### 4. İşletme Verileri\nKiralanabilir alan 45.000 m² olarak belirlenmiş olup, bu alan içerisinde 81 adet mağaza yer almaktadır. Kompleksin yönetimi, alanında deneyimli ECE Türkiye tarafından yapılacak ve açılış tarihi olarak 20 Haziran 2025 hedeflenmektedir.\n\n#### 5. Kısa ve Uzun Vadeli Tahminler\nKısa vadede, inşaatın tamamlanması ve kiralanabilir alanların doluluk oranının artırılması hedeflenmektedir. Uzun vadede ise, V Mall'ın İstanbul'un en önemli alışveriş ve yaşam merkezlerinden biri haline gelmesi ve yüksek gelir seviyelerine ulaşması beklenmektedir. Finansal projeksiyonlar, projenin 2025 yılında önemli bir gelir artışı göstereceğini işaret etmektedir.\n\n#### 6. Öneriler\n- İnşaat sürecinin hızlandırılması ve kalite standartlarının korunması için ek kaynak tahsis edilmesi önerilir.\n- Kiralanabilir alanların etkin bir şekilde pazarlanması ve potansiyel kiracılar için cazip hale getirilmesi amaçlanmalıdır.\n- Açılış öncesi ve sonrası dönemde etkili bir tanıtım ve pazarlama stratejisi uygulanmalıdır.\n- Yönetim ekibinin tecrübelerinden yararlanılarak, işletme süreçlerinin optimizasyonu sağlanmalıdır.\n\nBu rapor, V Mall projesinin mevcut durumunu ve gelecek potansiyelini yansıtmaktadır. Yatırımcıların, projenin sağlam finansal temelleri ve stratejik konumu göz önünde bulundurularak, yatırım kararlarını bu doğrultuda şekillendirmeleri önerilir.",
+      "pdf_path": "/Users/memico/Documents/ISRA/Raporlama_otomasyonu/backend/data/reports/V_Mall/V_Mall__20250405.pdf",
+      "is_finalized": true,
+      "finalized_at": "2025-04-05T18:13:09.062375"
+    },
     {
       "report_id": "V_Mall_20250402",
       "report_date": "2025-04-02",

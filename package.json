@@ -1,6 +1,9 @@
 {
   "dependencies": {
     "@headlessui/react": "^2.2.0",
+    "@itseasy21/mcp-knowledge-graph": "^1.0.7",
+    "@modelcontextprotocol/sdk": "^1.8.0",
+    "@modelcontextprotocol/server-memory": "^0.6.2",
     "@mui/material": "^7.0.1",
     "@vitejs/plugin-react": "^4.3.4",
     "react-hot-toast": "^2.5.2",
