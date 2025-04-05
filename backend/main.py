@@ -1,0 +1,1 @@
+[Kısaltılmış içerik]
