@@ -142,18 +142,6 @@ def get_active_report(project_name: str):
             # 404 yerine null dönüşü ile frontend'in kontrol etmesine izin veriyoruz
             return None
             
-        # Debug için PDF bilgilerini kontrol et ve logla
-        if "pdf_content" in active_report:
-            pdf_content_len = len(active_report["pdf_content"]) if active_report["pdf_content"] else 0
-            print(f"Active report contains pdf_content of length: {pdf_content_len}")
-        else:
-            print("Active report does NOT contain pdf_content")
-            
-        if "pdf_filename" in active_report:
-            print(f"Active report contains pdf_filename: {active_report['pdf_filename']}")
-        else:
-            print("Active report does NOT contain pdf_filename")
-            
         return active_report
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Proje bulunamadı: {project_name}")

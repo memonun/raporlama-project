@@ -8,13 +8,27 @@ import { projectService } from '../services/api';
 import { reportService } from '../services/reportService';
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { FileText, Plus, FileCheck, Clock, Trash2, MoreVertical } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
-// Safe access to nested objects
+/**
+ * Safely access nested object properties
+ * @param {Object} obj - The object to traverse
+ * @param {string|string[]} path - The path to the property, either as a dot-separated string or array
+ * @param {*} defaultValue - The value to return if the path doesn't exist
+ * @returns {*} The value at the path or the default value
+ */
 const getSafe = (obj, path, defaultValue = undefined) => {
+  if (!obj) return defaultValue;
+  
   try {
     const pathArray = Array.isArray(path) ? path : path.split('.');
-    return pathArray.reduce((acc, key) => (acc && acc[key] !== undefined) ? acc[key] : defaultValue, obj);
+    return pathArray.reduce((acc, key) => 
+      acc && typeof acc === 'object' && acc[key] !== undefined 
+        ? acc[key] 
+        : defaultValue
+    , obj);
   } catch (e) {
+    console.warn(`Error accessing path ${path}:`, e);
     return defaultValue;
   }
 };
@@ -59,12 +73,21 @@ const ProjectDetail = () => {
         
         // Eğer active_report varsa listeye ekle
         if (projectData.active_report) {
-          allReports.push(projectData.active_report);
+          allReports.push({
+            ...projectData.active_report,
+            menuId: uuidv4()
+          });
         }
         
         // Eğer reports[] listesi varsa listeye ekle
         if (projectData.reports && Array.isArray(projectData.reports)) {
-          allReports = [...allReports, ...projectData.reports];
+          allReports = [
+            ...allReports,
+            ...projectData.reports.map(report => ({
+              ...report,
+              menuId: uuidv4()
+            }))
+          ];
         }
         
         console.log('Birleştirilmiş raporlar:', allReports);
@@ -102,7 +125,7 @@ const ProjectDetail = () => {
         // Aktif rapor yoksa yeni bir tane oluştur
         const result = await reportService.createReport(projectName);
         // Yeni raporu listeye ekle
-        setReports(prev => [...prev, result]);
+        setReports(prev => [...prev, { ...result, menuId: uuidv4() }]);
         // Kullanıcıyı yeni raporu düzenlemeye yönlendir
         navigate(`/project/${projectName}/report/create`);
       }
@@ -213,12 +236,21 @@ const ProjectDetail = () => {
         
         // Eğer active_report varsa listeye ekle
         if (projectData.active_report) {
-          allReports.push(projectData.active_report);
+          allReports.push({
+            ...projectData.active_report,
+            menuId: uuidv4()
+          });
         }
         
         // Eğer reports[] listesi varsa listeye ekle
         if (projectData.reports && Array.isArray(projectData.reports)) {
-          allReports = [...allReports, ...projectData.reports];
+          allReports = [
+            ...allReports,
+            ...projectData.reports.map(report => ({
+              ...report,
+              menuId: uuidv4()
+            }))
+          ];
         }
         
         // Tüm raporları state'e set et
@@ -279,12 +311,21 @@ const ProjectDetail = () => {
         
         // Eğer active_report varsa listeye ekle
         if (projectData.active_report) {
-          allReports.push(projectData.active_report);
+          allReports.push({
+            ...projectData.active_report,
+            menuId: uuidv4()
+          });
         }
         
         // Eğer reports[] listesi varsa listeye ekle
         if (projectData.reports && Array.isArray(projectData.reports)) {
-          allReports = [...allReports, ...projectData.reports];
+          allReports = [
+            ...allReports,
+            ...projectData.reports.map(report => ({
+              ...report,
+              menuId: uuidv4()
+            }))
+          ];
         }
         
         // Tüm raporları state'e set et
@@ -425,52 +466,68 @@ const ProjectDetail = () => {
               {/* Finalized Raporlar Listesi */}
               {reports.filter(report => report.is_finalized).map((report) => {
                 const reportId = report.report_id || report.id;
-                const isMenuOpen = openMenuId === reportId;
+                const isMenuOpen = openMenuId === report.menuId;
 
                 return (
                   <div
-                    key={reportId}
+                    key={report.menuId}
                     onClick={() => handleReportClick(report)}
-                    className="group relative flex flex-col items-center p-6 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer bg-white"
+                    className="group relative flex flex-col p-6 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer bg-white border border-gray-100"
                   >
                     {/* Custom 3-dot Menu */}
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute top-3 right-3">
                       <button 
-                        onClick={(e) => toggleMenu(reportId, e)} 
-                        className="report-menu-trigger p-1 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
+                        onClick={(e) => toggleMenu(report.menuId, e)}
+                        className="report-menu-trigger p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none transition-colors"
                         aria-haspopup="true"
                         aria-expanded={isMenuOpen}
                       >
-                        <MoreVertical className="w-5 h-5" />
+                        <MoreVertical className="w-4 h-4" />
                       </button>
                       
                       {/* Custom Dropdown Content */}
                       {isMenuOpen && (
                         <div 
-                          className="report-menu-content absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                          className="report-menu-content absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10 py-1"
                           role="menu"
                           aria-orientation="vertical"
-                          aria-labelledby={`menu-button-${reportId}`}
+                          aria-labelledby={`menu-button-${report.menuId}`}
                         >
-                          <div className="py-1" role="none">
-                            <button
-                              onClick={(e) => handleFinalizedReportDelete(report, e)}
-                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
-                              role="menuitem"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              <span>Sil</span>
-                            </button>
-                          </div>
+                          <button
+                            onClick={(e) => handleFinalizedReportDelete(report, e)}
+                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                            role="menuitem"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            <span>Raporu Sil</span>
+                          </button>
                         </div>
                       )}
                     </div>
                     
-                    <FileCheck className="w-16 h-16 text-green-500 group-hover:text-green-600 transition-colors" />
+                    {/* Rapor İkonu ve Bilgileri */}
+                    <div className="flex flex-col items-center">
+                      <div className="mb-4 p-2 rounded-full bg-green-50">
+                        <FileCheck className="w-8 h-8 text-green-500 group-hover:text-green-600 transition-colors" />
+                      </div>
+                      
+                      <div className="text-center mb-8">
+                        <h3 className="text-sm font-medium text-gray-900 mb-1 break-words w-full">
+                          {report.name || `Rapor ${reportId}`}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          {new Date(report.created_at || report.date).toLocaleDateString('tr-TR')}
+                        </p>
+                      </div>
+                    </div>
                     
-                    <span className="mt-4 text-sm font-medium text-gray-700 text-center break-words w-full">
-                      {report.name || report.report_id || 'Tamamlanmış Rapor'}
-                    </span>
+                    {/* Önizleme İndikatörü */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                      <span className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center bg-white/80 px-2 py-1 rounded-full shadow-sm">
+                        <FileText className="w-3 h-3 mr-1" />
+                        Önizle
+                      </span>
+                    </div>
                   </div>
                 );
               })}
