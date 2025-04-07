@@ -1,0 +1,26 @@
+{
+  "Fındık": {
+    "primary": "#5d4037",
+    "secondary": "#8d6e63",
+    "background": "#efebe9",
+    "accent": "#3e2723"
+  },
+  "Çay": {
+    "primary": "#388e3c",
+    "secondary": "#66bb6a",
+    "background": "#e8f5e9",
+    "accent": "#1b5e20"
+  },
+  "Fındık Yağı": {
+    "primary": "#bf360c",
+    "secondary": "#e64a19",
+    "background": "#fbe9e7",
+    "accent": "#bf360c"
+  },
+  "default": {
+    "primary": "#1a5276",
+    "secondary": "#2980b9",
+    "background": "#ebf5fb",
+    "accent": "#154360"
+  }
+} 

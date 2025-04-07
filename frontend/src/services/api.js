@@ -88,7 +88,7 @@ export const projectService = {
     }
   },
   
-  // Aktif raporu getir - reportService'ten alias olarak eklendi
+  // Aktif raporu getir
   getActiveReport: async (projectName) => {
     if (!projectName) {
       console.error('projectService.getActiveReport: Proje adı belirtilmedi');

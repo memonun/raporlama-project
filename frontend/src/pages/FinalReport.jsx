@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { projectService } from '../services/api';
-import { reportService } from '../services/reportService';
+import { projectService, reportService } from '../services/api';
 import { useToast } from '../context/ToastContext';
 
 const FinalReport = () => {

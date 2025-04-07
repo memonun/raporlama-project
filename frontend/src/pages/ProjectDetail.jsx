@@ -4,8 +4,7 @@ import Layout from '../components/Layout';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { toast } from 'react-hot-toast';
-import { projectService } from '../services/api';
-import { reportService } from '../services/reportService';
+import { projectService, reportService } from '../services/api';
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { FileText, Plus, FileCheck, Clock, Trash2, MoreVertical } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
@@ -112,7 +111,7 @@ const ProjectDetail = () => {
     try {
       setLoading(true);
       // Aktif raporu kontrol et
-      const activeReport = await reportService.getActiveReport(projectName);
+      const activeReport = await projectService.getActiveReport(projectName);
 
       if (activeReport) {
         setInfoDialogContent({
@@ -573,8 +572,8 @@ const ProjectDetail = () => {
               {pdfUrl && (
                 <a
                   href={pdfUrl} 
-                  download={`${selectedReport?.name || selectedReport?.report_id || projectName}_report.pdf`} // Dynamic filename
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2" // Button styling (matches default Button)
+                  download={`${selectedReport?.name || selectedReport?.report_id || projectName}_report.pdf`}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                 >
                   İndir
                 </a>
@@ -629,4 +628,4 @@ const ProjectDetail = () => {
   );
 };
 
-export default ProjectDetail; 
+export default ProjectDetail;

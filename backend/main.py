@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+import jinja2
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Any
 import uvicorn
@@ -12,7 +13,6 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import io
 from api.gpt_handler import generate_report, process_report_request, extract_pdf_content, get_project_reports
-from api.pdf_generator import save_report_as_pdf
 from api.mail_agent import send_missing_info_request, get_department_email
 from api.questions_handler import get_questions_for_component
 from api.data_storage import (
@@ -28,6 +28,12 @@ import datetime
 import shutil
 import tempfile
 from uuid import uuid4
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
+from config import PROJECT_PALETTES, CORPORATE_COLORS
+import base64
+import logging
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
@@ -39,6 +45,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Modeller
 class ProjectRequest(BaseModel):
@@ -253,92 +263,134 @@ def save_component_data_endpoint(request: ComponentDataRequest):
         raise HTTPException(status_code=500, detail=f"Bileşen verileri kaydedilirken bir hata oluştu: {str(e)}")
 
 @app.post("/project/generate-report", response_model=Dict[str, Any])
-def generate_report_endpoint(request: GenerateReportRequest):
-    """Bir proje için rapor oluşturur."""
+async def generate_project_report(request: GenerateReportRequest):
+    """
+    Proje verilerini, kullanıcı girdilerini ve PDF içeriklerini kullanarak
+    GPT ile rapor oluşturur, stilize PDF olarak kaydeder ve sonucu döndürür.
+    """
+    logger.info(f"[REPORT_GEN] Rapor oluşturma isteği alındı: Proje={request.project_name}")
     try:
-        # Proje verisini al
-        project_data = get_project_data(request.project_name)
+        # Bileşen verilerini kontrol et
+        logger.info(f"[REPORT_GEN] Bileşen verileri kontrol ediliyor...")
+        if not request.components_data:
+            logger.error(f"[REPORT_GEN] Hata: Bileşen verileri boş. Proje={request.project_name}")
+            raise HTTPException(
+                status_code=400, 
+                detail="Bileşen verileri bulunamadı. Lütfen en az bir bileşen için veri sağlayın."
+            )
+        logger.info(f"[REPORT_GEN] Bileşen verileri geçerli.")
+
+        # 1. Metin içeriğini oluştur (GPT çağrısı)
+        logger.info(f"[REPORT_GEN] GPT ile rapor içeriği oluşturuluyor... Proje={request.project_name}")
+        try:
+            report_content_text = generate_report(
+                request.project_name,
+                request.components_data,
+                request.user_input
+            )
+            logger.info(f"[REPORT_GEN] GPT rapor içeriği başarıyla oluşturuldu.")
+        except Exception as gpt_error:
+            logger.error(f"[REPORT_GEN] GPT çağrısı sırasında hata: {gpt_error}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Yapay zeka ile rapor oluşturulurken hata: {gpt_error}")
+
+        # Rapor ID'si oluştur
+        logger.info(f"[REPORT_GEN] Rapor ID alınıyor...")
+        report_id = get_report_id(request.project_name)
+        logger.info(f"[REPORT_GEN] Rapor ID alındı: {report_id}")
+
+        # 2. Rapora görsel/stil özellikleri ekleyerek PDF oluştur
+        logger.info(f"[REPORT_GEN] PDF oluşturma süreci başlıyor...")
+        # 2.1 Projeye özel renkleri ve görsel bilgilerini al
+        logger.info(f"[REPORT_GEN] Proje renkleri alınıyor...")
+        project_colors = get_project_colors(request.project_name)
+        logger.info(f"[REPORT_GEN] Proje renkleri alındı.")
         
-        # Aktif rapor kontrolü
-        if not project_data or not project_data.get("active_report"):
-            # Yeni rapor oluştur
-            report_id = get_report_id(request.project_name)
-            new_report = create_new_report(request.project_name, report_id)
-            project_data = get_project_data(request.project_name) # Yeniden yükle
-            print(f"Aktif rapor bulunamadı. Yeni rapor oluşturuldu: {report_id}")
-            
-        active_report = project_data.get("active_report")
-        if not active_report:
-            # Bu durum oluşmamalı ama ek kontrol
-             raise ValueError("Aktif rapor oluşturulamadı veya bulunamadı.")
-             
-        # user_input ve eski pdf_content parametreleri artık kullanılmıyor
-        user_input = None # Eski request.user_input yerine
+        # 2.2 Görseli belirle
+        logger.info(f"[REPORT_GEN] Proje görseli belirleniyor...")
+        report_image_filename = f"{request.project_name.lower()}-inşaat-1.jpg"
+        image_data_uri = get_image_path_or_data(request.project_name, report_image_filename)
+        logger.info(f"[REPORT_GEN] Proje görseli belirlendi: {report_image_filename if image_data_uri else 'Görsel Yok'}")
         
-        # PDF içeriklerini components_data'dan ayıkla
-        pdf_blocks = []
-        components_data_clean = {} # PDF objesi olmayan cevapları tutmak için (opsiyonel)
+        # 2.3 Jinja2 şablonunu yükle ve render et
+        logger.info(f"[REPORT_GEN] Jinja2 şablonu yükleniyor ve render ediliyor...")
+        try:
+            template = env.get_template('report_template.html')
+            html_content = template.render(
+                project_name=request.project_name,
+                report_data=report_content_text,  # AI'dan gelen metin içeriği
+                project_colors=project_colors,
+                corporate_colors=CORPORATE_COLORS,
+                project_image=image_data_uri
+            )
+            logger.info(f"[REPORT_GEN] Jinja2 şablonu başarıyla render edildi.")
+        except jinja2.exceptions.TemplateNotFound:
+            logger.warning(f"[REPORT_GEN] Uyarı: Rapor şablonu 'report_template.html' bulunamadı, basit HTML oluşturuluyor.")
+            # Fallback HTML creation
+            html_content = f"<html><body><h1>{request.project_name} Raporu</h1>{report_content_text}</body></html>"
+        except Exception as render_error:
+             logger.error(f"[REPORT_GEN] Jinja2 render sırasında hata: {render_error}", exc_info=True)
+             raise HTTPException(status_code=500, detail=f"Rapor şablonu işlenirken hata: {render_error}")
+
+        # 2.4 WeasyPrint ile HTML'den PDF oluştur
+        logger.info(f"[REPORT_GEN] WeasyPrint ile PDF oluşturuluyor...")
+        font_config = FontConfiguration()
+        css = CSS(string='@page { size: A4; margin: 1.5cm; @bottom-left { content: "İsra Holding"; font-size: 9pt; color: #666; } @bottom-right { content: "Sayfa " counter(page) " / " counter(pages); font-size: 9pt; color: #666; } }', font_config=font_config)
+        css_file_path = template_dir / 'style.css'
         
-        for component_name, component_data in request.components_data.items():
-            component_answers = component_data.get("answers", {})
-            components_data_clean[component_name] = {"answers": {}}
-            
-            for key, value in component_answers.items():
-                # Değer string mi ve JSON objesi olarak parse edilebilir mi kontrol et
-                potential_pdf_obj = None
-                if isinstance(value, str) and value.startswith('{') and value.endswith('}'):
-                    try:
-                        potential_pdf_obj = json.loads(value)
-                    except json.JSONDecodeError:
-                        potential_pdf_obj = None # Parse edilemezse, normal string gibi davran
+        try:
+            html = HTML(string=html_content, base_url=str(template_dir))
+            stylesheets = [css]
+            if css_file_path.is_file():
+                logger.info(f"[REPORT_GEN] Stil dosyası kullanılıyor: {css_file_path}")
+                stylesheets.append(CSS(filename=str(css_file_path)))
+            else:
+                logger.warning(f"[REPORT_GEN] Stil dosyası bulunamadı: {css_file_path}, sadece temel CSS kullanılıyor.")
                 
-                if isinstance(potential_pdf_obj, dict) and "content" in potential_pdf_obj and "fileName" in potential_pdf_obj:
-                    # Bu parse edilmiş bir PDF nesnesi, içeriği ayıkla
-                    pdf_blocks.append(potential_pdf_obj["content"])
-                    # Temizlenmiş veriye orijinal JSON string'ini ekle (veya parse edilmiş objeyi)
-                    # AI'ye gönderirken string veya obje olması generate_report'un nasıl işlediğine bağlı
-                    # Şimdilik orijinal string'i bırakalım, generate_report içinde parse edilebilir
-                    components_data_clean[component_name]["answers"][key] = value 
-                else:
-                    # Bu normal bir cevap veya parse edilemeyen string
-                    components_data_clean[component_name]["answers"][key] = value
-
-        print(f"{len(pdf_blocks)} adet PDF içeriği ayıklandı.")
-
-        # Rapor içeriğini oluştur - gpt_handler.generate_report'u güncellenmiş verilerle çağır
-        # generate_report fonksiyonu prompt'u bu pdf_blocks ve components_data'ya göre hazırlamalı
-        report_content = generate_report(
-            request.project_name, 
-            components_data_clean, # Temizlenmiş veya orijinal components_data (içinde PDF objeleri var)
-            user_input, # Artık null
-            pdf_blocks # Ayıklanmış PDF içerik listesi
-        )
-        
-        # PDF oluştur - proje adı ve tarih bazlı benzersiz isimlendirme
-        pdf_path = save_report_as_pdf(report_content, request.project_name)
-        
-        # Rapor bilgilerini kaydet
-        report_id = active_report.get("report_id") 
-        if not report_id:
-             report_id = get_report_id(request.project_name) 
-             active_report["report_id"] = report_id
-             print(f"Aktif raporda ID yoktu, yeni ID atandı: {report_id}")
-        
-        # Oluşturulan raporu kaydet
-        return save_generated_report(
-            request.project_name,
-            report_id,
-            report_content,
-            pdf_path
-        )
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Proje bulunamadı: {request.project_name}")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+            pdf_bytes = html.write_pdf(stylesheets=stylesheets, font_config=font_config)
+            logger.info(f"[REPORT_GEN] WeasyPrint PDF başarıyla oluşturuldu (bytes: {len(pdf_bytes)})." )
+            
+            # 2.5 PDF'i dosyaya kaydet
+            logger.info(f"[REPORT_GEN] PDF dosyası kaydediliyor...")
+            reports_dir = Path("data") / "reports"
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            pdf_filename = f"{request.project_name}_{report_id}.pdf"
+            pdf_path = reports_dir / pdf_filename
+            
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_bytes)
+            logger.info(f"[REPORT_GEN] PDF dosyası başarıyla kaydedildi: {pdf_path}")
+            
+            # Rapor meta verilerini kaydet
+            logger.info(f"[REPORT_GEN] Rapor meta verileri kaydediliyor...")
+            result = save_generated_report(
+                request.project_name,
+                report_id,
+                report_content_text,
+                str(pdf_path)
+            )
+            logger.info(f"[REPORT_GEN] Rapor meta verileri başarıyla kaydedildi.")
+            
+            logger.info(f"[REPORT_GEN] Rapor oluşturma başarıyla tamamlandı. Proje={request.project_name}, ID={report_id}, Path={pdf_path}")
+            return result
+            
+        except Exception as pdf_error:
+            logger.error(f"[REPORT_GEN] WeasyPrint PDF oluşturma/kaydetme sırasında hata: {pdf_error}", exc_info=True)
+            raise HTTPException(
+                status_code=500, 
+                detail=f"PDF oluşturulurken veya kaydedilirken bir hata oluştu: {str(pdf_error)}"
+            )
+            
+    except HTTPException as http_exc: # Re-raise HTTP exceptions directly
+        # Logging for HTTP exceptions is already done where they are raised
+        raise http_exc
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Rapor oluşturulurken bir hata oluştu: {str(e)}")
+        logger.error(f"[REPORT_GEN] Genel rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
+        error_message = str(e)
+        # ... (rest of the general error handling)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Rapor oluşturulurken beklenmedik bir hata oluştu: {error_message}"
+        )
 
 @app.get("/download-report/{project_name}")
 def download_report(project_name: str):
@@ -775,6 +827,47 @@ async def extract_pdf_api_endpoint(file: UploadFile = File(...)):
         Çıkarılan metin içeriği
     """
     return await extract_pdf_endpoint(file)
+
+# Jinja2 ortamını ayarla
+template_dir = Path(__file__).parent / 'templates'
+env = Environment(loader=FileSystemLoader(template_dir))
+
+# Statik dosya yolu (görseller için)
+STATIC_DIR = Path(__file__).parent / 'static'
+IMAGES_DIR = STATIC_DIR / 'images'
+
+# Renk paletini getir
+def get_project_colors(project_name):
+    return PROJECT_PALETTES.get(project_name.lower(), {})
+
+# Görsel yolunu veya base64 verisini getir
+def get_image_path_or_data(project_name: str, image_filename: Optional[str] = None) -> Optional[str]:
+    """Projeye ait görselin yolunu veya base64 kodlu verisini döndürür."""
+    if not image_filename:
+        # Varsayılan bir görsel veya logo döndürülebilir
+        default_logo_path = IMAGES_DIR / 'isra_logo.png' # Varsayılan logo yolu
+        if default_logo_path.is_file():
+            return default_logo_path.as_uri()
+        return None
+
+    # Projeye özel görsel
+    project_image_path = IMAGES_DIR / project_name.lower() / image_filename
+    if project_image_path.is_file():
+        # return project_image_path.as_uri() # Dosya yolu olarak döndür
+        # Alternatif: Base64 olarak döndür (HTML içine gömmek için)
+        try:
+            with open(project_image_path, "rb") as f:
+                image_data = base64.b64encode(f.read()).decode('utf-8')
+            # MIME türünü belirle (dosya uzantısına göre)
+            ext = project_image_path.suffix.lower()
+            mime_type = f'image/{ext[1:]}' if ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg'] else 'image/png'
+            return f'data:{mime_type};base64,{image_data}'
+        except Exception as e:
+            print(f"Hata: Görsel base64'e çevrilemedi ({project_image_path}): {e}")
+            return None # Hata durumunda None döndür
+            
+    print(f"Uyarı: Görsel bulunamadı: {project_image_path}")
+    return None
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

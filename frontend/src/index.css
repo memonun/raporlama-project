@@ -16,5 +16,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f9fafb;
-} 
+  background-color: #f9fafb; /* Tailwind bg-gray-50 */
+}
+
+/* Remove any potentially problematic lines below this comment if they exist */ 

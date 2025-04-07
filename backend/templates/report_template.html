@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }} - Durum Raporu</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS Değişkenleri - Jinja2 tarafından enjekte edilir */
+        :root {
+            /* Kurumsal Renkler */
+            --corporate-dark-blue: {{ corporate_colors.dark_blue }};
+            --corporate-light-blue: {{ corporate_colors.light_blue }};
+            --corporate-navy: {{ corporate_colors.navy }};
+            --corporate-light-gray: {{ corporate_colors.light_gray_bg }};
+            --corporate-gray-alt: {{ corporate_colors.gray_alt }};
+            
+            /* Proje Renkleri */
+            --primary-color: {{ project_colors.primary | default(corporate_colors.dark_blue) }};
+            --secondary-color: {{ project_colors.secondary | default(corporate_colors.light_blue) }};
+            --background-color: {{ project_colors.background | default(corporate_colors.light_gray_bg) }};
+            --accent-color: {{ project_colors.accent | default(project_colors.corporate_accent, corporate_colors.navy) }};
+        }
+
+        /* Sayfa yapısı */
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        /* Temel stil */
+        body {
+            font-family: 'Fira Sans', Arial, sans-serif;
+            color: #333;
+            line-height: 1.5;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Kapak sayfası */
+        .cover-page {
+            page-break-after: always;
+            min-height: 297mm;
+            position: relative;
+        }
+        
+        .cover-page img {
+            width: 100%;
+            height: auto;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .cover-content {
+            position: relative;
+            padding: 4cm 2cm;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            max-width: 180px;
+            margin-bottom: 2cm;
+        }
+        
+        .cover-title {
+            font-size: 36pt;
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 1cm;
+        }
+        
+        .cover-subtitle {
+            font-size: 24pt;
+            color: var(--secondary-color);
+            text-align: center;
+            margin-bottom: 2cm;
+        }
+        
+        .cover-date {
+            font-size: 14pt;
+            color: #666;
+            text-align: right;
+            margin-top: 4cm;
+        }
+        
+        /* İçerik sayfaları */
+        .content {
+            page-break-before: always;
+            padding: 0 0.5cm;
+        }
+        
+        /* Başlıklar */
+        h1 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5cm;
+            font-size: 24pt;
+        }
+        
+        h2 {
+            color: var(--secondary-color);
+            font-size: 18pt;
+            margin-top: 1cm;
+        }
+        
+        h3 {
+            color: var(--accent-color);
+            font-size: 14pt;
+        }
+        
+        /* Paragraflar */
+        p {
+            text-align: justify;
+            margin-bottom: 0.5cm;
+        }
+
+        /* Tablolar */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1cm 0;
+        }
+        
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.3cm;
+            text-align: left;
+        }
+        
+        td {
+            padding: 0.2cm 0.3cm;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        tr:nth-child(even) {
+            background-color: var(--corporate-light-gray);
+        }
+        
+        /* Üstbilgi ve altbilgi */
+        .header {
+            border-bottom: 1px solid var(--accent-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1cm;
+            padding-bottom: 0.3cm;
+        }
+        
+        .header-logo {
+            max-height: 1cm;
+        }
+        
+        .header-project {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .footer {
+            border-top: 1px solid var(--accent-color);
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1cm;
+            padding-top: 0.3cm;
+            font-size: 9pt;
+            color: #666;
+        }
+        
+        /* Seksiyon ayırıcı */
+        .section-divider {
+            border: none;
+            height: 2px;
+            background-color: var(--accent-color);
+            margin: 1cm 0;
+        }
+        
+        /* Proje görseli */
+        .project-image {
+            max-width: 100%;
+            height: auto;
+            margin: 0.5cm 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Kapak Sayfası -->
+    <div class="cover-page">
+        {% if project_image %}
+        <img src="{{ project_image }}" alt="{{ project_name }} Projesi">
+        {% endif %}
+        <div class="cover-content">
+            <div>
+                <img class="logo" src="isra_logo.png" alt="İsra Holding">
+            </div>
+            <div>
+                <h1 class="cover-title">{{ project_name }}</h1>
+                <h2 class="cover-subtitle">Durum Raporu</h2>
+            </div>
+            <div class="cover-date">
+                {% set current_date = now|default(('now'|string)) %}
+                {{ current_date }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- İçerik -->
+    <div class="content">
+        <!-- Üstbilgi -->
+        <div class="header">
+            <img class="header-logo" src="isra_logo.png" alt="İsra Holding">
+            <span class="header-project">{{ project_name }} Projesi</span>
+        </div>
+        
+        <!-- Giriş -->
+        <h1>Proje Durum Raporu</h1>
+        {% if report_data.introduction %}
+        <p>{{ report_data.introduction }}</p>
+        {% else %}
+        <p>Bu rapor, {{ project_name }} projesinin mevcut durumunu özetlemektedir.</p>
+        {% endif %}
+        
+        {% if project_image %}
+        <img class="project-image" src="{{ project_image }}" alt="{{ project_name }} Projesi Görseli">
+        {% endif %}
+        
+        <!-- Ana Bölümler -->
+        {% if report_data.sections %}
+            {% for section in report_data.sections %}
+            <h2>{{ section.title }}</h2>
+            <p>{{ section.content }}</p>
+            <hr class="section-divider">
+            {% endfor %}
+        {% else %}
+            {{ report_data|safe }}
+        {% endif %}
+        
+        <!-- Sonuç -->
+        {% if report_data.conclusion %}
+        <h2>Sonuç ve Öneriler</h2>
+        <p>{{ report_data.conclusion }}</p>
+        {% endif %}
+        
+        <!-- Altbilgi -->
+        <div class="footer">
+            <span>İsra Holding</span>
+            <span>{{ project_name }} - Durum Raporu</span>
+        </div>
+    </div>
+</body>
+</html> 

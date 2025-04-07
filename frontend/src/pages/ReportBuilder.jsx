@@ -626,7 +626,6 @@ const ReportBuilder = () => {
       }
       
       // Bileşen verilerini backend'e gönderilecek formata getir
-      // Artık PDF'leri ayırmaya gerek yok, backend halledecek
       const componentsDataForBackend = {};
       savedComponents.forEach(component => {
         // Sadece "answers" objesini al, içindeki PDF objeleriyle birlikte
@@ -634,29 +633,17 @@ const ReportBuilder = () => {
             answers: componentData[component].answers
         }; 
       });
-      
-      console.log('Rapor oluşturmak için backend\'e gönderilecek veriler:', componentsDataForBackend);
-      
-      // PDF içeriklerinin sayısını kontrol et (opsiyonel debug log)
-      let totalPdfCount = 0;
-      Object.values(componentsDataForBackend).forEach(compData => {
-        Object.values(compData.answers || {}).forEach(answer => {
-          if (typeof answer === 'object' && answer !== null && answer.content && answer.fileName) {
-            totalPdfCount++;
-          }
-        });
-      });
-      console.log(`Toplam ${totalPdfCount} adet PDF nesnesi bulundu ve gönderiliyor`);
-      
+
+      console.log("Rapor oluşturmak için backend'e gönderilecek veriler:", componentsDataForBackend);
+
       // Raporu oluştur
       try {
         console.log('Rapor oluşturma isteği gönderiliyor:', { projectName });
         
-        // generateReport fonksiyonunu yeni formatta çağır
-        // user_input ve pdf_content artık gönderilmiyor (null)
+        // generateReport fonksiyonunu çağır (artık user_input ve pdf_content null)
         const result = await reportService.generateReport(
           projectName, 
-          componentsDataForBackend, // Yeni formatta veri
+          componentsDataForBackend, // Eski formatta veri
           null, 
           null  
         );

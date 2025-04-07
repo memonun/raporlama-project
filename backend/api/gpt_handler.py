@@ -1,71 +1,22 @@
-import openai
 import os
-import pdfplumber
-import PyPDF2
-import asyncio
-import httpx
 import re
+import json
+import traceback
+import asyncio
+import httpx
 from typing import Dict, Any, Optional, List, Tuple
-from pydantic import BaseModel, validator, Field
-from fpdf import FPDF
-import json
-from config import (
-    OPENAI_API_KEY, GPT_MODEL, GPT_TEMPERATURE, GPT_MAX_TOKENS,
-)
-from fastapi import UploadFile, File, Form
-from datetime import datetime
-from openai import OpenAI
-import openai
-import os
+
 import pdfplumber
 import PyPDF2
-import asyncio
-import httpx
-from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, validator, Field
 from fpdf import FPDF
-import json
-from config import (
-    OPENAI_API_KEY, GPT_MODEL, GPT_TEMPERATURE, GPT_MAX_TOKENS,
-)
-from fastapi import UploadFile, File, Form
-from datetime import datetime
-from openai import OpenAI
-import openai
-import os
-import pdfplumber
-import PyPDF2
-import asyncio
-import httpx
-from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, validator, Field
-from fpdf import FPDF
-import json
-from config import (
-    OPENAI_API_KEY, GPT_MODEL, GPT_TEMPERATURE, GPT_MAX_TOKENS,
-)
-from fastapi import UploadFile, File, Form
-from datetime import datetime
-from openai import OpenAI
-import openai
-import os
-import pdfplumber
-import asyncio
-import httpx
-from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, validator, Field
-from fpdf import FPDF
-import json
-from config import (
-    OPENAI_API_KEY, GPT_MODEL, GPT_TEMPERATURE, GPT_MAX_TOKENS,
-)
 from fastapi import UploadFile, File, Form
 from datetime import datetime
 from openai import OpenAI
 
-# OpenAI API anahtarını ayarla
-openai.api_key = OPENAI_API_KEY
-print("OpenAI API anahtarı başarıyla ayarlandı")
+from config import (
+    OPENAI_API_KEY, GPT_MODEL, GPT_TEMPERATURE, GPT_MAX_TOKENS,
+)
 
 # Sabitler
 MAX_TOKEN_LIMIT = 4000  # gpt-4-turbo için maksimum token limiti
@@ -73,8 +24,10 @@ DEFAULT_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 FALLBACK_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf"
 
 def calculate_tokens(text: str) -> int:
-    """Yaklaşık token sayısını hesapla"""
-    return len(text.split()) * 1.3  # Ortalama token/kelime oranı
+    """Metindeki yaklaşık token sayısını hesapla"""
+    # GPT tokenizer'ı kullanmak daha doğru olur, ancak basitlik için
+    # ortalama 4 karakter = 1 token olarak hesaplayalım
+    return len(text) // 4
 
 def split_content(content: str, max_tokens: int = 4000) -> List[str]:
     """İçeriği token limitine göre böl"""
@@ -130,7 +83,9 @@ def create_chat_completion(model: str, messages: List[Dict[str, str]], temperatu
     OpenAI API için chat completion fonksiyonu
     """
     try:
-        client = OpenAI()
+        # OpenAI istemcisini düzgün şekilde yapılandır - proxies parametresi kullanma
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        
         response = client.chat.completions.create(
             model=model,
             messages=messages,
@@ -142,14 +97,8 @@ def create_chat_completion(model: str, messages: List[Dict[str, str]], temperatu
             seed=42  # Tutarlı yanıtlar için
         )
         return response.choices[0].message.content
-    except openai.RateLimitError as e:
-        print(f"Rate limit aşıldı: {e}")
-        raise
-    except openai.APIError as e:
-        print(f"API hatası: {e}")
-        raise
     except Exception as e:
-        print(f"Beklenmeyen hata: {e}")
+        print(f"OpenAI API hatası: {e}")
         raise
 
 def check_font_availability() -> str:
@@ -229,12 +178,15 @@ async def handle_rate_limit(func):
     for attempt in range(max_retries):
         try:
             return await func()
-        except openai.RateLimitError as e:
-            if attempt == max_retries - 1:
+        except Exception as e:
+            if "RateLimitError" in str(e) or "rate_limit" in str(e).lower():
+                if attempt == max_retries - 1:
+                    raise
+                delay = base_delay * (2 ** attempt)  # exponential backoff
+                print(f"Rate limit aşıldı. {delay} saniye bekleniyor...")
+                await asyncio.sleep(delay)
+            else:
                 raise
-            delay = base_delay * (2 ** attempt)  # exponential backoff
-            print(f"Rate limit aşıldı. {delay} saniye bekleniyor...")
-            await asyncio.sleep(delay)
 
 async def process_text_request_async(content: str, role: str = 'kurumsal raporlama') -> str:
     """
@@ -429,7 +381,7 @@ def process_request(data: Dict[str, Any]) -> Dict[str, Any]:
 
         # Proje raporu oluşturma isteği varsa
         if request_data.project_name and request_data.components_data:
-            report_content = generate_report(request_data.project_name, request_data.components_data, request_data.user_input, request_data.pdf_content)
+            report_content = generate_report(request_data.project_name, request_data.components_data, request_data.user_input)
             combined_input += f"Proje Raporu:\n{report_content}\n\n"
 
         # Kullanıcı metni varsa
@@ -474,15 +426,15 @@ def process_request(data: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         return AIResponse(error=str(e)).dict()
 
-def generate_report(project_name: str, components_data: Dict[str, Dict[str, Any]], user_input: Optional[str] = None, pdf_content: Optional[str] = None) -> str:
+def generate_report(project_name: str, components_data: Dict[str, Dict[str, Any]], user_input: Optional[str] = None) -> str:
     """
-    Proje, bileşen, kullanıcı notu ve PDF verilerini kullanarak GPT ile rapor oluşturur.
+    Proje, bileşen ve kullanıcı notu verilerini kullanarak GPT ile rapor oluşturur.
+    PDF içerikleri components_data içindeki answers objelerinden alınır.
     
     Args:
         project_name: Proje adı
-        components_data: Her bileşen için soru-cevap verilerini içeren sözlük (string veya dosya nesnesi içerebilir)
+        components_data: Her bileşen için soru-cevap verilerini içeren sözlük (PDF objeleri dahil)
         user_input: Kullanıcının eklediği notlar (opsiyonel)
-        pdf_content: Genel PDF'ten çıkarılan metin içeriği (opsiyonel)
         
     Returns:
         Oluşturulan rapor metni
@@ -491,42 +443,61 @@ def generate_report(project_name: str, components_data: Dict[str, Dict[str, Any]
     formatted_components = {}
     all_pdf_contents = []
     
-    # Önce normal bileşen verilerini işle
-    for comp_name, comp_answers in components_data.items():
-        # PDF içerik anahtarlarını atla, bunları ayrı işleyeceğiz
-        if comp_name.endswith('_pdf_contents'):
-            continue
+    # Bileşen verilerini işle (PDF'leri de burada ayıkla)
+    for comp_name, comp_data in components_data.items():
+        # Bu kontrol artık gereksiz, çünkü pdf_contents ayrı gelmeyecek
+        # if comp_name.endswith('_pdf_contents'):
+        #     continue
             
         formatted_answers = {}
-        for q_id, answer in comp_answers.items():
-            if isinstance(answer, dict) and 'filename' in answer:
-                formatted_answers[q_id] = f"(Yüklenen Dosya: {answer['filename']})"
-            else:
-                formatted_answers[q_id] = str(answer) # Ensure string
-        formatted_components[comp_name] = formatted_answers
+        component_pdf_contents = [] # Bu bileşene ait PDF'ler
+
+        # comp_data içinde answers var mı kontrol et
+        if 'answers' in comp_data and isinstance(comp_data['answers'], dict):
+            for q_id, answer in comp_data['answers'].items():
+                # Cevap bir PDF objesi mi kontrol et (stringified JSON veya direct object)
+                pdf_data = None
+                is_pdf = False
+                if isinstance(answer, str):
+                    try:
+                        parsed_value = json.loads(answer)
+                        if isinstance(parsed_value, dict) and 'fileName' in parsed_value and 'content' in parsed_value:
+                            pdf_data = parsed_value
+                            is_pdf = True
+                            print(f"String JSON PDF bulundu: {pdf_data.get('fileName')}")
+                    except json.JSONDecodeError:
+                        pass # JSON değilse normal cevaptır
+                elif isinstance(answer, dict) and 'fileName' in answer and 'content' in answer:
+                     pdf_data = answer
+                     is_pdf = True
+                     print(f"Object PDF bulundu: {pdf_data.get('fileName')}")
+
+                if is_pdf and pdf_data:
+                    # PDF içeriğini all_pdf_contents'e ekle
+                    pdf_content_info = {
+                        'component': comp_name,
+                        'fileName': pdf_data.get('fileName', 'Adsız PDF'),
+                        'content': pdf_data.get('content', '')
+                    }
+                    all_pdf_contents.append(pdf_content_info)
+                    # PDF'i formatlanmış cevaplardan çıkarabilir veya yer tutucu ekleyebiliriz.
+                    # Şimdilik yer tutucu ekleyelim:
+                    formatted_answers[q_id] = f"(Yüklenen PDF: {pdf_data.get('fileName')})"
+                else:
+                    # Normal cevap
+                    formatted_answers[q_id] = str(answer)
+            formatted_components[comp_name] = formatted_answers
+        else:
+            # Eğer 'answers' anahtarı yoksa veya dict değilse, bileşeni boş geç
+            formatted_components[comp_name] = {}
+            print(f"Uyarı: {comp_name} için 'answers' verisi bulunamadı veya formatı yanlış.")
     
-    # Şimdi PDF içeriklerini topla
-    for comp_name, comp_data in components_data.items():
-        if comp_name.endswith('_pdf_contents'):
-            component_base_name = comp_name.replace('_pdf_contents', '')
-            print(f"PDF içerikleri işleniyor: {component_base_name}")
-            
-            # PDF içeriklerini işle
-            if isinstance(comp_data, list):
-                for pdf_item in comp_data:
-                    if isinstance(pdf_item, dict) and 'content' in pdf_item:
-                        pdf_content_info = {
-                            'component': component_base_name,
-                            'fileName': pdf_item.get('fileName', 'Adsız PDF'),
-                            'content': pdf_item['content']
-                        }
-                        all_pdf_contents.append(pdf_content_info)
-                        print(f"PDF içeriği eklendi: {pdf_content_info['fileName']} ({len(pdf_content_info['content'])} karakter)")
-    
+    # PDF içeriklerini toplamak için ikinci döngüye gerek kalmadı.
+
     # Bileşen verilerini JSON formatına dönüştür
     formatted_data = json.dumps(formatted_components, indent=2, ensure_ascii=False)
     
-    # Sistem talimatı
+    # Sistem talimatı (değişiklik yok)
     system_instruction = """
     Sen profesyonel bir yatırımcı raporu hazırlama uzmanısın. 
     Verilen proje bilgilerini, departman verilerini, kullanıcı notlarını ve ek PDF içeriğini kullanarak kapsamlı bir yatırımcı raporu oluştur.
@@ -554,11 +525,11 @@ def generate_report(project_name: str, components_data: Dict[str, Dict[str, Any]
     if user_input:
         user_message += f"\n\nKullanıcı Notları:\n{user_input}"
 
-    # Genel PDF içeriğini ekle (eski yöntem)
-    if pdf_content:
-        user_message += f"\n\nEk PDF İçeriği:\n{pdf_content}"
+    # Genel PDF içeriğini ekleme kısmı tamamen kaldırıldı.
+    # if pdf_content:
+    #     user_message += f"\n\nEk PDF İçeriği:\n{pdf_content}"
     
-    # Bileşenlere ait PDF içeriklerini ekle (yeni yöntem)
+    # Bileşenlere ait PDF içeriklerini ekle (artık all_pdf_contents dolu olmalı)
     if all_pdf_contents:
         user_message += "\n\n## Bileşen PDF İçerikleri:\n\n"
         
@@ -638,7 +609,7 @@ def analyze_component_completion(answers: Dict[str, str], questions: list) -> Di
 def extract_pdf_content(file_path: str) -> str:
     """
     PDF dosyasından metin ve tablo içeriğini çıkarır, tabloları markdown formatında düzenler.
-    PyMuPDF (fitz) kullanarak Türkçe karakterleri doğru şekilde işler.
+    pdfplumber kullanarak Türkçe karakterleri doğru şekilde işler.
     
     Args:
         file_path: PDF dosyasının yolu
@@ -659,116 +630,51 @@ def extract_pdf_content(file_path: str) -> str:
             
         print(f"PDF dosyası işleniyor: {file_path} ({file_size} byte)")
         
-        try:
-            # PyMuPDF (fitz) ile PDF'i aç
-            import fitz  # PyMuPDF
-            doc = fitz.open(file_path)
-            
+        with pdfplumber.open(file_path) as pdf:
             # PDF sayfa sayısını kontrol et
-            page_count = doc.page_count
-            if page_count == 0:
+            if len(pdf.pages) == 0:
                 raise ValueError("PDF dosyasında sayfa bulunamadı")
                 
-            print(f"PDF sayfa sayısı: {page_count}")
+            print(f"PDF sayfa sayısı: {len(pdf.pages)}")
             
-            # Her sayfayı işle
-            for page_num in range(page_count):
-                page = doc.load_page(page_num)
-                
+            for page_num, page in enumerate(pdf.pages, 1):
                 # Sayfa numarası ekle
-                extracted_text += f"\n## Sayfa {page_num + 1}\n\n"
+                extracted_text += f"\n## Sayfa {page_num}\n\n"
                 
                 # Metinleri Ayıkla
-                page_text = page.get_text("text")
+                page_text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
                 if page_text:
+                    # Metin içeriğini temizle ve düzenle
+                    page_text = page_text.replace('\x00', '')  # Null karakterleri temizle
                     extracted_text += page_text + "\n\n"
-                    print(f"Sayfa {page_num + 1}: {len(page_text)} karakter çıkarıldı")
+                    print(f"Sayfa {page_num}: {len(page_text)} karakter çıkarıldı")
                 else:
-                    print(f"Sayfa {page_num + 1}: Metin içeriği bulunamadı")
-                
-                # Tabloları Ayıkla
-                tables = page.find_tables()
-                if tables and len(tables.tables) > 0:
-                    print(f"Sayfa {page_num + 1}: {len(tables.tables)} tablo bulundu")
-                    
-                    for table_num, table in enumerate(tables.tables, 1):
+                    print(f"Sayfa {page_num}: Metin içeriği bulunamadı")
+
+                # Tabloları Markdown formatında ayıkla
+                tables = page.extract_tables()
+                if tables:
+                    print(f"Sayfa {page_num}: {len(tables)} tablo bulundu")
+                    for table_num, table in enumerate(tables, 1):
                         extracted_text += f"\n### Tablo {table_num}:\n\n"
                         
-                        # Tablo verilerini al
-                        table_data = []
-                        for row_idx in range(table.rows):
-                            row_data = []
-                            for col_idx in range(table.cols):
-                                cell_text = table.cell(row_idx, col_idx).text.strip()
-                                row_data.append(cell_text)
-                            table_data.append(row_data)
-                        
                         # Tablo başlığını oluştur
-                        if table_data and len(table_data) > 0:
-                            header = "| " + " | ".join([str(cell) if cell else "" for cell in table_data[0]]) + " |"
-                            separator = "| " + " | ".join(["---" for _ in table_data[0]]) + " |"
+                        if table and len(table) > 0:
+                            header = "| " + " | ".join([str(cell).replace('\x00', '') if cell else "" for cell in table[0]]) + " |"
+                            separator = "| " + " | ".join(["---" for _ in table[0]]) + " |"
                             extracted_text += header + "\n" + separator + "\n"
                             
                             # Tablo içeriğini ekle
-                            for row in table_data[1:]:
-                                row_text = "| " + " | ".join([str(cell) if cell else "" for cell in row]) + " |"
+                            for row in table[1:]:
+                                row_text = "| " + " | ".join([str(cell).replace('\x00', '') if cell else "" for cell in row]) + " |"
                                 extracted_text += row_text + "\n"
                             
                             extracted_text += "\n"
                 else:
-                    print(f"Sayfa {page_num + 1}: Tablo bulunamadı")
-            
-            # PDF'i kapat
-            doc.close()
-            
-        except ImportError:
-            # PyMuPDF yoksa pdfplumber ile devam et
-            print("PyMuPDF (fitz) bulunamadı, pdfplumber kullanılıyor...")
-            
-            with pdfplumber.open(file_path) as pdf:
-                # PDF sayfa sayısını kontrol et
-                if len(pdf.pages) == 0:
-                    raise ValueError("PDF dosyasında sayfa bulunamadı")
+                    print(f"Sayfa {page_num}: Tablo bulunamadı")
                     
-                print(f"PDF sayfa sayısı: {len(pdf.pages)}")
-                
-                for page_num, page in enumerate(pdf.pages, 1):
-                    # Sayfa numarası ekle
-                    extracted_text += f"\n## Sayfa {page_num}\n\n"
-                    
-                    # Metinleri Ayıkla
-                    page_text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
-                    if page_text:
-                        # Metin içeriğini temizle ve düzenle
-                        page_text = page_text.replace('\x00', '')  # Null karakterleri temizle
-                        extracted_text += page_text + "\n\n"
-                        print(f"Sayfa {page_num}: {len(page_text)} karakter çıkarıldı")
-                    else:
-                        print(f"Sayfa {page_num}: Metin içeriği bulunamadı")
-
-                    # Tabloları Markdown formatında ayıkla
-                    tables = page.extract_tables()
-                    if tables:
-                        print(f"Sayfa {page_num}: {len(tables)} tablo bulundu")
-                        for table_num, table in enumerate(tables, 1):
-                            extracted_text += f"\n### Tablo {table_num}:\n\n"
-                            
-                            # Tablo başlığını oluştur
-                            if table and len(table) > 0:
-                                header = "| " + " | ".join([str(cell).replace('\x00', '') if cell else "" for cell in table[0]]) + " |"
-                                separator = "| " + " | ".join(["---" for _ in table[0]]) + " |"
-                                extracted_text += header + "\n" + separator + "\n"
-                                
-                                # Tablo içeriğini ekle
-                                for row in table[1:]:
-                                    row_text = "| " + " | ".join([str(cell).replace('\x00', '') if cell else "" for cell in row]) + " |"
-                                    extracted_text += row_text + "\n"
-                                
-                                extracted_text += "\n"
-                    else:
-                        print(f"Sayfa {page_num}: Tablo bulunamadı")
-                        
         print(f"PDF içeriği başarıyla çıkarıldı: {len(extracted_text)} karakter")
+        
     except FileNotFoundError as e:
         print(f"PDF dosyası bulunamadı: {str(e)}")
         raise
