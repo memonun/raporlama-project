@@ -746,14 +746,26 @@ const ReportBuilder = () => {
     try {
       toast.info('Rapor indiriliyor...');
       
-      // Blob olarak PDF'i al
-      const blob = await reportService.downloadReport(projectName);
+      // DÜZELTME: reportId'yi kontrol et ve reportService.downloadReport çağrısına ekle
+      const reportId = activeReport?.report_id || activeReport?.id;
+      console.log("[Download Report] ActiveReport:", activeReport);
+      console.log("[Download Report] Report ID:", reportId);
+      
+      if (!reportId) {
+        console.error("[Download Report] Error: Report ID not found in activeReport:", activeReport);
+        toast.error("Rapor ID bulunamadı. Lütfen raporu yeniden oluşturun veya sayfayı yenileyin.");
+        return;
+      }
+      
+      // Blob olarak PDF'i al - reportId parametresini ekliyoruz
+      console.log(`[Download Report] Calling reportService.downloadReport(${projectName}, ${reportId})`);
+      const blob = await reportService.downloadReport(projectName, reportId);
       
       // Blob tipini kontrol et - hata durumunu yakala
       if (!(blob instanceof Blob)) {
-        console.error('Dönen veri Blob değil:', blob);
+        console.error('[Download Report] Return data is not a Blob:', blob);
         if (typeof blob === 'object') {
-          console.error('Dönen içerik:', JSON.stringify(blob));
+          console.error('[Download Report] Returned content:', JSON.stringify(blob));
         }
         throw new Error('PDF doğru formatta alınamadı');
       }
@@ -778,7 +790,7 @@ const ReportBuilder = () => {
       
       toast.success(`Rapor indirme işlemi başlatıldı: ${fileName}`);
     } catch (error) {
-      console.error('PDF indirme hatası:', error);
+      console.error('[Download Report] Error:', error);
       toast.error(`Rapor indirilirken hata: ${error.message}`);
     }
   };
@@ -823,6 +835,82 @@ const ReportBuilder = () => {
       getPdfUrl();
     }
   }, [activeReport?.report_generated, projectName, activeReport, isPreviewOpen]);
+
+  // Rename handleDeleteReport to handleResetReportGeneration
+  const handleResetReportGeneration = async () => {
+    console.log("[Reset Report] Button clicked. Current activeReport state:", activeReport);
+
+    // Ensure projectName is available (should be from useParams)
+    if (!projectName) {
+      console.error("[Reset Report] Error: Project name is missing.");
+      toast.error("Proje adı bulunamadı, işlem yapılamıyor.");
+      return;
+    }
+    console.log(`[Reset Report] Proceeding with Project Name: ${projectName}`);
+
+    if (window.confirm('Oluşturulan PDF raporunu silip yeniden oluşturmaya hazır hale getirmek istediğinizden emin misiniz?')) {
+      console.log("[Reset Report] User confirmed.");
+      setSavingReport(true); // Indicate loading/processing state
+      console.log("[Reset Report] Setting savingReport to true.");
+      try {
+        // DÜZELTME: Daha detaylı loglama ekle
+        console.log("[Reset Report] Encoded project name for API call:", encodeURIComponent(projectName));
+        console.log(`[Reset Report] API endpoint: /project/${encodeURIComponent(projectName)}/reset-active-report`);
+        console.log("[Reset Report] Calling reportService.resetActiveReport()...");
+        
+        // Call the service function, relying only on projectName
+        const result = await reportService.resetActiveReport(projectName);
+        
+        // DÜZELTME: Yanıtı daha detaylı kontrol et
+        console.log("[Reset Report] API call result:", result);
+        
+        if (!result) {
+          console.error("[Reset Report] API returned empty or undefined result");
+          throw new Error("Sunucu yanıtı boş veya tanımsız");
+        }
+
+        // Update local state with the reset report data from backend
+        if (result && result.active_report) {
+           console.log("[Reset Report] Dispatching SET_ACTIVE_REPORT with payload:", result.active_report);
+           dispatch({ type: 'SET_ACTIVE_REPORT', payload: result.active_report });
+        } else {
+            console.warn("[Reset Report] API result did not contain expected active_report data. Resetting state locally.");
+            // Fallback: If backend doesn't return the updated report, try setting a basic reset state
+            // This assumes the backend *did* reset but didn't return the object properly.
+            // A better fallback might be refetching, but let's try a simple local reset first.
+             dispatch({ 
+                type: 'SET_ACTIVE_REPORT', 
+                // Create a minimal representation of a reset active report
+                payload: activeReport ? { ...activeReport, report_generated: false, pdfFileName: null, pdf_path: null } : null 
+            });
+             console.log("[Reset Report] Dispatched SET_ACTIVE_REPORT with locally constructed reset state.");
+             // Consider adding a refetch here if this minimal approach is insufficient
+             toast.warning("Rapor sıfırlandı ancak güncel durum sunucudan alınamadı.");
+        }
+        
+        toast.success('Rapor PDF\\\'i silindi (veya zaten yoktu). Raporu yeniden oluşturabilirsiniz.');
+        // No navigation needed, stay on the page
+      } catch (error) {
+        // DÜZELTME: Daha detaylı hata bilgisi
+        console.error('[Reset Report] Error during API call or state update:', error);
+        
+        // Axios hatalarını daha detaylı logla
+        if (error.response) {
+          console.error('[Reset Report] Error response status:', error.response.status);
+          console.error('[Reset Report] Error response data:', error.response.data);
+        } else if (error.request) {
+          console.error('[Reset Report] Error request (no response):', error.request);
+        }
+        
+        toast.error(`Rapor sıfırlanırken bir hata oluştu: ${error.message || 'Bilinmeyen Hata'}`);
+      } finally {
+        console.log("[Reset Report] Setting savingReport back to false.");
+        setSavingReport(false); // Reset loading state
+      }
+    } else {
+      console.log("[Reset Report] User cancelled.");
+    }
+  };
 
   if (loading) {
     return (
@@ -1254,6 +1342,17 @@ const ReportBuilder = () => {
               </button>
 
               <button
+                onClick={handleResetReportGeneration}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
+                disabled={savingReport || !activeReport?.report_generated}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Oluşturulan Raporu Sil
+              </button>
+
+              <button
                 onClick={() => setIsPreviewOpen(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
               >
@@ -1295,7 +1394,7 @@ const ReportBuilder = () => {
             onClick={() => navigate(`/project/${projectName}`)}
             className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            İptal
+            Geri
           </button>
           
           <button
