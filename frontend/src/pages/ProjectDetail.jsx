@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { toast } from 'react-hot-toast';
-import { projectService, reportService } from '../services/api';
+import { projectService, reportService, mailService } from '../services/api';
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { FileText, Plus, FileCheck, Clock, Trash2, MoreVertical } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
@@ -33,8 +33,11 @@ const getSafe = (obj, path, defaultValue = undefined) => {
 };
 
 const ProjectDetail = () => {
-  const { projectName } = useParams();
+  const { projectName: rawProjectName } = useParams();
   const navigate = useNavigate();
+  
+  // Format project name to ensure consistency
+  const projectName = rawProjectName.replace(/\s+/g, '_');
   
   // State for project and reports
   const [project, setProject] = useState(null);
@@ -54,6 +57,12 @@ const ProjectDetail = () => {
 
   // State for custom dropdown menu visibility
   const [openMenuId, setOpenMenuId] = useState(null); 
+
+  // State for email dialog
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailAddresses, setEmailAddresses] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [selectedReportForEmail, setSelectedReportForEmail] = useState(null);
 
   // Load project and reports data
   useEffect(() => {
@@ -371,6 +380,41 @@ const ProjectDetail = () => {
     };
   }, [openMenuId]);
 
+  const handleSendEmail = async (e) => {
+    e.preventDefault();
+    
+    if (!emailAddresses.trim()) {
+      toast.error('Lütfen en az bir e-posta adresi girin');
+      return;
+    }
+
+    const emails = emailAddresses.split(',').map(email => email.trim());
+    
+    // Basic email validation
+    const invalidEmails = emails.filter(email => !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/));
+    if (invalidEmails.length > 0) {
+      toast.error(`Geçersiz e-posta adresleri: ${invalidEmails.join(', ')}`);
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      await mailService.sendReportByEmail(
+        projectName,
+        selectedReportForEmail.report_id || selectedReportForEmail.id,
+        emails
+      );
+      toast.success('Rapor başarıyla gönderildi');
+      setShowEmailDialog(false);
+      setEmailAddresses('');
+      setSelectedReportForEmail(null);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -492,6 +536,21 @@ const ProjectDetail = () => {
                           aria-orientation="vertical"
                           aria-labelledby={`menu-button-${report.menuId}`}
                         >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedReportForEmail(report);
+                              setShowEmailDialog(true);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                            role="menuitem"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span>Mail olarak gönder</span>
+                          </button>
                           <button
                             onClick={(e) => handleFinalizedReportDelete(report, e)}
                             className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
@@ -621,6 +680,67 @@ const ProjectDetail = () => {
                 Kapat
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Email Dialog */}
+        <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Raporu E-posta ile Gönder</DialogTitle>
+              <DialogDescription>
+                Raporun gönderileceği e-posta adreslerini virgülle ayırarak girin.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <form onSubmit={handleSendEmail}>
+              <div className="mt-4">
+                <label htmlFor="emails" className="block text-sm font-medium text-gray-700 mb-1">
+                  E-posta Adresleri
+                </label>
+                <input
+                  type="text"
+                  id="emails"
+                  value={emailAddresses}
+                  onChange={(e) => setEmailAddresses(e.target.value)}
+                  placeholder="ornek@mail.com, ornek2@mail.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={sendingEmail}
+                />
+              </div>
+              
+              <DialogFooter className="mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowEmailDialog(false);
+                    setEmailAddresses('');
+                    setSelectedReportForEmail(null);
+                  }}
+                  disabled={sendingEmail}
+                >
+                  İptal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={sendingEmail}
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  {sendingEmail ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Gönderiliyor...
+                    </>
+                  ) : (
+                    'Gönder'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

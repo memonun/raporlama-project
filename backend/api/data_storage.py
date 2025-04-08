@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 import shutil
 import uuid
+import logging
+from utils.pdf_utils import get_report_path
 
 # Temel veri dizini
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,6 +30,9 @@ os.makedirs(ARCHIVE_DIR, exist_ok=True)
 
 # Sabit proje listesi
 DEFAULT_PROJECTS = ["V Mall", "V Metroway", "V Statü", "V Yeşilada"]
+
+# Get a logger instance
+logger = logging.getLogger(__name__)
 
 def initialize_projects():
     """
@@ -289,7 +294,7 @@ def save_component_data(project_name: str, component_name: str, answers: Dict[st
 
 def delete_report(project_name: str) -> bool:
     """
-    Projenin aktif raporunu siler.
+    Projenin aktif raporunu ve ilişkili PDF dosyasını siler.
     
     Args:
         project_name: Proje adı
@@ -301,26 +306,60 @@ def delete_report(project_name: str) -> bool:
         FileNotFoundError: Proje bulunamazsa
         ValueError: Aktif rapor bulunamazsa
     """
+    logger.info(f"[DATA_STORAGE] Aktif rapor silme işlemi başlatıldı: Proje={project_name}")
     project_path = get_project_path(project_name)
     
     if not project_path.exists():
+        logger.error(f"[DATA_STORAGE] Proje dosyası bulunamadı: {project_path}")
         raise FileNotFoundError(f"Proje bulunamadı: {project_name}")
     
-    with open(project_path, 'r', encoding='utf-8') as f:
-        project_data = json.load(f)
-    
-    if not project_data.get("active_report"):
-        raise ValueError("Aktif bir rapor bulunamadı")
-    
-    # Aktif raporu sil
-    project_data["active_report"] = None
-    project_data["last_updated"] = datetime.datetime.now().isoformat()
-    
-    # Verileri kaydet
-    with open(project_path, 'w', encoding='utf-8') as f:
-        json.dump(project_data, f, ensure_ascii=False, indent=2)
-    
-    return True
+    try:
+        with open(project_path, 'r+', encoding='utf-8') as f:
+            project_data = json.load(f)
+            
+            active_report = project_data.get("active_report")
+            if not active_report:
+                logger.warning(f"[DATA_STORAGE] Silinecek aktif rapor bulunamadı: Proje={project_name}")
+                raise ValueError("Aktif bir rapor bulunamadı")
+            
+            # Get report ID to find the PDF
+            report_id = active_report.get("report_id")
+            
+            # Attempt to delete the associated PDF file
+            if report_id:
+                logger.info(f"[DATA_STORAGE] İlişkili PDF dosyası siliniyor: Rapor ID={report_id}")
+                try:
+                    pdf_path_obj = get_report_path(project_name, report_id)
+                    pdf_path = str(pdf_path_obj)
+                    if os.path.exists(pdf_path):
+                        os.remove(pdf_path)
+                        logger.info(f"[DATA_STORAGE] PDF dosyası başarıyla silindi: {pdf_path}")
+                    else:
+                        logger.warning(f"[DATA_STORAGE] Silinecek PDF dosyası bulunamadı (zaten yok): {pdf_path}")
+                except Exception as e:
+                    # Log the error but continue to remove the metadata entry
+                    logger.error(f"[DATA_STORAGE] PDF dosyası ({pdf_path}) silinirken hata oluştu: {str(e)}", exc_info=True)
+            else:
+                logger.warning(f"[DATA_STORAGE] Aktif raporda report_id bulunamadığı için PDF silinemedi: Proje={project_name}")
+
+            # Remove active report from metadata
+            project_data["active_report"] = None
+            project_data["last_updated"] = datetime.datetime.now().isoformat()
+            
+            # Rewind file and save updated data
+            f.seek(0)
+            json.dump(project_data, f, ensure_ascii=False, indent=2)
+            f.truncate()
+            logger.info(f"[DATA_STORAGE] Aktif rapor meta verisi başarıyla silindi: Proje={project_name}")
+        
+        return True
+        
+    except (FileNotFoundError, ValueError) as e: # Re-raise specific known errors
+        raise e
+    except Exception as e:
+        logger.error(f"[DATA_STORAGE] Aktif rapor silinirken genel hata: {str(e)}", exc_info=True)
+        # Wrap other exceptions in a standard error type or re-raise
+        raise IOError(f"Aktif rapor silinirken bir dosya/veri hatası oluştu: {str(e)}")
 
 def get_all_projects() -> List[str]:
     """
@@ -472,6 +511,85 @@ def finalize_report(project_name: str) -> Dict[str, Any]:
         json.dump(project_data, f, ensure_ascii=False, indent=2)
     
     return active_report
+
+def reset_active_report_generation(project_name: str) -> Optional[Dict[str, Any]]:
+    """
+    Deletes the generated PDF file for the active report and resets its
+    generation status in the project data.
+
+    Args:
+        project_name: The name of the project.
+
+    Returns:
+        The updated active report data, or None if no active report was found.
+
+    Raises:
+        FileNotFoundError: If the project data file does not exist.
+        IOError: If there's an error reading/writing the project data file.
+        ValueError: If the active report has no report_id.
+    """
+    logger.info(f"[DATA] Resetting active report generation for project: {project_name}")
+    project_path = get_project_path(project_name)
+
+    if not project_path.exists():
+        logger.error(f"[DATA] Reset failed: Project file not found at {project_path}")
+        raise FileNotFoundError(f"Proje veri dosyası bulunamadı: {project_path}")
+
+    try:
+        with open(project_path, 'r+', encoding='utf-8') as f:
+            project_data = json.load(f)
+            active_report = project_data.get("active_report")
+
+            if not active_report:
+                logger.warning(f"[DATA] Reset skipped: No active report found for project {project_name}")
+                return None # Indicate no active report was found
+
+            report_id = active_report.get("report_id")
+            if not report_id:
+                logger.error(f"[DATA] Reset failed: Active report for {project_name} is missing a report_id.")
+                raise ValueError("Aktif raporun ID bilgisi eksik, sıfırlanamıyor.")
+
+            # Construct the PDF path
+            pdf_path = get_report_path(project_name, report_id)
+            logger.info(f"[DATA] Attempting to delete PDF for report {report_id}: {pdf_path}")
+
+            # Attempt to delete the PDF file, ignore if it doesn't exist
+            try:
+                if pdf_path.exists():
+                    os.remove(pdf_path)
+                    logger.info(f"[DATA] PDF file deleted successfully: {pdf_path}")
+                else:
+                    logger.info(f"[DATA] PDF file not found (already deleted or never generated): {pdf_path}")
+            except OSError as e:
+                # Log the OS error but continue to reset the state
+                logger.error(f"[DATA] OS error deleting PDF file {pdf_path}: {e}", exc_info=True)
+
+            # Always reset the generation status and update timestamp
+            logger.info(f"[DATA] Resetting report_generated flag to False for report {report_id}")
+            active_report["report_generated"] = False
+            active_report["pdf_path"] = None # Clear any potential old path
+            active_report["pdfFileName"] = None # Clear filename too
+            current_time = datetime.datetime.now().isoformat()
+            active_report["last_updated"] = current_time
+            project_data["last_updated"] = current_time
+
+            # Go back to the beginning of the file to overwrite
+            f.seek(0)
+            json.dump(project_data, f, ensure_ascii=False, indent=2)
+            f.truncate() # Remove any trailing old data if the new data is shorter
+            logger.info(f"[DATA] Active report {report_id} generation status reset and project data saved.")
+
+            return active_report # Return the modified active report
+
+    except json.JSONDecodeError as e:
+        logger.error(f"[DATA] Reset failed: Error decoding JSON from {project_path}: {e}", exc_info=True)
+        raise IOError(f"Proje dosyası okunamadı veya bozuk: {project_path}")
+    except IOError as e:
+        logger.error(f"[DATA] Reset failed: IO error accessing {project_path}: {e}", exc_info=True)
+        raise IOError(f"Proje dosyası okunamadı veya yazılamadı: {project_path}")
+    except Exception as e:
+        logger.error(f"[DATA] Reset failed: Unexpected error for project {project_name}: {e}", exc_info=True)
+        raise # Re-raise unexpected errors
 
 # Uygulamanın başlangıcında varsayılan projeleri oluştur (tüm fonksiyonlar tanımlandıktan sonra)
 initialize_projects() 

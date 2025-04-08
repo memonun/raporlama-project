@@ -262,6 +262,26 @@ export const mailService = {
       throw new Error('Mail gönderilirken bir hata oluştu');
     }
   },
+
+  sendReportByEmail: async (projectName, reportId, emailAddresses) => {
+    try {
+      // Replace any spaces with underscores in the project name
+      const formattedProjectName = projectName.replace(/\s+/g, '_');
+      
+      const response = await axiosInstance.post(
+        `/project/${formattedProjectName}/report/${reportId}/send-email`,
+        {
+          project_name: formattedProjectName,
+          report_id: reportId,
+          email_addresses: emailAddresses
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Rapor e-posta gönderme hatası:', error);
+      throw new Error('Rapor e-posta olarak gönderilirken bir hata oluştu');
+    }
+  }
 };
 
 // Rapor servisi
@@ -516,6 +536,26 @@ export const reportService = {
       }
       
       // Her zaman için standart bir Error nesnesi fırlat
+      throw new Error(errorMessage);
+    }
+  },
+
+  // Reset active report generation status and delete PDF
+  resetActiveReport: async (projectName) => {
+    if (!projectName) {
+      console.error('reportService.resetActiveReport: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+    try {
+      const response = await axiosInstance.post(`/project/${encodeURIComponent(projectName)}/reset-active-report`);
+      console.log('Aktif rapor sıfırlama başarılı:', response.data);
+      return response.data; // Should return { message: "...", active_report: {...} }
+    } catch (error) {
+      console.error('reportService.resetActiveReport - Hata:', error);
+      let errorMessage = 'Aktif rapor sıfırlanırken bir hata oluştu';
+      if (error.response && error.response.data && error.response.data.detail) {
+        errorMessage = error.response.data.detail;
+      }
       throw new Error(errorMessage);
     }
   },

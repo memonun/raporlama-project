@@ -13,13 +13,14 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import io
 from api.gpt_handler import generate_report, process_report_request, extract_pdf_content, get_project_reports
-from api.mail_agent import send_missing_info_request, get_department_email
+from api.mail_agent import send_missing_info_request, get_department_email, send_report_email as mail_agent_send_report
 from api.questions_handler import get_questions_for_component
 from api.data_storage import (
     save_component_data, get_project_data, get_all_projects, 
     save_generated_report, delete_project_data, archive_project, 
     get_active_report, create_new_report, delete_report as delete_report_from_storage, get_report_id,
-    finalize_report, get_project_path
+    finalize_report, get_project_path,
+    reset_active_report_generation
 )
 from models.report_schema import ReportData, ComponentStatus
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +35,12 @@ from weasyprint.text.fonts import FontConfiguration
 from config import PROJECT_PALETTES, CORPORATE_COLORS
 import base64
 import logging
+from utils.pdf_utils import (
+    save_pdf_content,
+    extract_text_from_pdf,
+    get_report_path,
+    get_pdf_info
+)
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
@@ -266,7 +273,7 @@ def save_component_data_endpoint(request: ComponentDataRequest):
 async def generate_project_report(request: GenerateReportRequest):
     """
     Proje verilerini, kullanıcı girdilerini ve PDF içeriklerini kullanarak
-    GPT ile rapor oluşturur, stilize PDF olarak kaydeder ve sonucu döndürür.
+    GPT ile rapor oluşturur, stilize PDF olarak kaydeder ve sonucu döndürür. 
     """
     logger.info(f"[REPORT_GEN] Rapor oluşturma isteği alındı: Proje={request.project_name}")
     try:
@@ -346,18 +353,15 @@ async def generate_project_report(request: GenerateReportRequest):
             else:
                 logger.warning(f"[REPORT_GEN] Stil dosyası bulunamadı: {css_file_path}, sadece temel CSS kullanılıyor.")
                 
+            # PDF'i oluştur ve kaydet
             pdf_bytes = html.write_pdf(stylesheets=stylesheets, font_config=font_config)
-            logger.info(f"[REPORT_GEN] WeasyPrint PDF başarıyla oluşturuldu (bytes: {len(pdf_bytes)})." )
+            logger.info(f"[REPORT_GEN] WeasyPrint PDF başarıyla oluşturuldu (bytes: {len(pdf_bytes)}).")
             
-            # 2.5 PDF'i dosyaya kaydet
-            logger.info(f"[REPORT_GEN] PDF dosyası kaydediliyor...")
-            reports_dir = Path("data") / "reports"
-            reports_dir.mkdir(parents=True, exist_ok=True)
-            pdf_filename = f"{request.project_name}_{report_id}.pdf"
-            pdf_path = reports_dir / pdf_filename
+            # PDF'i kaydet
+            pdf_path, success = save_pdf_content(pdf_bytes, request.project_name, report_id)
+            if not success:
+                raise HTTPException(status_code=500, detail="PDF dosyası kaydedilemedi")
             
-            with open(pdf_path, "wb") as f:
-                f.write(pdf_bytes)
             logger.info(f"[REPORT_GEN] PDF dosyası başarıyla kaydedildi: {pdf_path}")
             
             # Rapor meta verilerini kaydet
@@ -406,9 +410,18 @@ def download_report(project_name: str):
         if not active_report.get("report_generated"):
             raise ValueError("Rapor henüz oluşturulmamış")
             
-        pdf_path = active_report.get("pdf_path")
-        if not pdf_path or not os.path.exists(pdf_path):
-            raise FileNotFoundError("PDF dosyası bulunamadı")
+        # Get report_id from the active report
+        report_id = active_report.get("report_id")
+        if not report_id:
+            raise ValueError("Aktif raporda report_id bulunamadı")
+
+        # Generate the path using the utility function
+        pdf_path_obj = get_report_path(project_name, report_id)
+        pdf_path = str(pdf_path_obj) # Convert to string for os.path.exists and FileResponse
+
+        if not os.path.exists(pdf_path):
+            logger.error(f"PDF dosyası bulunamadı (indirilirken): {pdf_path}")
+            raise FileNotFoundError(f"PDF dosyası sunucuda bulunamadı: {pdf_path}")
             
         return FileResponse(
             path=pdf_path,
@@ -677,16 +690,21 @@ def download_specific_report(project_name: str, report_id: str):
         if not target_report.get("report_generated"):
             raise HTTPException(status_code=400, detail="Rapor henüz PDF olarak oluşturulmamış")
             
-        # PDF yolu var mı ve dosya mevcut mu kontrol et
-        pdf_path = target_report.get("pdf_path")
-        if not pdf_path or not os.path.exists(pdf_path):
-            print(f"HATA: PDF dosyası bulunamadı. Beklenen yol: {pdf_path}") # Loglama için
+        # PDF yolunu al ve kontrol et
+        pdf_path = get_report_path(project_name, report_id)
+        if not pdf_path.exists():
+            logger.error(f"PDF dosyası bulunamadı: {pdf_path}")
             raise HTTPException(status_code=404, detail="Raporun PDF dosyası sunucuda bulunamadı")
+            
+        # PDF bilgilerini al
+        pdf_info = get_pdf_info(pdf_path)
+        if not pdf_info:
+            raise HTTPException(status_code=500, detail="PDF dosyası okunamadı")
             
         # Dosyayı döndür
         filename = f"{project_name}_{report_id}_report.pdf"
         return FileResponse(
-            path=pdf_path,
+            path=str(pdf_path),
             filename=filename,
             media_type="application/pdf"
         )
@@ -710,56 +728,79 @@ class DeleteFinalizedReportRequest(BaseModel):
 @app.post("/project/delete-finalized-report", response_model=Dict[str, Any])
 def delete_finalized_report(request: DeleteFinalizedReportRequest):
     """Bir projenin sonlandırılmış raporlarından birini siler."""
+    logger.info(f"[MAIN] Finalized rapor silme isteği alındı: Proje={request.project_name}, Dosya/ID={request.file_name}")
     try:
         project_name = request.project_name
-        file_name = request.file_name
+        file_name_or_id = request.file_name # This could be name or report_id
         
         # Proje kontrolü
         project_data = get_project_data(project_name)
         if not project_data:
+            logger.warning(f"[MAIN] Finalized rapor silme: Proje bulunamadı - {project_name}")
             raise HTTPException(status_code=404, detail=f"Proje bulunamadı: {project_name}")
         
         # Finalized rapor listesini kontrol et
         finalized_reports = project_data.get("reports", [])
         
-        # Verilen dosya adıyla eşleşen finalized raporu bul
+        # Verilen dosya adıyla veya ID ile eşleşen finalized raporu bul
+        found_report_index = -1
         found_report = None
-        for report in finalized_reports:
-            if report.get("is_finalized") and (report.get("name") == file_name or report.get("report_id") == file_name):
+        for i, report in enumerate(finalized_reports):
+            # Check if the report is finalized and matches the provided name or ID
+            if report.get("is_finalized") and (
+                report.get("name") == file_name_or_id or 
+                report.get("report_id") == file_name_or_id
+            ):
                 found_report = report
+                found_report_index = i
                 break
         
         if not found_report:
-            raise HTTPException(status_code=404, detail=f"Belirtilen finalized rapor bulunamadı: {file_name}")
+            logger.warning(f"[MAIN] Finalized rapor silme: Rapor bulunamadı - Proje={project_name}, Dosya/ID={file_name_or_id}")
+            raise HTTPException(status_code=404, detail=f"Belirtilen finalized rapor bulunamadı: {file_name_or_id}")
         
-        # PDF dosyasının yolunu al
-        pdf_path = found_report.get("pdf_path")
-        if not pdf_path:
-            raise HTTPException(status_code=404, detail=f"Rapor için PDF dosyası bulunamadı")
-        
+        report_id = found_report.get("report_id")
+        if not report_id:
+            # This shouldn't happen for generated reports, but good to check
+            logger.error(f"[MAIN] Finalized rapor silme: Rapor ID bulunamadı! Rapor Verisi: {found_report}")
+            raise HTTPException(status_code=500, detail=f"Raporun ID bilgisi eksik, silinemiyor.")
+
         # PDF dosyasını ve finalized raporu sil
         try:
-            # PDF dosyasını sil
-            full_path = Path(pdf_path)
-            if os.path.exists(full_path):
-                os.remove(full_path)
-                print(f"PDF dosyası silindi: {full_path}")
+            # Generate the expected PDF path using the report_id
+            logger.info(f"[MAIN] Finalized rapor PDF siliniyor: Proje={project_name}, Rapor ID={report_id}")
+            pdf_path_obj = get_report_path(project_name, report_id)
+            pdf_path = str(pdf_path_obj)
+
+            # Attempt to delete the PDF file
+            if os.path.exists(pdf_path):
+                try:
+                    os.remove(pdf_path)
+                    logger.info(f"[MAIN] Finalized PDF dosyası başarıyla silindi: {pdf_path}")
+                except OSError as e:
+                    # Log error but proceed with metadata removal
+                    logger.error(f"[MAIN] Finalized PDF dosyası ({pdf_path}) silinirken OS hatası: {str(e)}", exc_info=True)
+            else:
+                logger.warning(f"[MAIN] Silinecek finalized PDF dosyası bulunamadı (zaten yok): {pdf_path}")
             
-            # Finalized raporu proje verilerinden kaldır
-            finalized_reports.remove(found_report)
-            project_data["reports"] = finalized_reports
+            # Finalized raporu proje verilerinden kaldır (using the found index)
+            logger.info(f"[MAIN] Finalized rapor meta verisi kaldırılıyor: Proje={project_name}, Rapor ID={report_id}")
+            del project_data["reports"][found_report_index]
             project_data["last_updated"] = datetime.datetime.now().isoformat()
             
-            # Güncellenmiş proje verilerini kaydet
-            with open(get_project_path(project_name), 'w', encoding='utf-8') as f:
+            # Güncellenmiş proje verilerini kaydet (use r+ mode for safe update)
+            project_json_path = get_project_path(project_name)
+            with open(project_json_path, 'w', encoding='utf-8') as f:
                 json.dump(project_data, f, ensure_ascii=False, indent=2)
             
+            logger.info(f"[MAIN] Finalized rapor başarıyla silindi: Proje={project_name}, Rapor ID={report_id}")
             return {
                 "message": "Finalized rapor başarıyla silindi", 
                 "project_name": project_name,
-                "file_name": file_name
+                "file_name": file_name_or_id # Return the identifier used in request
             }
         except Exception as e:
+            logger.error(f"[MAIN] Finalized rapor silme işlemi sırasında iç hata: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Finalized rapor silinirken bir hata oluştu: {str(e)}")
         
     except HTTPException:
@@ -775,12 +816,6 @@ def delete_finalized_report(request: DeleteFinalizedReportRequest):
 async def extract_pdf_endpoint(file: UploadFile = File(...)):
     """
     PDF dosyasından içerik çıkarır ve metin olarak döndürür.
-    
-    Args:
-        file: Yüklenecek PDF dosyası
-        
-    Returns:
-        Çıkarılan metin içeriği
     """
     # Dosya türü kontrolü
     if not file.content_type or "application/pdf" not in file.content_type:
@@ -795,7 +830,9 @@ async def extract_pdf_endpoint(file: UploadFile = File(...)):
             temp_file.close()
             
             # PDF içeriğini çıkar
-            extracted_content = extract_pdf_content(temp_file.name)
+            extracted_content = extract_text_from_pdf(temp_file.name)
+            if extracted_content is None:
+                raise HTTPException(status_code=500, detail="PDF içeriği çıkarılamadı")
             
             # İçeriği JSON olarak döndür
             return {"content": extracted_content}
@@ -804,15 +841,12 @@ async def extract_pdf_endpoint(file: UploadFile = File(...)):
             try:
                 os.unlink(temp_file.name)
             except Exception as e:
-                print(f"Geçici dosya silinirken hata: {e}")
+                logger.error(f"Geçici dosya silinirken hata: {e}")
+    except HTTPException:
+        raise
     except Exception as e:
-        # Orijinal hatayı koru - eğer HTTP hatası ise
-        if isinstance(e, HTTPException):
-            raise e
-        
-        # Diğer hataları logla ve genel bir hata mesajı döndür
-        print(f"PDF içeriği çıkarılırken hata: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"PDF içeriği çıkarılamadı: {str(e)}")
+        logger.error(f"PDF işleme hatası: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PDF işlenirken hata oluştu: {str(e)}")
 
 @app.post("/api/extract-pdf")
 async def extract_pdf_api_endpoint(file: UploadFile = File(...)):
@@ -868,6 +902,56 @@ def get_image_path_or_data(project_name: str, image_filename: Optional[str] = No
             
     print(f"Uyarı: Görsel bulunamadı: {project_image_path}")
     return None
+
+@app.post("/project/{project_name}/report/{report_id}/send-email")
+async def send_report_email(project_name: str, report_id: str, email_request: ShareReportRequest):
+    """Send a report to specified email addresses."""
+    logger.info(f"[MAIN] Email report request received: Project={project_name}, ReportID={report_id}")
+    try:
+        result = mail_agent_send_report(project_name, report_id, email_request.email_addresses)
+        logger.info(f"[MAIN] Email report successful: Project={project_name}, ReportID={report_id}")
+        return result
+    except FileNotFoundError as e:
+        logger.warning(f"[MAIN] Email report failed: PDF not found - {str(e)}")
+        raise HTTPException(status_code=404, detail="Report PDF file not found and cannot be sent.")
+    except Exception as e:
+        # Log the detailed error from mail_agent or other issues
+        logger.error(f"[MAIN] Email report failed: Project={project_name}, ReportID={report_id}, Error: {str(e)}", exc_info=True)
+        # Return a generic 500 error but check the logs for specifics
+        detail_message = str(e) if isinstance(e, smtplib.SMTPAuthenticationError) else "Failed to send report email due to an internal error."
+        raise HTTPException(status_code=500, detail=detail_message)
+
+@app.post("/project/{project_name}/reset-active-report")
+def reset_active_report_endpoint(project_name: str):
+    """
+    Endpoint to reset the active report generation status and delete the PDF.
+    """
+    logger.info(f"[API] Received request to reset active report for project: {project_name}")
+    try:
+        logger.info(f"[API] Calling data_storage.reset_active_report_generation for {project_name}")
+        updated_report = reset_active_report_generation(project_name)
+        
+        if updated_report is None:
+            # This case should ideally not happen if the button is only shown when there *is* an active report,
+            # but we handle it defensively.
+            logger.warning(f"[API] Reset was called, but no active report was found by data_storage for {project_name}. Returning 404.")
+            raise HTTPException(status_code=404, detail="Sıfırlanacak aktif rapor bulunamadı.")
+        
+        logger.info(f"[API] Active report for {project_name} reset successfully. Returning updated report data.")
+        return {"message": "Aktif rapor başarıyla sıfırlandı.", "active_report": updated_report}
+        
+    except FileNotFoundError as e:
+        logger.error(f"[API] Reset failed for {project_name}: Project data file not found. Detail: {e}", exc_info=True)
+        raise HTTPException(status_code=404, detail=str(e)) # Project file not found
+    except ValueError as e:
+        logger.error(f"[API] Reset failed for {project_name}: Value error (e.g., missing report_id). Detail: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=str(e)) # E.g., Missing report ID
+    except IOError as e:
+        logger.error(f"[API] Reset failed for {project_name}: IO error accessing project data. Detail: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Proje verisi okunurken/yazılırken hata: {str(e)}") # File system error
+    except Exception as e:
+        logger.error(f"[API] Reset failed for {project_name}: Unexpected error. Detail: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

@@ -5,6 +5,7 @@ import traceback
 import asyncio
 import httpx
 from typing import Dict, Any, Optional, List, Tuple
+import tempfile
 
 import pdfplumber
 import PyPDF2
@@ -16,6 +17,13 @@ from openai import OpenAI
 
 from config import (
     OPENAI_API_KEY, GPT_MODEL, GPT_TEMPERATURE, GPT_MAX_TOKENS,
+)
+from utils.pdf_utils import (
+    save_pdf_content,
+    extract_text_from_pdf,
+    get_report_path,
+    get_pdf_info,
+    ensure_report_directory
 )
 
 # Sabitler
@@ -228,14 +236,8 @@ def create_storage_path(project_name: str) -> str:
     Returns:
         Proje klasörünün yolu
     """
-    base_path = "pdf_reports"
-    project_path = os.path.join(base_path, project_name)
-    
-    if not os.path.exists(project_path):
-        os.makedirs(project_path)
-        print(f"Proje klasörü oluşturuldu: {project_path}")
-    
-    return project_path
+    project_dir = ensure_report_directory(project_name)
+    return str(project_dir)
 
 def ensure_reports_directory() -> str:
     """
@@ -307,43 +309,47 @@ def create_pdf(content: str, project_name: str) -> str:
     
     Args:
         content: PDF içeriği
-        project_name: Proje adı (dosya adı için)
+        project_name: Proje adı
         
     Returns:
         Oluşturulan PDF dosyasının yolu
     """
-    # Proje klasörünün varlığını kontrol et
-    project_dir = create_storage_path(project_name)
-    
-    # Tarih formatındaki PDF dosya adını oluştur
-    current_date = datetime.now().strftime("%Y%m%d")
-    safe_project_name = project_name.replace(" ", "_")
-    pdf_filename = f"{safe_project_name}__{current_date}.pdf"
-    pdf_path = os.path.join(project_dir, pdf_filename)
-    
     try:
-        # Kullanılabilir font kontrolü
-        font_path = check_font_availability()
-        
-        # PDF oluştur
+        # PDF içeriğini oluştur
         pdf = FPDF()
         pdf.add_page()
         
         # DejaVu font eklemesi (Türkçe karakterler için)
+        font_path = check_font_availability()
         pdf.add_font('DejaVu', '', font_path, uni=True)
         pdf.set_font('DejaVu', '', 12)
         
         # İçeriği PDF'e ekle
         pdf.multi_cell(0, 10, content)
         
+        # PDF'i geçici olarak oluştur
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+            pdf.output(temp_file.name)
+            
+            # PDF içeriğini oku
+            with open(temp_file.name, 'rb') as f:
+                pdf_content = f.read()
+            
+            # Geçici dosyayı sil
+            os.unlink(temp_file.name)
+        
         # PDF'i kaydet
-        pdf.output(pdf_path)
-        print(f"PDF başarıyla oluşturuldu: {pdf_path}")
+        report_id = datetime.now().strftime("%Y%m%d%H%M%S")  # Basit bir rapor ID
+        pdf_path, success = save_pdf_content(pdf_content, project_name, report_id)
+        
+        if not success:
+            raise Exception("PDF kaydedilemedi")
         
         # PDF yolunu kaydet
-        report_data = save_report_path(project_name, pdf_path)
+        report_data = save_report_path(project_name, str(pdf_path))
         
-        return pdf_path
+        return str(pdf_path)
+        
     except Exception as e:
         error_msg = f"PDF oluşturulurken hata: {str(e)}"
         print(error_msg)
