@@ -1000,3 +1000,30 @@ def update_report_status(pdf_path: str, is_finalized: bool = True) -> bool:
         error_msg = f"Rapor durumu güncellenirken hata: {str(e)}"
         print(error_msg)
         return False
+
+def query_gpt(prompt: str, max_tokens: int = 4000, temperature: float = GPT_TEMPERATURE) -> str:
+    """
+    GPT modelini kullanarak verilen prompt'a yanıt döndürür.
+    Bu fonksiyon, dynamic_html_generator.py tarafından HTML üretmek için kullanılır.
+
+    Args:
+        prompt: GPT modeline gönderilecek prompt metni
+        max_tokens: Üretilecek maksimum token sayısı
+        temperature: Çıktı çeşitliliğini belirleyen sıcaklık değeri
+
+    Returns:
+        GPT modelinin yanıtı
+    """
+    try:
+        return create_chat_completion(
+            model=GPT_MODEL,
+            messages=[
+                {"role": "system", "content": "Sen HTML ve CSS konusunda uzman bir web geliştiricisisin. Verilen içerik ve stil bilgilerini kullanarak estetik, modern ve profesyonel görünümlü HTML kod parçaları oluşturursun."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+    except Exception as e:
+        print(f"GPT sorgusu sırasında hata: {str(e)}")
+        raise Exception(f"HTML oluşturulamadı: {str(e)}")

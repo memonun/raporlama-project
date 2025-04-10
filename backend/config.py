@@ -130,19 +130,19 @@ CORPORATE_COLORS = {
 }
 
 PROJECT_PALETTES = {
-    'v-mall': {
+    'v_mall': {
         'primary': '#4b4b4b',
         'secondary': '#7c0a02',
         'background': '#e9ecef',
         'corporate_accent': CORPORATE_COLORS['dark_blue'],
     },
-    'v-metroway': {
+    'v_metroway': {
         'primary': '#f7941d',
         'secondary': '#c1272d',
         'background': '#cccccc',
         'corporate_accent': CORPORATE_COLORS['light_blue'],
     },
-    'v-orman': {
+    'v_orman': {
         'primary': '#2e5339',
         'secondary': '#8b5e3c',
         'accent': '#a3d5d3',

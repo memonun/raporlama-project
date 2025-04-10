@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ project_name }} - Durum Raporu</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="{{ css_path }}">
     <style>
         /* CSS Değişkenleri - Jinja2 tarafından enjekte edilir */
         :root {
@@ -26,6 +26,8 @@
         @page {
             size: A4;
             margin: 2cm;
+            background: {% if page_background_svg %}url("{{ page_background_svg }}") no-repeat center center / cover{% else %}var(--background-color){% endif %};
+            background-opacity: 0.1;
         }
         
         /* Temel stil */
@@ -43,6 +45,7 @@
             page-break-after: always;
             min-height: 297mm;
             position: relative;
+            {% if cover_background_svg %}background: url("{{ cover_background_svg }}") no-repeat center center / cover;{% endif %}
         }
         
         .cover-page img {
@@ -199,7 +202,7 @@
         {% endif %}
         <div class="cover-content">
             <div>
-                <img class="logo" src="isra_logo.png" alt="İsra Holding">
+                <img class="logo" src="{{ logo_path }}" alt="İsra Holding">
             </div>
             <div>
                 <h1 class="cover-title">{{ project_name }}</h1>
@@ -216,7 +219,7 @@
     <div class="content">
         <!-- Üstbilgi -->
         <div class="header">
-            <img class="header-logo" src="isra_logo.png" alt="İsra Holding">
+            <img class="header-logo" src="{{ logo_path }}" alt="İsra Holding">
             <span class="header-project">{{ project_name }} Projesi</span>
         </div>
         

@@ -1,8 +1,125 @@
 {
   "project_name": "V Metroway",
   "created_at": "2025-03-26T10:35:24.132672",
-  "last_updated": "2025-04-07T16:51:25.802606",
-  "active_report": null,
+  "last_updated": "2025-04-08T17:27:28.811159",
+  "active_report": {
+    "report_id": "V_Metroway_20250408",
+    "report_date": "2025-04-08",
+    "created_at": "2025-04-08T17:25:41.031369",
+    "last_updated": "2025-04-08T17:27:28.811159",
+    "components": {
+      "İşletme": {
+        "answers": {
+          "business_report": "{\"fileName\":\"İşletme_Raporu.pdf\",\"content\":\"İşletme Raporu - ECE Türkiye\\nProje Adı: V Metroway\\nKiralanabilir Alan: 25.000 m²\\nMağaza Sayısı: 81\\nYönetim: ECE Türkiye tarafından devralınacak\\nBeklenen Açılış Tarihi: 20 Haziran 2025\",\"questionId\":\"business_report\"}",
+          "business_report_image_0": "i̇sletme-0.webp"
+        },
+        "last_updated": "2025-04-08T17:26:55.956271"
+      },
+      "Finans": {
+        "answers": {
+          "finance_report": "{\"fileName\":\"Finans_Raporu.pdf\",\"content\":\"Finans Raporu - Mutaz Bey\\nProje: İsra Holding Yatırım Portföyü\\n2024 Yılı Kar: 12.500.000 TL\\n2025 Projeksiyonu: 18.000.000 TL\\nGelir Kaynakları: AVM Kiralamaları, Tatil Köyü Gelirleri, Ticari İşletmeler\",\"questionId\":\"finance_report\"}"
+        },
+        "last_updated": "2025-04-08T17:26:55.966959"
+      },
+      "İnşaat": {
+        "answers": {
+          "construction_images": "{\"fileName\":\"İnşaat_Raporu.pdf\",\"content\":\"İnşaat Raporu - ImperiumSoft\\nProje Adı: V Mall İstanbul\\nİnşaat Durumu: %75 Tamamlandı\\nYapı Alanı: 126.000 m²\\nKiralanabilir Alan: 45.000 m²\\nTamamlanma Tarihi: 15 Mayıs 2025\",\"questionId\":\"construction_images\"}",
+          "construction_images_image_0": "i̇nsaat-0.jpg"
+        },
+        "last_updated": "2025-04-08T17:26:55.992226"
+      },
+      "Kurumsal İletişim": {
+        "answers": {
+          "corporate_report": "{\"fileName\":\"Kurumsal_İletişim_Raporu.pdf\",\"content\":\"Kurumsal İletişim Raporu - Pazarlama\\nProje: V Orman Resort\\nTanıtım Kampanyaları: Sosyal Medya, Basılı Medya, Etkinlikler\\nHedef Kitle: Doğa Turizmi Meraklıları\\nVizyon: Bolu’nun doğal güzellikleri ile konforu bir araya getirmek\",\"questionId\":\"corporate_report\"}"
+        },
+        "last_updated": "2025-04-08T17:26:56.014808"
+      }
+    },
+    "status": "completed",
+    "report_generated": true,
+    "report_content": "## Yatırımcı Raporu: V_Metroway Projesi\n\n### 1. Yönetici Özeti\n\nV_Metroway, İsra Holding tarafından yönetilen ve ECE Türkiye, ImperiumSoft ve Pazarlama departmanları ile işbirliği içinde geliştirilen bir dizi yatırım projesidir. Bu projeler, V Mall İstanbul alışveriş merkezi, V Orman Resort tatil köyü ve diğer ticari işletmeleri içermektedir. V Mall İstanbul’un %75’i tamamlanmış olup, 126.000 m² yapı alanına ve 45.000 m² kiralanabilir alana sahiptir. V Orman Resort ise doğa turizmi meraklılarına yönelik tanıtım kampanyalarıyla pazarlama stratejileri geliştirilmektedir. Projelerin toplam gelir ve kar beklentileri, mevcut ve gelecek yıllar için oldukça umut vericidir.\n\n### 2. Proje Durumu\n\n**V Mall İstanbul:**\n- İnşaat Durumu: %75 tamamlanmış.\n- Yapı Alanı: 126.000 m².\n- Kiralanabilir Alan: 45.000 m².\n- Tamamlanma Tarihi: 15 Mayıs 2025.\n\n**V Orman Resort:**\n- Tanıtım Kampanyaları: Aktif şekilde sosyal medya, basılı medya ve etkinlikler yoluyla.\n- Hedef Kitle: Doğa turizmi meraklıları.\n- Vizyon: Bolu’nun doğal güzellikleri ile konforu birleştirmek.\n\n### 3. Finansal Analiz\n\n2024 yılı kar tahmini 12.500.000 TL iken, 2025 yılı için bu rakamın 18.000.000 TL’ye yükselmesi beklenmektedir. Gelir kaynakları arasında AVM kiralamaları, tatil köyü gelirleri ve diğer ticari işletmeler bulunmaktadır. Bu gelir kaynakları, projenin sürdürülebilir finansal büyümesine katkıda bulunacak çeşitlilik göstermektedir.\n\n### 4. İşletme Verileri\n\nV Mall İstanbul, ECE Türkiye tarafından yönetilecek olup, 25.000 m² kiralanabilir alan ve 81 mağaza içerecektir. Beklenen açılış tarihi 20 Haziran 2025 olarak planlanmıştır. Bu yapı, modern alışveriş merkezi yönetimi ve kiracı ilişkilerinde ECE Türkiye’nin deneyimlerinden faydalanacaktır.\n\n### 5. Kısa ve Uzun Vadeli Tahminler\n\n**Kısa Vadeli:**\n- İnşaatın %100 tamamlanması ve V Mall İstanbul’un resmi açılışı.\n- V Orman Resort için tanıtım kampanyalarının etkilerinin analizi.\n\n**Uzun Vadeli:**\n- 2025 yılından itibaren projelerin tam kapasite ile operasyonlarının başlaması ve gelirlerin artırılması.\n- Sürdürülebilir büyüme ve genişleme planları doğrultusunda yeni yatırım fırsatlarının değerlendirilmesi.\n\n### 6. Öneriler\n\n- İnşaat sürecinin hızlandırılması ve kalite kontrollerinin artırılması.\n- Pazarlama stratejilerinin sürekli güncellenmesi ve hedef kitle analizlerinin derinleştirilmesi.\n- Gelir kaynaklarının çeşitlendirilmesi ve yeni işletme modellerinin araştırılması.\n- Yatırımcılarla düzenli iletişim ve şeffaf raporlama süreçlerinin devam ettirilmesi.\n\nBu rapor, V_Metroway projelerinin mevcut durumu ve gelecekteki potansiyelleri hakkında kapsamlı bir bakış sunmaktadır. Detaylı analiz ve öneriler, projenin başarıyla ilerlemesi için kritik öneme sahiptir.",
+    "pdf_path": "data/reports/V_Metroway/V_Metroway_20250408.pdf"
+  },
   "finalized_reports": [],
-  "reports": []
+  "reports": [
+    {
+      "report_id": "V_Metroway_20250408",
+      "report_date": "2025-04-08",
+      "created_at": "2025-04-08T16:35:34.303666",
+      "last_updated": "2025-04-08T16:44:33.157012",
+      "components": {
+        "İşletme": {
+          "answers": {
+            "business_report": "{\"fileName\":\"İşletme_Raporu.pdf\",\"content\":\"İşletme Raporu - ECE Türkiye\\nProje Adı: V Metroway\\nKiralanabilir Alan: 25.000 m²\\nMağaza Sayısı: 81\\nYönetim: ECE Türkiye tarafından devralınacak\\nBeklenen Açılış Tarihi: 20 Haziran 2025\",\"questionId\":\"business_report\"}",
+            "business_report_image_0": "i̇sletme-0.webp"
+          },
+          "last_updated": "2025-04-08T16:36:39.365147"
+        },
+        "Finans": {
+          "answers": {
+            "finance_report_image_0": "finans-0.jpg",
+            "finance_report": "{\"fileName\":\"Finans_Raporu.pdf\",\"content\":\"Finans Raporu - Mutaz Bey\\nProje: İsra Holding Yatırım Portföyü\\n2024 Yılı Kar: 12.500.000 TL\\n2025 Projeksiyonu: 18.000.000 TL\\nGelir Kaynakları: AVM Kiralamaları, Tatil Köyü Gelirleri, Ticari İşletmeler\",\"questionId\":\"finance_report\"}"
+          },
+          "last_updated": "2025-04-08T16:36:39.375796"
+        },
+        "İnşaat": {
+          "answers": {
+            "construction_images": "{\"fileName\":\"İnşaat_Raporu.pdf\",\"content\":\"İnşaat Raporu - ImperiumSoft\\nProje Adı: V Mall İstanbul\\nİnşaat Durumu: %75 Tamamlandı\\nYapı Alanı: 126.000 m²\\nKiralanabilir Alan: 45.000 m²\\nTamamlanma Tarihi: 15 Mayıs 2025\",\"questionId\":\"construction_images\"}"
+          },
+          "last_updated": "2025-04-08T16:36:39.383960"
+        },
+        "Kurumsal İletişim": {
+          "answers": {
+            "corporate_report": "{\"fileName\":\"Kurumsal_İletişim_Raporu.pdf\",\"content\":\"Kurumsal İletişim Raporu - Pazarlama\\nProje: V Orman Resort\\nTanıtım Kampanyaları: Sosyal Medya, Basılı Medya, Etkinlikler\\nHedef Kitle: Doğa Turizmi Meraklıları\\nVizyon: Bolu’nun doğal güzellikleri ile konforu bir araya getirmek\",\"questionId\":\"corporate_report\"}"
+          },
+          "last_updated": "2025-04-08T16:36:39.389449"
+        }
+      },
+      "status": "completed",
+      "report_generated": true,
+      "report_content": "# Yatırımcı Raporu - V_Metroway Projesi\n\n## 1. Yönetici Özeti\n\nV_Metroway, ECE Türkiye'nin yönetimi altında geliştirilen, çok fonksiyonlu bir yatırım portföyüdür. Proje, alışveriş merkezleri, tatil köyleri ve ticari işletmeleri içeren bir dizi gayrimenkul geliştirmeyi kapsamaktadır. Bu rapor, projenin mevcut durumunu, finansal performansını ve gelecek projeksiyonlarını detaylandırmaktadır. V_Metroway'in başarısı, stratejik yerleşim, yüksek kalite inşaat standartları ve etkili pazarlama faaliyetleri ile desteklenmektedir.\n\n## 2. Proje Durumu\n\n### İnşaat\n- **Proje Adı:** V Mall İstanbul\n- **Durum:** %75 tamamlanmış\n- **Yapı Alanı:** 126.000 m²\n- **Kiralanabilir Alan:** 45.000 m²\n- **Tamamlanma Tarihi:** 15 Mayıs 2025\n\n### İşletme\n- **Proje Adı:** V Metroway\n- **Kiralanabilir Alan:** 25.000 m²\n- **Mağaza Sayısı:** 81\n- **Yönetim:** ECE Türkiye\n- **Beklenen Açılış Tarihi:** 20 Haziran 2025\n\n## 3. Finansal Analiz\n\n### Gelir Kaynakları\n- **AVM Kiralamaları:** V Mall İstanbul ve diğer ticari işletmeler\n- **Tatil Köyü Gelirleri:** V Orman Resort\n- **Kar Analizi:**\n  - **2024 Yılı Karı:** 12.500.000 TL\n  - **2025 Projeksiyonu:** 18.000.000 TL\n\n## 4. İşletme Verileri\n\nECE Türkiye'nin işletme modeli, mağaza sayısını ve kiralanabilir alanı maksimize ederek yüksek gelir elde etmeyi hedeflemektedir. Beklenen açılış tarihi itibarıyla, V Metroway'in operasyonel verimliliği ve müşteri trafiği, projenin genel başarısını belirleyecektir.\n\n## 5. Kısa ve Uzun Vadeli Tahminler\n\n### Kısa Vadeli Hedefler\n- İnşaatın tamamlanması ve V Mall İstanbul’un açılışı.\n- V Orman Resort için etkili bir tanıtım kampanyası yürütülmesi.\n\n### Uzun Vadeli Hedefler\n- 2025 yılı sonuna kadar %90 doluluk oranına ulaşmak.\n- İşletme gelirlerini sürekli artırarak yatırımın geri dönüşünü maksimize etmek.\n\n## 6. Öneriler\n\n- **Pazarlama Stratejisi:** Sosyal ve basılı medya üzerinden agresif pazarlama kampanyaları yürütülmeli, özellikle V Orman Resort'un doğa turizmi potansiyeli vurgulanmalıdır.\n- **Operasyonel Verimlilik:** ECE Türkiye'nin yönetimindeki tesislerin operasyonel verimliliği artırılmalı, müşteri memnuniyeti ve doluluk oranları için sürekli izleme ve değerlendirme yapılmalıdır.\n- **Finansal Yönetim:** Gelir artışı ve maliyet kontrolü için sürekli finansal analizler yapılmalı, risk yönetimi stratejileri geliştirilmelidir.\n\nBu rapor, V_Metroway projesinin mevcut durumunu ve gelecekteki potansiyelini sunmakta olup, yatırımcıların bilgilendirilmesi ve ilgili kararların alınmasında temel teşkil etmektedir.",
+      "pdf_path": "data/reports/V_Metroway/V_Metroway_20250408.pdf",
+      "is_finalized": true,
+      "finalized_at": "2025-04-08T17:25:39.646431"
+    },
+    {
+      "report_id": "V_Metroway_20250408",
+      "report_date": "2025-04-08",
+      "created_at": "2025-04-08T14:22:58.821718",
+      "last_updated": "2025-04-08T14:26:02.939815",
+      "components": {
+        "Kurumsal İletişim": {
+          "answers": {
+            "corporate_report": "{\"fileName\":\"İşletme_Raporu.pdf\",\"content\":\"İşletme Raporu - ECE Türkiye\\nProje Adı: V Metroway\\nKiralanabilir Alan: 25.000 m²\\nMağaza Sayısı: 81\\nYönetim: ECE Türkiye tarafından devralınacak\\nBeklenen Açılış Tarihi: 20 Haziran 2025\",\"questionId\":\"corporate_report\"}"
+          },
+          "last_updated": "2025-04-08T14:25:21.880211"
+        },
+        "İnşaat": {
+          "answers": {
+            "construction_images": "{\"fileName\":\"İnşaat_Raporu.pdf\",\"content\":\"İnşaat Raporu - ImperiumSoft\\nProje Adı: V Mall İstanbul\\nİnşaat Durumu: %75 Tamamlandı\\nYapı Alanı: 126.000 m²\\nKiralanabilir Alan: 45.000 m²\\nTamamlanma Tarihi: 15 Mayıs 2025\",\"questionId\":\"construction_images\"}"
+          },
+          "last_updated": "2025-04-08T14:25:21.875877"
+        },
+        "Finans": {
+          "answers": {
+            "finance_report": "{\"fileName\":\"Kurumsal_İletişim_Raporu.pdf\",\"content\":\"Kurumsal İletişim Raporu - Pazarlama\\nProje: V Orman Resort\\nTanıtım Kampanyaları: Sosyal Medya, Basılı Medya, Etkinlikler\\nHedef Kitle: Doğa Turizmi Meraklıları\\nVizyon: Bolu’nun doğal güzellikleri ile konforu bir araya getirmek\",\"questionId\":\"finance_report\"}"
+          },
+          "last_updated": "2025-04-08T14:25:21.870813"
+        },
+        "İşletme": {
+          "answers": {
+            "business_report_image_0": "i̇sletme-0.jpg",
+            "business_report": "{\"fileName\":\"Kurumsal_İletişim_Raporu.pdf\",\"content\":\"Kurumsal İletişim Raporu - Pazarlama\\nProje: V Orman Resort\\nTanıtım Kampanyaları: Sosyal Medya, Basılı Medya, Etkinlikler\\nHedef Kitle: Doğa Turizmi Meraklıları\\nVizyon: Bolu’nun doğal güzellikleri ile konforu bir araya getirmek\",\"questionId\":\"business_report\"}"
+          },
+          "last_updated": "2025-04-08T14:25:21.862085"
+        }
+      },
+      "status": "completed",
+      "report_generated": true,
+      "report_content": "## Yatırımcı Raporu: V_Metroway Projesi\n\n### 1. Yönetici Özeti\nV_Metroway, ECE Türkiye'nin yönetimi altında, 25.000 metrekare kiralanabilir alana ve 81 mağazaya sahip bir ticaret merkezi projesidir. Beklenen açılış tarihi 20 Haziran 2025'tir. Bu rapor, projenin mevcut durumunu, finansal analizi, işletme verilerini ve gelecek tahminlerini içermekte olup, yatırımcılara projenin potansiyel getirisi hakkında bilgi sağlamaktadır.\n\n### 2. Proje Durumu\nV_Metroway projesi, şu anda yapım aşamasında olup, işletme ve finans departmanları tarafından yönetilmektedir. Proje, ECE Türkiye tarafından devralınmış ve mağazaların kiralanması için hazırlıklar başlamıştır. Projenin lokasyonu ve yapılandırma detayları yatırımcıların ilgisini çekmek için stratejik olarak planlanmıştır.\n\n### 3. Finansal Analiz\nFinans raporları, V_Metroway projesinin sağlam bir finansal yapıya sahip olduğunu göstermektedir. Kiralanabilir alanın büyüklüğü ve mağaza sayısı, yüksek gelir potansiyelini işaret etmektedir. Projenin toplam maliyeti ve beklenen getiri hakkında detaylı bilgiler, yatırımcıların bilgi edinmesi açısından önem taşımaktadır. Ancak, bu raporda mali detaylar eksik olduğundan, ilerleyen dönemlerde detaylı mali raporların sağlanması önerilmektedir.\n\n### 4. İşletme Verileri\nİşletme raporu, V_Metroway'in yönetim sürecinin ECE Türkiye tarafından etkin bir şekilde yürütüldüğünü ortaya koymaktadır. Mağaza sayısı ve kiralanabilir alan büyüklüğü, projenin çekim merkezi olma potansiyelini artırmaktadır. İşletme stratejileri, mağaza çeşitliliği ve yönetim kalitesi, projenin başarısında kritik rol oynayacaktır.\n\n### 5. Kısa ve Uzun Vadeli Tahminler\nKısa vadeli olarak, V_Metroway'in inşaatının 2025 yılı ortasına kadar tamamlanması ve açılışının yapılması beklenmektedir. Uzun vadeli olarak, projenin tam kapasite ile çalışmaya başlaması ve yüksek kiralanabilir alan kullanım oranları ile yatırımcılara önemli getiriler sağlaması öngörülmektedir. Pazar dinamiklerine ve tüketici tercihlerine bağlı olarak, işletme stratejileri sürekli olarak güncellenmelidir.\n\n### 6. Öneriler\nYatırımcılara, V_Metroway projesine olan ilgilerini sürdürmeleri ve projenin gelişim evrelerini yakından takip etmeleri önerilir. Ayrıca, finansal performans ve pazar trendleri hakkında düzenli güncellemeler almak için ilgili departmanlarla iletişim içinde olmaları tavsiye edilir. Projenin başarıya ulaşması için, stratejik pazarlama faaliyetlerine ve etkin işletme yönetimine yatırım yapılması önemlidir.\n\nBu rapor, V_Metroway projesinin mevcut durumu ve gelecekteki potansiyeli hakkında yatırımcılara kapsamlı bir bakış sağlamıştır. Detaylı bilgi ve güncellemeler için, ilgili departmanlarla iletişime geçilmesi önerilir.",
+      "pdf_path": "data/reports/V_Metroway/V_Metroway_20250408.pdf",
+      "is_finalized": true,
+      "finalized_at": "2025-04-08T16:35:29.088113"
+    }
+  ]
 }

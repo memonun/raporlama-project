@@ -245,6 +245,63 @@ export const componentService = {
       // Genel hata
       throw new Error(`${componentName} verileri kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.`);
     }
+  },
+  
+  // Bileşen görseli yükle
+  uploadComponentImage: async (projectName, componentName, imageFile, imageIndex = 0) => {
+    if (!projectName) {
+      console.error('componentService.uploadComponentImage: Proje adı belirtilmedi');
+      throw new Error('Proje adı belirtilmedi');
+    }
+    
+    if (!componentName) {
+      console.error('componentService.uploadComponentImage: Bileşen adı belirtilmedi');
+      throw new Error('Bileşen adı belirtilmedi');
+    }
+    
+    if (!imageFile || !(imageFile instanceof File)) {
+      console.error('componentService.uploadComponentImage: Geçerli bir görsel dosyası belirtilmedi');
+      throw new Error('Geçerli bir görsel dosyası belirtilmedi');
+    }
+    
+    try {
+      console.log(`componentService.uploadComponentImage: ${projectName} projesi ${componentName} bileşeni için görsel yükleniyor`);
+      
+      // FormData oluştur
+      const formData = new FormData();
+      formData.append('component_name', componentName);
+      formData.append('image_index', imageIndex);
+      formData.append('image', imageFile);
+      
+      // API isteğini gönder
+      const response = await axiosInstance.post(
+        `/project/${encodeURIComponent(projectName)}/upload-component-image`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      
+      console.log(`${componentName} bileşeni için görsel başarıyla yüklendi:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`${componentName} bileşeni görseli yükleme hatası:`, error);
+      
+      // API yanıtından daha detaylı hata mesajını al
+      if (error.response) {
+        console.error('API Yanıt Detayı:', error.response.data);
+        
+        // Eğer backend'den gelen özel bir hata mesajı varsa kullan
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+      }
+      
+      // Genel hata
+      throw new Error(`${componentName} bileşeni için görsel yüklenirken bir hata oluştu`);
+    }
   }
 };
 
@@ -287,7 +344,7 @@ export const mailService = {
 // Rapor servisi
 export const reportService = {
   // Rapor oluştur
-  generateReport: async (projectName, componentsData, userInput = null, pdfContent = null) => {
+  generateReport: async (projectName, componentsData, userInput = null, pdfContent = null, useDynamicHtml = true) => {
     if (!projectName) {
       console.error('reportService.generateReport: Proje adı belirtilmedi');
       throw new Error('Proje adı belirtilmedi');
@@ -296,6 +353,7 @@ export const reportService = {
     try {
       console.log(`reportService.generateReport: ${projectName} projesi için rapor oluşturuluyor`);
       console.log('Gönderilen bileşen verileri (özet):', Object.keys(componentsData));
+      console.log(`Dinamik HTML modu ${useDynamicHtml ? 'aktif' : 'devre dışı'}`);
       
       // Debug için PDF içeriklerini kontrol edelim
       const pdfContentKeys = Object.keys(componentsData).filter(k => k.endsWith('_pdf_contents'));
@@ -310,12 +368,28 @@ export const reportService = {
         console.warn('Hiç PDF içeriği bulunamadı!');
       }
       
+      // Görsel içeriklerini kontrol et
+      const imageKeys = Object.keys(componentsData).filter(k => 
+        k.includes('_image_0') || 
+        k.endsWith('.jpg') || 
+        k.endsWith('.png') || 
+        k.endsWith('.svg')
+      );
+      
+      if (imageKeys.length > 0) {
+        console.log('Görsel referansları mevcut:', imageKeys);
+        console.log('Görsel sayısı:', imageKeys.length);
+      } else {
+        console.log('Hiç görsel referansı bulunamadı!');
+      }
+      
       // Veri formatı dönüşümü yapmadan doğrudan API'ye gönder
       const requestPayload = { 
         project_name: projectName,
         components_data: componentsData,
         user_input: userInput,
-        pdf_content: pdfContent
+        pdf_content: pdfContent,
+        use_dynamic_html: useDynamicHtml
       };
       
       console.log('API isteği hazırlandı:', JSON.stringify(requestPayload, null, 2).substring(0, 1000) + '...');

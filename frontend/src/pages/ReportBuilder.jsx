@@ -15,6 +15,7 @@ const initialState = {
   componentData: {}, // Mevcut useState: componentData
   loading: true, // Mevcut useState: loading
   pdfLoadingStates: {}, // Mevcut useState: pdfLoading (her bileşen/soru için ayrı)
+  imageLoadingStates: {}, // Görsel yüklemeleri için loading state'leri
   error: null, // Mevcut useState: error
   activeReport: null, // Mevcut useState: activeReport
   activeSection: '', // Mevcut useState: activeSection
@@ -56,6 +57,14 @@ function reportBuilderReducer(state, action) {
         ...state,
         pdfLoadingStates: {
           ...state.pdfLoadingStates,
+          [action.payload.key]: action.payload.isLoading,
+        },
+      };
+    case 'SET_IMAGE_LOADING':
+      return {
+        ...state,
+        imageLoadingStates: {
+          ...state.imageLoadingStates,
           [action.payload.key]: action.payload.isLoading,
         },
       };
@@ -103,6 +112,7 @@ const ReportBuilder = () => {
     componentData,
     loading,
     pdfLoadingStates,
+    imageLoadingStates,
     error, // error state'i reducer'dan alınacak
     activeReport,
     activeSection,
@@ -123,7 +133,7 @@ const ReportBuilder = () => {
   const componentRefs = useRef({});
   const scrollTimerRef = useRef(null);
   const hasFetchedData = useRef(false); // Fetch kontrolü için Ref
-
+  
   // Rapor sonlandırma için onay dialog
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
@@ -151,7 +161,7 @@ const ReportBuilder = () => {
     
     console.log(`${component} - PDF dosyası ve içeriği state'e kaydedildi: ${filename}`);
   };
-
+  
   // Tarayıcıdan tamamen çıkış için uyarı gösterme (browser window/tab close)
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -546,6 +556,111 @@ const ReportBuilder = () => {
     }
   };
   
+  // Bileşen görseli yükleme
+  const handleComponentImageUpload = async (component, questionId, event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      console.log(`${component} - Görsel seçilmedi`);
+      return;
+    }
+    
+    console.log(`${component} - Seçilen görsel: ${file.name}, ${file.type}, ${file.size} bytes`);
+    
+    // Görsel dosya tipini kontrol et
+    if (!file.type.match('image.*')) {
+      console.error(`${component} - Geçersiz dosya türü: ${file.type}`);
+      toast.error('Lütfen sadece resim dosyaları yükleyin.');
+      return;
+    }
+    
+    // Dosya boyutunu kontrol et (5MB limit)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      console.error(`${component} - Dosya boyutu çok büyük: ${file.size} bytes`);
+      toast.error('Görsel boyutu 5MB\'dan küçük olmalıdır.');
+      return;
+    }
+    
+    const loadingKey = `${component}-${questionId}-image`;
+    dispatch({ type: 'SET_IMAGE_LOADING', payload: { key: loadingKey, isLoading: true } });
+    
+    try {
+      console.log(`${component} - Görsel yükleme işlemi başlatılıyor...`);
+      
+      // Görsel indeksi tespit et (bu örnekte ilk görsel yüklendiğini varsayıyoruz)
+      const imageIndex = 0;
+      
+      const result = await componentService.uploadComponentImage(
+        projectName,
+        component,
+        file,
+        imageIndex
+      );
+      
+      console.log(`${component} - Görsel yükleme sonucu:`, result);
+      
+      if (!result || !result.success) {
+        throw new Error('Görsel yükleme başarısız oldu');
+      }
+      
+      // Başarı mesajı
+      toast.success(`${file.name} başarıyla yüklendi`);
+      
+      // Görsel yükleme başarılı - bu bilgiyi state'e ekle
+      // Görsel adını componentData içine kaydet
+      const imageName = result.file_name || file.name;
+      
+      dispatch({ 
+        type: 'UPDATE_ANSWER', 
+        payload: { 
+          component, 
+          questionId: `${questionId}_image_${imageIndex}`, 
+          value: imageName 
+        } 
+      });
+      
+    } catch (error) {
+      console.error(`${component} - Görsel yükleme hatası:`, error);
+      toast.error(`Görsel yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+      
+      // Hata detaylarını loglama
+      if (error.response) {
+        console.error(`${component} - API yanıt detayı:`, error.response.data);
+        console.error(`${component} - Status kodu:`, error.response.status);
+      }
+    } finally {
+      dispatch({ type: 'SET_IMAGE_LOADING', payload: { key: loadingKey, isLoading: false } });
+    }
+  };
+  
+  // Bileşen görseli kaldırma
+  const handleRemoveComponentImage = async (component, questionId, imageIndex = 0) => {
+    try {
+      // Görsel referansını temizle
+      dispatch({ 
+        type: 'UPDATE_ANSWER', 
+        payload: { 
+          component, 
+          questionId: `${questionId}_image_${imageIndex}`, 
+          value: '' 
+        } 
+      });
+      
+      // Backend'e boş değeri kaydet
+      await componentService.saveComponentData(
+        projectName,
+        component,
+        { [`${questionId}_image_${imageIndex}`]: '' } // Boş string göndererek temizle
+      );
+      
+      console.log(`${component} bileşeninden görsel kaldırıldı (${questionId})`);
+      toast.info('Görsel kaldırıldı');
+    } catch (error) {
+      console.error(`${component} - Görsel kaldırma hatası:`, error);
+      toast.error(`Görsel kaldırılırken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+    }
+  };
+
   // Bileşen PDF dosyasını kaldırma
   const handleRemoveComponentPdf = async (component, questionId) => {
     try {
@@ -633,9 +748,9 @@ const ReportBuilder = () => {
             answers: componentData[component].answers
         }; 
       });
-
+      
       console.log("Rapor oluşturmak için backend'e gönderilecek veriler:", componentsDataForBackend);
-
+      
       // Raporu oluştur
       try {
         console.log('Rapor oluşturma isteği gönderiliyor:', { projectName });
@@ -1047,18 +1162,18 @@ const ReportBuilder = () => {
                     {componentData[component].questions.map((question, index) => {
                       const isLoadingPdf = pdfLoadingStates[`${component}-${question.id}`] || false;
                       return (
-                        <div key={question.id} className="space-y-2 border-b pb-6">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {question.text}
-                            {question.required && <span className="text-red-500 ml-1">*</span>}
-                          </label>
-                          
+                      <div key={question.id} className="space-y-2 border-b pb-6">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {question.text}
+                          {question.required && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                        
                           {/* Input render bölümü */}
-                          {question.type === 'text' && (
+                        {question.type === 'text' && (
                             <div className="relative">
-                              <input
-                                type="text"
-                                value={componentData[component].answers[question.id] || ''}
+                          <input
+                            type="text"
+                            value={componentData[component].answers[question.id] || ''}
                                 onChange={(e) => handleAnswerChange(component, question.id, e.target.value, question)}
                                 onKeyDown={(e) => handleKeyDown(component, index, e)}
                                 data-question-id={question.id}
@@ -1069,8 +1184,8 @@ const ReportBuilder = () => {
                                     ? 'border-green-300'
                                     : 'border-gray-300'
                                 }`}
-                                placeholder={question.placeholder || ''}
-                                required={question.required}
+                            placeholder={question.placeholder || ''}
+                            required={question.required}
                                 disabled={savingStates[`${component}-${question.id}`]}
                               />
                               
@@ -1097,12 +1212,12 @@ const ReportBuilder = () => {
                                 </p>
                               )}
                             </div>
-                          )}
-                          
-                          {question.type === 'textarea' && (
+                        )}
+                        
+                        {question.type === 'textarea' && (
                             <div className="relative">
-                              <textarea
-                                value={componentData[component].answers[question.id] || ''}
+                          <textarea
+                            value={componentData[component].answers[question.id] || ''}
                                 onChange={(e) => handleAnswerChange(component, question.id, e.target.value, question)}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -1110,7 +1225,7 @@ const ReportBuilder = () => {
                                   }
                                 }}
                                 data-question-id={question.id}
-                                rows={4}
+                            rows={4}
                                 className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
                                   validationStates[`${component}-${question.id}`]?.isValid === false
                                     ? 'border-red-300'
@@ -1118,8 +1233,8 @@ const ReportBuilder = () => {
                                     ? 'border-green-300'
                                     : 'border-gray-300'
                                 }`}
-                                placeholder={question.placeholder || ''}
-                                required={question.required}
+                            placeholder={question.placeholder || ''}
+                            required={question.required}
                                 disabled={savingStates[`${component}-${question.id}`]}
                               />
                               
@@ -1146,12 +1261,12 @@ const ReportBuilder = () => {
                                 </p>
                               )}
                             </div>
-                          )}
-                          
-                          {question.type === 'select' && (
+                        )}
+                        
+                        {question.type === 'select' && (
                             <div className="relative">
-                              <select
-                                value={componentData[component].answers[question.id] || ''}
+                          <select
+                            value={componentData[component].answers[question.id] || ''}
                                 onChange={(e) => handleAnswerChange(component, question.id, e.target.value, question)}
                                 onKeyDown={(e) => handleKeyDown(component, index, e)}
                                 data-question-id={question.id}
@@ -1162,16 +1277,16 @@ const ReportBuilder = () => {
                                     ? 'border-green-300'
                                     : 'border-gray-300'
                                 }`}
-                                required={question.required}
+                            required={question.required}
                                 disabled={savingStates[`${component}-${question.id}`]}
-                              >
-                                <option value="">Seçiniz</option>
-                                {Array.isArray(question.options) && question.options.map(option => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
+                          >
+                            <option value="">Seçiniz</option>
+                            {Array.isArray(question.options) && question.options.map(option => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
                               
                               {/* Validasyon ve kaydetme durumu göstergeleri */}
                               <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none">
@@ -1196,87 +1311,169 @@ const ReportBuilder = () => {
                                 </p>
                               )}
                             </div>
-                          )}
-                          
-                          {question.type === 'file' && (
-                            <div className="mt-1">
-                              <div className="flex flex-col space-y-2">
-                                {(() => {
-                                  const answerString = componentData[component]?.answers[question.id];
-                                  let pdfData = null;
+                        )}
+                        
+                        {question.type === 'file' && (
+                          <div className="mt-1">
+                              <div className="flex flex-col space-y-3">
+                                {/* PDF Yükleme/Görüntüleme Alanı */}
+                                <div className="space-y-2">
+                                  <p className="text-xs font-medium text-gray-700">PDF Rapor</p>
+                                  {(() => {
+                                    const answerString = componentData[component]?.answers[question.id];
+                                    let pdfData = null;
 
-                                  if (answerString && typeof answerString === 'string') {
-                                    try {
-                                      pdfData = JSON.parse(answerString);
-                                    } catch (e) {
-                                      console.error('PDF JSON parse hatası:', e);
+                                    if (answerString && typeof answerString === 'string') {
+                                      try {
+                                        pdfData = JSON.parse(answerString);
+                                      } catch (e) {
+                                        console.error('PDF JSON parse hatası:', e);
+                                      }
                                     }
-                                  }
 
-                                  // Yükleme durumunda loading spinner göster
-                                  if (isLoadingPdf) {
-                                    return (
-                                      <div className="flex items-center text-sm text-blue-600">
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        PDF işleniyor...
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  // PDF yüklenmişse dosya bilgilerini göster
-                                  if (pdfData && pdfData.fileName) {
-                                    return (
-                                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
-                                        <div className="flex items-center">
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    // Yükleme durumunda loading spinner göster
+                                    if (isLoadingPdf) {
+                                      return (
+                                        <div className="flex items-center text-sm text-blue-600">
+                                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                           </svg>
-                                          <span className="text-sm font-medium text-gray-700">
-                                            {pdfData.fileName}
-                                          </span>
+                                          PDF işleniyor...
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveComponentPdf(component, question.id)}
-                                          className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
-                                          title="Dosyayı kaldır"
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                          </svg>
-                                        </button>
-                                      </div>
+                                      );
+                                    }
+                                    
+                                    // PDF yüklenmişse dosya bilgilerini göster
+                                    if (pdfData && pdfData.fileName) {
+                                      return (
+                                        <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
+                                          <div className="flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            <span className="text-sm font-medium text-gray-700">
+                                              {pdfData.fileName}
+                                            </span>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRemoveComponentPdf(component, question.id)}
+                                            className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
+                                            title="Dosyayı kaldır"
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                            </svg>
+                                          </button>
+                                        </div>
+                                      );
+                                    }
+                                    
+                                    // Hiçbir durum yoksa dosya yükleme alanını göster
+                                    return (
+                            <input
+                              type="file"
+                                        accept="application/pdf"
+                                        onChange={(e) => handleComponentPdfUpload(component, question.id, e)}
+                              className="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-md file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-blue-50 file:text-blue-700
+                                hover:file:bg-blue-100"
+                              required={question.required}
+                                        disabled={isLoadingPdf}
+                                      />
                                     );
-                                  }
+                                  })()}
+                                </div>
+                                
+                                {/* Görsel Yükleme/Görüntüleme Alanı */}
+                                <div className="space-y-2 pt-2 border-t border-gray-100">
+                                  <p className="text-xs font-medium text-gray-700">Görseller</p>
                                   
-                                  // Hiçbir durum yoksa dosya yükleme alanını göster
-                                  return (
-                                    <input
-                                      type="file"
-                                      accept="application/pdf"
-                                      onChange={(e) => handleComponentPdfUpload(component, question.id, e)}
-                                      className="block w-full text-sm text-gray-500
-                                        file:mr-4 file:py-2 file:px-4
-                                        file:rounded-md file:border-0
-                                        file:text-sm file:font-semibold
-                                        file:bg-blue-50 file:text-blue-700
-                                        hover:file:bg-blue-100"
-                                      required={question.required}
-                                      disabled={isLoadingPdf}
-                                    />
-                                  );
-                                })()}
+                                  {/* Yüklenen görseller listesi */}
+                                  <div className="flex flex-wrap gap-2">
+                                    {(() => {
+                                      // İlk görsel için kontrol - ileride istenirse dinamik hale getirilebilir
+                                      const imageKey = `${question.id}_image_0`;
+                                      const imageName = componentData[component]?.answers[imageKey];
+                                      const isLoadingImage = imageLoadingStates[`${component}-${question.id}-image`] || false;
+                                      
+                                      if (isLoadingImage) {
+                                        return (
+                                          <div className="flex items-center text-sm text-blue-600">
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Görsel yükleniyor...
+                                          </div>
+                                        );
+                                      }
+                                      
+                                      // Eğer görsel yüklenmişse göster
+                                      if (imageName) {
+                                        return (
+                                          <div className="relative group">
+                                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
+                                              <div className="flex items-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                <span className="text-sm font-medium text-gray-700">
+                                                  {imageName.length > 20 ? imageName.substring(0, 17) + '...' : imageName}
+                                                </span>
+                                              </div>
+                                <button
+                                                type="button"
+                                                onClick={() => handleRemoveComponentImage(component, question.id, 0)}
+                                                className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
+                                                title="Görseli kaldır"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
                               </div>
-                            </div>
-                          )}
-                          
-                          {question.description && (
-                            <p className="mt-1 text-sm text-gray-500">{question.description}</p>
-                          )}
-                        </div>
+                                          </div>
+                                        );
+                                      }
+                                      
+                                      // Eğer görsel yüklenmemişse yükleme alanı göster
+                                      return (
+                                        <div>
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => handleComponentImageUpload(component, question.id, e)}
+                                            id={`image-upload-${component}-${question.id}`}
+                                            className="hidden"
+                                            disabled={isLoadingImage}
+                                          />
+                                          <label
+                                            htmlFor={`image-upload-${component}-${question.id}`}
+                                            className="inline-flex items-center px-3 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 cursor-pointer"
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            Görsel Yükle
+                                          </label>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+                          </div>
+                        )}
+                        
+                        {question.description && (
+                          <p className="mt-1 text-sm text-gray-500">{question.description}</p>
+                        )}
+                      </div>
                       );
                     })}
                   </div>
@@ -1286,15 +1483,15 @@ const ReportBuilder = () => {
               </div>
             ))}
           </div>
-        </div>
-
+            </div>
+            
         {/* Sağ Panel - Bileşenler Listesi */}
         <div className="w-64 ml-8 hidden lg:block">
           <div className="bg-white rounded-lg shadow-lg p-4 sticky top-8">
             <ul className="space-y-2">
               {components.map(component => (
                 <li key={`toc-${component}`}>
-                  <button
+                    <button
                     onClick={() => scrollToComponent(component)}
                     className={`w-full text-left px-3 py-2 rounded-md transition-all duration-200 ${
                       activeSection === component
@@ -1303,43 +1500,43 @@ const ReportBuilder = () => {
                     }`}
                   >
                     {component}
-                  </button>
+                    </button>
                 </li>
               ))}
             </ul>
+                  </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Rapor İşlemleri ve Sonuç Bölümü */}
-      <div className="mt-8">
-        {/* Oluşturulan Rapor Görüntüleme Bölümü */}
-        {activeReport && activeReport.report_generated && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Oluşturulan Rapor</h2>
-            <p className="text-gray-600 mb-4">
-              Raporunuz başarıyla oluşturuldu. Aşağıdaki butonlarla raporu görüntüleyebilir, indirebilir veya sonlandırabilirsiniz.
-            </p>
-            
-            {/* PDF Dosya adı gösterimi */}
-            {activeReport.pdfFileName && (
-              <div className="bg-gray-50 rounded-md p-3 mb-4">
-                <p className="text-sm text-gray-600">PDF Dosya Adı:</p>
-                <p className="text-md font-medium text-gray-800">{activeReport.pdfFileName}</p>
-                <p className="text-xs text-gray-500 mt-1">Dosya adı otomatik olarak [proje adı]__[rapor tarihi].pdf formatında oluşturulmuştur.</p>
-              </div>
-            )}
-            
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={handleDownloadReport}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Raporu İndir
-              </button>
+          {/* Rapor İşlemleri ve Sonuç Bölümü */}
+          <div className="mt-8">
+            {/* Oluşturulan Rapor Görüntüleme Bölümü */}
+            {activeReport && activeReport.report_generated && (
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-4">Oluşturulan Rapor</h2>
+                <p className="text-gray-600 mb-4">
+                  Raporunuz başarıyla oluşturuldu. Aşağıdaki butonlarla raporu görüntüleyebilir, indirebilir veya sonlandırabilirsiniz.
+                </p>
+                
+                {/* PDF Dosya adı gösterimi */}
+                {activeReport.pdfFileName && (
+                  <div className="bg-gray-50 rounded-md p-3 mb-4">
+                    <p className="text-sm text-gray-600">PDF Dosya Adı:</p>
+                    <p className="text-md font-medium text-gray-800">{activeReport.pdfFileName}</p>
+                    <p className="text-xs text-gray-500 mt-1">Dosya adı otomatik olarak [proje adı]__[rapor tarihi].pdf formatında oluşturulmuştur.</p>
+                  </div>
+                )}
+                
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={handleDownloadReport}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Raporu İndir
+                  </button>
 
               <button
                 onClick={handleResetReportGeneration}
@@ -1361,55 +1558,55 @@ const ReportBuilder = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
                 Önizleme
+                  </button>
+                  
+                  {!activeReport.is_finalized && (
+                    <button
+                      onClick={() => setShowFinalizeDialog(true)}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Raporu Sonlandır
+                    </button>
+                  )}
+                </div>
+                
+                {activeReport.is_finalized ? (
+                  <p className="mt-4 text-sm font-medium text-green-600">
+                    Bu rapor sonlandırılmış ve düzenlenemez durumda.
+                  </p>
+                ) : (
+                  <p className="mt-4 text-sm text-amber-600">
+                    Rapor düzenlenebilir durumda. Düzenlemeyi tamamladıktan sonra sonlandırabilirsiniz.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Ana Butonlar */}
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => navigate(`/project/${projectName}`)}
+                className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+            Geri
               </button>
               
-              {!activeReport.is_finalized && (
-                <button
-                  onClick={() => setShowFinalizeDialog(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <button
+                onClick={handleGenerateReport}
+                disabled={savingReport || (activeReport && activeReport.is_finalized)}
+                className="px-6 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
+              >
+                {savingReport && (
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Raporu Sonlandır
-                </button>
-              )}
-            </div>
-            
-            {activeReport.is_finalized ? (
-              <p className="mt-4 text-sm font-medium text-green-600">
-                Bu rapor sonlandırılmış ve düzenlenemez durumda.
-              </p>
-            ) : (
-              <p className="mt-4 text-sm text-amber-600">
-                Rapor düzenlenebilir durumda. Düzenlemeyi tamamladıktan sonra sonlandırabilirsiniz.
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Ana Butonlar */}
-        <div className="flex justify-center space-x-4">
-          <button
-            onClick={() => navigate(`/project/${projectName}`)}
-            className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Geri
-          </button>
-          
-          <button
-            onClick={handleGenerateReport}
-            disabled={savingReport || (activeReport && activeReport.is_finalized)}
-            className="px-6 py-3 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
-          >
-            {savingReport && (
-              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            )}
-            {savingReport ? 'Rapor Oluşturuluyor...' : (activeReport && activeReport.report_generated) ? 'Raporu Yeniden Oluştur' : 'Raporu Oluştur'}
-          </button>
+                )}
+                {savingReport ? 'Rapor Oluşturuluyor...' : (activeReport && activeReport.report_generated) ? 'Raporu Yeniden Oluştur' : 'Raporu Oluştur'}
+              </button>
         </div>
       </div>
 
@@ -1419,4 +1616,4 @@ const ReportBuilder = () => {
   );
 };
 
-export default ReportBuilder;
+export default ReportBuilder; 
