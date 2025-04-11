@@ -353,7 +353,7 @@ async def generate_project_report(request: GenerateReportRequest):
 
         # Rapor ID'si oluştur
         logger.info(f"[REPORT_GEN] Rapor ID alınıyor...")
-            report_id = get_report_id(request.project_name)
+        report_id = get_report_id(request.project_name)
         logger.info(f"[REPORT_GEN] Rapor ID alındı: {report_id}")
 
         # 2. Rapora görsel/stil özellikleri ekleyerek PDF oluştur
