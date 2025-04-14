@@ -12,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import io
-from api.gpt_handler import generate_report, process_report_request, extract_pdf_content, get_project_reports
+from api.gpt_handler import generate_report,  extract_pdf_content, get_project_reports
 from api.mail_agent import send_missing_info_request, get_department_email, send_report_email as mail_agent_send_report
 from api.questions_handler import get_questions_for_component
 from api.data_storage import (
@@ -672,120 +672,121 @@ def send_email(request: EmailRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"E-posta gönderilirken bir hata oluştu: {str(e)}")
 
-@app.post("/process-report")
-async def process_report(
-    user_input: Optional[str] = Form(None),
-    pdf_file: Optional[UploadFile] = File(None)
-):
-    """
-    Kullanıcının metin ve/veya PDF dosyasını işler ve sonuçlarını döndürür.
-    Dosya işleme, OpenAI API kullanılarak gerçekleştirilir.
-    """
-    if not user_input and not pdf_file:
-        raise HTTPException(status_code=400, detail="Metin veya PDF dosyası gereklidir")
+# @app.post("/process-report")
+# async def process_report(
+#     user_input: Optional[str] = Form(None),
+#     pdf_file: Optional[UploadFile] = File(None)
+# ):
+#     """
+#     Kullanıcının metin ve/veya PDF dosyasını işler ve sonuçlarını döndürür.
+#     Dosya işleme, OpenAI API kullanılarak gerçekleştirilir.
+#     """
+#     if not user_input and not pdf_file:
+#         raise HTTPException(status_code=400, detail="Metin veya PDF dosyası gereklidir")
     
-    try:
-        # PDF dosyasını geçici olarak kaydet
-        temp_file_path = None
-        if pdf_file:
-            try:
-                # PDF dosyasını oku
-                content = await pdf_file.read()
-                if not content:
-                    raise HTTPException(status_code=400, detail="Yüklenen PDF dosyası boş")
+#     try:
+#         # PDF dosyasını geçici olarak kaydet
+#         temp_file_path = None
+#         if pdf_file:
+#             try:
+#                 # PDF dosyasını oku
+#                 content = await pdf_file.read()
+#                 if not content:
+#                     raise HTTPException(status_code=400, detail="Yüklenen PDF dosyası boş")
                 
-                # Dosya boyutunu kontrol et
-                file_size = len(content)
-                if file_size == 0:
-                    raise HTTPException(status_code=400, detail="PDF dosyası boş")
-                print(f"PDF dosyası boyutu: {file_size} byte")
+#                 # Dosya boyutunu kontrol et
+#                 file_size = len(content)
+#                 if file_size == 0:
+#                     raise HTTPException(status_code=400, detail="PDF dosyası boş")
+#                 print(f"PDF dosyası boyutu: {file_size} byte")
                 
-                # Geçici dosya oluştur
-                import tempfile
-                import os
+#                 # Geçici dosya oluştur
+#                 import tempfile
+#                 import os
                 
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-                temp_file_path = temp_file.name
-                temp_file.write(content)
-                temp_file.close()
+#                 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+#                 temp_file_path = temp_file.name
+#                 temp_file.write(content)
+#                 temp_file.close()
                 
-                # Dosya kontrolü
-                if not os.path.exists(temp_file_path):
-                    raise HTTPException(status_code=400, detail="PDF dosyası geçici olarak kaydedilemedi")
+#                 # Dosya kontrolü
+#                 if not os.path.exists(temp_file_path):
+#                     raise HTTPException(status_code=400, detail="PDF dosyası geçici olarak kaydedilemedi")
                 
-                file_saved_size = os.path.getsize(temp_file_path)
-                if file_saved_size == 0:
-                    os.unlink(temp_file_path)
-                    raise HTTPException(status_code=400, detail="Kaydedilen PDF dosyası boş")
+#                 file_saved_size = os.path.getsize(temp_file_path)
+#                 if file_saved_size == 0:
+#                     os.unlink(temp_file_path)
+#                     raise HTTPException(status_code=400, detail="Kaydedilen PDF dosyası boş")
                     
-                print(f"PDF dosyası geçici olarak kaydedildi: {temp_file_path} ({file_saved_size} byte)")
-            except HTTPException as e:
-                # HTTP hataları yukarıya ilet
-                if temp_file_path and os.path.exists(temp_file_path):
-                    os.unlink(temp_file_path)
-                raise e
-            except Exception as e:
-                if temp_file_path and os.path.exists(temp_file_path):
-                    os.unlink(temp_file_path)
-                print(f"PDF dosyası işlenirken hata: {str(e)}")
-                raise HTTPException(status_code=400, detail=f"PDF dosyası işlenirken hata: {str(e)}")
+#                 print(f"PDF dosyası geçici olarak kaydedildi: {temp_file_path} ({file_saved_size} byte)")
+#             except HTTPException as e:
+#                 # HTTP hataları yukarıya ilet
+#                 if temp_file_path and os.path.exists(temp_file_path):
+#                     os.unlink(temp_file_path)
+#                 raise e
+#             except Exception as e:
+#                 if temp_file_path and os.path.exists(temp_file_path):
+#                     os.unlink(temp_file_path)
+#                 print(f"PDF dosyası işlenirken hata: {str(e)}")
+#                 raise HTTPException(status_code=400, detail=f"PDF dosyası işlenirken hata: {str(e)}")
         
-        # İşlem parametrelerini hazırla
-        process_params = {}
-        if user_input:
-            process_params['user_input'] = user_input
-            print(f"Kullanıcı metni: {user_input[:50]}...")
+#         # İşlem parametrelerini hazırla
+#         process_params = {}
+#         if user_input:
+#             process_params['user_input'] = user_input
+#             print(f"Kullanıcı metni: {user_input[:50]}...")
         
-        if temp_file_path:
-            try:
-                # PDF içeriğini çıkar
-                pdf_content = extract_pdf_content(temp_file_path)
-                if not pdf_content or pdf_content.strip() == "":
-                    raise HTTPException(status_code=400, detail="PDF içeriği çıkarılamadı veya PDF boş")
+#         if temp_file_path:
+#             try:
+#                 # PDF içeriğini çıkar
+#                 pdf_content = extract_pdf_content(temp_file_path)
+#                 if not pdf_content or pdf_content.strip() == "":
+#                     raise HTTPException(status_code=400, detail="PDF içeriği çıkarılamadı veya PDF boş")
                 
-                process_params['pdf_content'] = pdf_content
-                print(f"PDF içeriği çıkarıldı: {len(pdf_content)} karakter")
-            except Exception as e:
-                print(f"PDF içeriği çıkarılırken hata: {str(e)}")
-                raise HTTPException(status_code=400, detail=f"PDF içeriği çıkarılırken hata: {str(e)}")
-            finally:
-                # Geçici dosyayı temizle
-                if temp_file_path and os.path.exists(temp_file_path):
-                    os.unlink(temp_file_path)
-                    print(f"Geçici dosya silindi: {temp_file_path}")
+#                 process_params['pdf_content'] = pdf_content
+#                 print(f"PDF içeriği çıkarıldı: {len(pdf_content)} karakter")
+#             except Exception as e:
+#                 print(f"PDF içeriği çıkarılırken hata: {str(e)}")
+#                 raise HTTPException(status_code=400, detail=f"PDF içeriği çıkarılırken hata: {str(e)}")
+#             finally:
+#                 # Geçici dosyayı temizle
+#                 if temp_file_path and os.path.exists(temp_file_path):
+#                     os.unlink(temp_file_path)
+#                     print(f"Geçici dosya silindi: {temp_file_path}")
         
-        # Rapor işleme
-        try:
-            result = await process_report_request(**process_params)
+#         # Rapor işleme
+#         try:
+#             result = await process_report_request(**process_params)
+#             print(f"Rapor başarıyla işlendi: {result.get('success', False)}")
             
-            # Sonuç kontrolü
-            if not result:
-                raise HTTPException(status_code=500, detail="İşlem sonucu boş")
+#             # Sonuç kontrolü
+#             if not result:
+#                 raise HTTPException(status_code=500, detail="İşlem sonucu boş")
                 
-            if "error" in result and result["error"]:
-                raise HTTPException(status_code=500, detail=result["error"])
+#             if "error" in result and result["error"]:
+#                 raise HTTPException(status_code=500, detail=result["error"])
                 
-            # PDF yolunu daha erişilebilir yap
-            if result.get('pdf_path'):
-                result['download_url'] = f"/download/{result['pdf_path']}"
+#             # PDF yolunu daha erişilebilir yap
+#             if result.get('pdf_path'):
+#                 result['download_url'] = f"/download/{result['pdf_path']}"
             
-            return result
-        except HTTPException as e:
-            # HTTP hataları yukarıya ilet
-            raise e
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(f"Rapor işlenirken beklenmeyen hata: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Rapor işlenirken hata oluştu: {str(e)}")
-    except HTTPException as e:
-        # Önceden oluşturulan HTTP hataları
-        raise e
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"Rapor işlenirken beklenmeyen hata: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Rapor işlenirken hata oluştu: {str(e)}")
+#             return result
+#         except HTTPException as e:
+#             # HTTP hataları yukarıya ilet
+#             raise e
+#         except Exception as e:
+#             import traceback
+#             traceback.print_exc()
+#             print(f"Rapor işlenirken beklenmeyen hata: {str(e)}")
+#             raise HTTPException(status_code=500, detail=f"Rapor işlenirken hata oluştu: {str(e)}")
+#     except HTTPException as e:
+#         # Önceden oluşturulan HTTP hataları
+#         raise e
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         print(f"Rapor işlenirken beklenmeyen hata: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"Rapor işlenirken hata oluştu: {str(e)}")
 
 @app.post("/project/finalize-report", response_model=Dict[str, Any])
 def finalize_project_report(request: ProjectRequest):

@@ -136,7 +136,7 @@ def split_content_by_sentences(content: str) -> List[str]:
     # Basit cümle ayırıcı (nokta, ünlem, soru işareti)
     sentences = []
     current_sentence = ""
-    
+    print(f"[LOG] split_content_by_sentences fonksiyonu çağrıldı*************************************************")
     for char in content:
         current_sentence += char
         if char in '.!?':
@@ -162,6 +162,7 @@ def create_content_chunks(sentences: List[str], max_chunk_size: int) -> List[str
     chunks = []
     current_chunk = []
     current_size = 0
+    print(f"[LOG] split_content_by_sentences fonksiyonu çağrıldı*************************************************")
     
     for sentence in sentences:
         sentence_size = len(sentence.split())
@@ -182,7 +183,7 @@ async def handle_rate_limit(func):
     """Rate limiting için exponential backoff uygula"""
     max_retries = 3
     base_delay = 1
-    
+    print(f"[LOG] handle_rate_limit fonksiyonu çağrıldı*************************************************")
     for attempt in range(max_retries):
         try:
             return await func()
@@ -195,20 +196,14 @@ async def handle_rate_limit(func):
                 await asyncio.sleep(delay)
             else:
                 raise
+                
 
-async def process_text_request_async(content: str, role: str = 'kurumsal raporlama') -> str:
+async def process_text_request_async(content: str) -> str:
     """
     Asenkron olarak metin işleme isteği gönderir.
     """
-    system_roles = {
-        'kurumsal raporlama': 'Sen kurumsal dilde raporlar yazan bir asistansın.',
-        'teknik': 'Sen teknik verileri analiz eden bir uzmansın.',
-        'finans': 'Sen finansal verileri yorumlayan bir finans uzmanısın.',
-        'özet': 'Sen karmaşık metinleri özetleyen bir uzmansın.'
-    }
-    
-    system_content = system_roles.get(role, system_roles['kurumsal raporlama'])
-    
+    system_content = 'Sen kurumsal dilde raporlar yazan bir asistansın.'
+    print(f"[LOG] process_text_request_async fonksiyonu başlatıldı*************************************************")
     async def make_request():
         return await asyncio.to_thread(
             create_chat_completion,
@@ -236,6 +231,7 @@ def create_storage_path(project_name: str) -> str:
     Returns:
         Proje klasörünün yolu
     """
+    print(f"[LOG] create_storage_path fonksiyonu çağrıldı*************************************************")
     project_dir = ensure_report_directory(project_name)
     return str(project_dir)
 
@@ -246,6 +242,7 @@ def ensure_reports_directory() -> str:
     Returns:
         Ana raporlar klasörünün yolu
     """
+    print(f"[LOG] ensure_reports_directory fonksiyonu çağrıldı*************************************************")
     reports_dir = "pdf_reports"
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
@@ -263,6 +260,8 @@ def save_report_path(project_name: str, pdf_path: str) -> None:
     try:
         # PDF dosya adını al
         pdf_filename = os.path.basename(pdf_path)
+
+        print(f"[LOG] save_report_path fonksiyonu çağrıldı*************************************************")
         
         report_data = {
             "project_name": project_name,
@@ -303,71 +302,59 @@ def save_report_path(project_name: str, pdf_path: str) -> None:
         print(f"PDF dosya yolu kaydedilirken hata: {str(e)}")
         return None
 
-def create_pdf(content: str, project_name: str) -> str:
-    """
-    İçeriği PDF olarak oluşturur ve kaydeder.
+# def create_pdf(content: str, project_name: str) -> str:
+#     """
+#     İçeriği PDF olarak oluşturur ve kaydeder.
     
-    Args:
-        content: PDF içeriği
-        project_name: Proje adı
+#     Args:
+#         content: PDF içeriği
+#         project_name: Proje adı
         
-    Returns:
-        Oluşturulan PDF dosyasının yolu
-    """
-    try:
-        # PDF içeriğini oluştur
-        pdf = FPDF()
-        pdf.add_page()
+#     Returns:
+#         Oluşturulan PDF dosyasının yolu
+#     """
+#     try:
+#         # Log the PDF creation process
+#         print(f"PDF oluşturuluyor: Proje Adı: {project_name}, İçerik Uzunluğu: {len(content)} karakter")
+#         # PDF içeriğini oluştur
+#         pdf = FPDF()
+#         pdf.add_page()
         
-        # DejaVu font eklemesi (Türkçe karakterler için)
-        font_path = check_font_availability()
-        pdf.add_font('DejaVu', '', font_path, uni=True)
-        pdf.set_font('DejaVu', '', 12)
+#         # DejaVu font eklemesi (Türkçe karakterler için)
+#         font_path = check_font_availability()
+#         pdf.add_font('DejaVu', '', font_path, uni=True)
+#         pdf.set_font('DejaVu', '', 12)
         
-        # İçeriği PDF'e ekle
-        pdf.multi_cell(0, 10, content)
+#         # İçeriği PDF'e ekle
+#         pdf.multi_cell(0, 10, content)
         
-        # PDF'i geçici olarak oluştur
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
-            pdf.output(temp_file.name)
+#         # PDF'i geçici olarak oluştur
+#         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+#             pdf.output(temp_file.name)
             
-            # PDF içeriğini oku
-            with open(temp_file.name, 'rb') as f:
-                pdf_content = f.read()
+#             # PDF içeriğini oku
+#             with open(temp_file.name, 'rb') as f:
+#                 pdf_content = f.read()
             
-            # Geçici dosyayı sil
-            os.unlink(temp_file.name)
+#             # Geçici dosyayı sil
+#             os.unlink(temp_file.name)
         
-        # PDF'i kaydet
-        report_id = datetime.now().strftime("%Y%m%d%H%M%S")  # Basit bir rapor ID
-        pdf_path, success = save_pdf_content(pdf_content, project_name, report_id)
+#         # PDF'i kaydet
+#         report_id = datetime.now().strftime("%Y%m%d%H%M%S")  # Basit bir rapor ID
+#         pdf_path, success = save_pdf_content(pdf_content, project_name, report_id)
         
-        if not success:
-            raise Exception("PDF kaydedilemedi")
+#         if not success:
+#             raise Exception("PDF kaydedilemedi")
         
-        # PDF yolunu kaydet
-        report_data = save_report_path(project_name, str(pdf_path))
+#         # PDF yolunu kaydet
+#         report_data = save_report_path(project_name, str(pdf_path))
         
-        return str(pdf_path)
+#         return str(pdf_path)
         
-    except Exception as e:
-        error_msg = f"PDF oluşturulurken hata: {str(e)}"
-        print(error_msg)
-        raise Exception(error_msg)
-
-def generate_pdf_filename(project_name: str) -> str:
-    """
-    PDF dosyası için benzersiz bir isim oluşturur.
-    
-    Args:
-        project_name: Proje adı
-        
-    Returns:
-        Oluşturulan dosya adı
-    """
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    safe_project_name = project_name.replace(" ", "_")
-    return f"{safe_project_name}__{date_str}.pdf"
+#     except Exception as e:
+#         error_msg = f"PDF oluşturulurken hata: {str(e)}"
+#         print(error_msg)
+#         raise Exception(error_msg)
 
 def process_request(data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -397,6 +384,9 @@ def process_request(data: Dict[str, Any]) -> Dict[str, Any]:
         # PDF içeriği varsa
         if request_data.pdf_content:
             combined_input += f"PDF İçeriği:\n{request_data.pdf_content}\n\n"
+        # Log combined input
+        print(f"[LOG] Combined input prepared: {len(combined_input)} characters*************************************************")
+        print(f"[LOG] Input components: Project Report: {'Proje Raporu' in combined_input}, User Text: {'Kullanıcı Metni' in combined_input}, PDF Content: {'PDF İçeriği' in combined_input}")
 
         # İçeriği token limitine göre böl
         chunks = split_content(combined_input, max_tokens=GPT_MAX_TOKENS)
@@ -602,6 +592,8 @@ def analyze_component_completion(answers: Dict[str, str], questions: list) -> Di
             answered_questions += 1
         elif question.get("required", False):
             missing_info.append(question["text"])
+    # Fonksiyon çalışma durumunu logla
+    print(f"analyze_component_completion() fonksiyonu çalıştırıldı - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     completion_percentage = int((answered_questions / total_questions) * 100) if total_questions > 0 else 0
     status = "completed" if completion_percentage == 100 else "incomplete"
@@ -695,26 +687,20 @@ def extract_pdf_content(file_path: str) -> str:
     
     return extracted_text.strip()
 
-def process_text_request(content: str, role: str = 'kurumsal raporlama') -> str:
+def process_text_request(content: str) -> str:
     """
     Kullanıcıdan gelen metin girdisini OpenAI API'ına gönderir ve sonucu döndürür.
     
     Args:
         content: İşlenecek metin içeriği
-        role: Asistanın rolü/talimatı
         
     Returns:
         İşlenmiş metin çıktısı
     """
-    system_roles = {
-        'kurumsal raporlama': 'Sen kurumsal dilde raporlar yazan bir asistansın.',
-        'teknik': 'Sen teknik verileri analiz eden bir uzmansın.',
-        'finans': 'Sen finansal verileri yorumlayan bir finans uzmanısın.',
-        'özet': 'Sen karmaşık metinleri özetleyen bir uzmansın.'
-    }
-    
-    system_content = system_roles.get(role, system_roles['kurumsal raporlama'])
-    
+    system_content = 'Sen kurumsal dilde raporlar yazan bir asistansın.'
+    print(f"[LOG] process_text_request fonksiyonu başlatıldı*************************************************")
+    print(f"[LOG] İşlenecek metin içeriği: {content[:100]}...")
+    print(f"[LOG] Sistem içeriği: {system_content}")
     try:
         # OpenAI API çağrısı için Pydantic modeli oluştur
         request = OpenAIRequest(
@@ -743,70 +729,72 @@ def process_text_request(content: str, role: str = 'kurumsal raporlama') -> str:
         print(error_msg)
         return error_msg
 
-async def process_report_request(user_input: str = None, pdf_content: str = None, project_name: str = "rapor") -> dict:
-    """
-    Rapor işleme isteğini asenkron olarak yönetir.
-    """
-    try:
-        if not user_input and not pdf_content:
-            return AIResponse(error="Kullanıcı girişi veya PDF içeriği gerekli").dict()
+# async def process_report_request(user_input: str = None, pdf_content: str = None, project_name: str = "rapor") -> dict:
+#     """
+#     Rapor işleme isteğini asenkron olarak yönetir.
+#     """
+#     try:
+#         if not user_input and not pdf_content:
+#             return AIResponse(error="Kullanıcı girişi veya PDF içeriği gerekli").dict()
         
-        processed_content = ""
-        if pdf_content:
-            processed_content = await process_pdf_content_async(pdf_content)
+#         processed_content = ""
+#         if pdf_content:
+#             print("process_pdf_content_async fonksiyonu çağrıldı:", pdf_content[:100])
+#             processed_content = await process_pdf_content_async(pdf_content) 
         
-        if user_input:
-            if processed_content:
-                processed_content = f"{processed_content}\n\nKullanıcı Notu: {user_input}"
-            else:
-                processed_content = user_input
+#         if user_input:
+#             if processed_content:
+#                 processed_content = f"{processed_content}\n\nKullanıcı Notu: {user_input}"
+#             else:
+#                 processed_content = user_input
         
-        # İçeriği analiz et
-        analysis = await analyze_content_async(processed_content)
+#         # İçeriği analiz et
+#         print("analyze_content_async fonksiyonu çağrıldı:", processed_content[:100])
+#         analysis = await analyze_content_async(processed_content)
         
-        # PDF oluştur
-        pdf_path = create_pdf(processed_content, project_name)
+#         # PDF oluştur
+#         pdf_path = create_pdf(processed_content, project_name)
         
-        return AIResponse(
-            combined_output=processed_content,
-            pdf_path=pdf_path,
-            success=True
-        ).dict()
+#         return AIResponse(
+#             combined_output=processed_content,
+#             pdf_path=pdf_path,
+#             success=True
+#         ).dict()
         
-    except Exception as e:
-        error_msg = f"Rapor işleme hatası: {str(e)}"
-        print(error_msg)
-        return AIResponse(error=error_msg).dict()
+#     except Exception as e:
+#         error_msg = f"Rapor işleme hatası: {str(e)}"
+#         print(error_msg)
+#         return AIResponse(error=error_msg).dict()
 
-async def process_pdf_content_async(pdf_content: str) -> str:
-    """
-    PDF içeriğini asenkron olarak işler.
-    """
-    try:
-        # PDF içeriğini token limitine göre böl
-        chunks = split_content(pdf_content, MAX_TOKEN_LIMIT)
+# async def process_pdf_content_async(pdf_content: str) -> str:
+#     """
+#     PDF içeriğini asenkron olarak işler.
+#     """
+#     try:
+#         # PDF içeriğini token limitine göre böl
+#         chunks = split_content(pdf_content, MAX_TOKEN_LIMIT)
         
-        processed_chunks = []
-        for chunk in chunks:
-            # Her chunk için OpenAI API çağrısı yap
-            response = await asyncio.to_thread(
-                create_chat_completion,
-                GPT_MODEL,
-                [
-                    {"role": "system", "content": "Sen profesyonel raporlar hazırlayan bir asistansın."},
-                    {"role": "user", "content": chunk}
-                ],
-                GPT_TEMPERATURE,
-                int(GPT_MAX_TOKENS / 2)
-            )
-            processed_chunks.append(response)
+#         processed_chunks = []
+#         for chunk in chunks:
+#             # Her chunk için OpenAI API çağrısı yap
+#             response = await asyncio.to_thread(
+#                 create_chat_completion,
+#                 GPT_MODEL,
+#                 [
+#                     {"role": "system", "content": "Sen profesyonel raporlar hazırlayan bir asistansın."},
+#                     {"role": "user", "content": chunk}
+#                 ],
+#                 GPT_TEMPERATURE,
+#                 int(GPT_MAX_TOKENS / 2)
+#             )
+#             processed_chunks.append(response)
         
-        # İşlenmiş chunkları birleştir
-        return '\n\n'.join(processed_chunks)
-    except Exception as e:
-        error_msg = f'PDF işleme hatası: {str(e)}'
-        print(error_msg)
-        return error_msg
+#         # İşlenmiş chunkları birleştir
+#         return '\n\n'.join(processed_chunks)
+#     except Exception as e:
+#         error_msg = f'PDF işleme hatası: {str(e)}'
+#         print(error_msg)
+#         return error_msg
 
 async def analyze_content_async(content: str, analysis_type: str = 'summary') -> str:
     """
@@ -840,7 +828,7 @@ async def analyze_content_async(content: str, analysis_type: str = 'summary') ->
         print(error_msg)
         return error_msg
 
-async def test_complete_system():
+# async def test_complete_system():
     """
     Tüm sistemin kapsamlı testini gerçekleştirir.
     """
@@ -936,7 +924,7 @@ async def test_complete_system():
         return error_msg
 
 # Test fonksiyonunu çalıştır
-if __name__ == "__main__":
+# if __name__ == "__main__":
     asyncio.run(test_complete_system())
 
 def get_project_reports(project_name: str) -> List[Dict[str, Any]]:
