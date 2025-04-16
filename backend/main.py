@@ -18,7 +18,7 @@ from api.questions_handler import get_questions_for_component
 from api.data_storage import (
     save_component_data, get_project_data, get_all_projects, 
     save_generated_report, delete_project_data, archive_project, 
-    get_active_report, create_new_report, delete_report as delete_report_from_storage, get_report_id,
+    get_active_report, create_new_report, delete_report as delete_report_from_storage,
     finalize_report, get_project_path,
     reset_active_report_generation
 )
@@ -352,19 +352,19 @@ async def generate_project_report(request: GenerateReportRequest):
             raise HTTPException(status_code=500, detail=f"Yapay zeka ile rapor oluşturulurken hata: {gpt_error}")
 
         # Rapor ID'si oluştur
-        logger.info(f"[REPORT_GEN] Rapor ID alınıyor...")
-        report_id = get_report_id(request.project_name)
-        logger.info(f"[REPORT_GEN] Rapor ID alındı: {report_id}")
+        # logger.info(f"[REPORT_GEN] Rapor ID alınıyor...")
+        # report_id = get_report_id(request.project_name)
+        # logger.info(f"[REPORT_GEN] Rapor ID alındı: {report_id}")
 
-        # 2. Rapora görsel/stil özellikleri ekleyerek PDF oluştur
-        logger.info(f"[REPORT_GEN] PDF oluşturma süreci başlıyor...")
+        # # 2. Rapora görsel/stil özellikleri ekleyerek PDF oluştur
+        # logger.info(f"[REPORT_GEN] PDF oluşturma süreci başlıyor...")
         
-        # 2.1 Projeye özel renkleri ve görsel bilgilerini al
-        logger.info(f"[REPORT_GEN] Proje renkleri ve stili alınıyor...")
-        project_colors = get_project_colors(request.project_name)
-        # Yeni: Dinamik HTML modu için daha kapsamlı stil yapılandırması al
-        style_config = get_project_style_config(request.project_name)
-        logger.info(f"[REPORT_GEN] Proje stili ve renkleri alındı.")
+        # # 2.1 Projeye özel renkleri ve görsel bilgilerini al
+        # logger.info(f"[REPORT_GEN] Proje renkleri ve stili alınıyor...")
+        # project_colors = get_project_colors(request.project_name)
+        # # Yeni: Dinamik HTML modu için daha kapsamlı stil yapılandırması al
+        # style_config = get_project_style_config(request.project_name)
+        # logger.info(f"[REPORT_GEN] Proje stili ve renkleri alındı.")
         
         # 2.2 Görselleri hazırla 
         logger.info(f"[REPORT_GEN] Proje görselleri belirleniyor...")
