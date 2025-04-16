@@ -9,7 +9,6 @@ class WebContentAgent(Agent):
             name="WebContentAgent",
             description="Yapılandırılmış yatırımcı raporu içeriğini ve multimedya varlıklarını WeasyPrint ile uyumlu HTML'e dönüştürür.",
             instructions="instructions.md",
-            llm_model="gpt-4-turbo",
             # Web içeriği oluşturma acentesi için gerekli yapılandırmalar
             tools=[GenerateDynamicHtmlTool, GetProjectStyleConfigTool, ProcessImagesForReportTool],
         )
