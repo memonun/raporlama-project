@@ -352,19 +352,19 @@ async def generate_project_report(request: GenerateReportRequest):
             raise HTTPException(status_code=500, detail=f"Yapay zeka ile rapor oluşturulurken hata: {gpt_error}")
 
         # Rapor ID'si oluştur
-        logger.info(f"[REPORT_GEN] Rapor ID alınıyor...")
-        report_id = get_report_id(request.project_name)
-        logger.info(f"[REPORT_GEN] Rapor ID alındı: {report_id}")
+        # logger.info(f"[REPORT_GEN] Rapor ID alınıyor...")
+        # report_id = get_report_id(request.project_name)
+        # logger.info(f"[REPORT_GEN] Rapor ID alındı: {report_id}")
 
-        # 2. Rapora görsel/stil özellikleri ekleyerek PDF oluştur
-        logger.info(f"[REPORT_GEN] PDF oluşturma süreci başlıyor...")
+        # # 2. Rapora görsel/stil özellikleri ekleyerek PDF oluştur
+        # logger.info(f"[REPORT_GEN] PDF oluşturma süreci başlıyor...")
         
-        # 2.1 Projeye özel renkleri ve görsel bilgilerini al
-        logger.info(f"[REPORT_GEN] Proje renkleri ve stili alınıyor...")
-        project_colors = get_project_colors(request.project_name)
-        # Yeni: Dinamik HTML modu için daha kapsamlı stil yapılandırması al
-        style_config = get_project_style_config(request.project_name)
-        logger.info(f"[REPORT_GEN] Proje stili ve renkleri alındı.")
+        # # 2.1 Projeye özel renkleri ve görsel bilgilerini al
+        # logger.info(f"[REPORT_GEN] Proje renkleri ve stili alınıyor...")
+        # project_colors = get_project_colors(request.project_name)
+        # # Yeni: Dinamik HTML modu için daha kapsamlı stil yapılandırması al
+        # style_config = get_project_style_config(request.project_name)
+        # logger.info(f"[REPORT_GEN] Proje stili ve renkleri alındı.")
         
         # 2.2 Görselleri hazırla 
         logger.info(f"[REPORT_GEN] Proje görselleri belirleniyor...")
