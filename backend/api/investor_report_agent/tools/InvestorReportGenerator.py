@@ -2,6 +2,7 @@ from uuid import uuid4
 from agency_swarm.tools import BaseTool
 from pydantic import Field
 import json
+from utils.pdf_utils import get_report_id
 from dotenv import load_dotenv
 load_dotenv()  # Load environment variables
 
@@ -87,20 +88,6 @@ class InvestorReportGenerator(BaseTool):
             "user_prompt": user_prompt,
             "system_prompt": system_prompt
         }
-    
-    def get_report_id(project_name: str) -> str:
-        """
-        Proje adı ve UUID kullanılarak benzersiz rapor ID'si oluşturur
-        
-        Args:
-            project_name: Proje adı
-            
-        Returns:
-            Rapor ID'si (format: {Projeadi}_{UUID})
-        """
-        safe_project = "".join(c if c.isalnum() or c in ['-', '_'] else '_' for c in project_name)
-        unique_id = str(uuid4())
-        return f"{safe_project}_{unique_id}"
 
 
 if __name__ == "__main__":

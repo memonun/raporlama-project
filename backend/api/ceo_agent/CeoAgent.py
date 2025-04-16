@@ -6,10 +6,7 @@ class CeoAgent(Agent):
             name="CeoAgent",
             description="Proje yönetimi, rapor oluşturma ve iletişim koordinasyonundan sorumlu CEO acentesi.",
             instructions="./instructions.md",
-            
-            tools=[
-                
-            ]
+            tools=[]
         )
 
 

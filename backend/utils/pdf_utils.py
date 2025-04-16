@@ -15,6 +15,21 @@ logger = logging.getLogger(__name__)
 BASE_REPORTS_DIR = Path("data/reports")
 BASE_ACTIVE_REPORT_DIR = Path("backend/data/uploads/active_report")
 
+def get_report_id(project_name: str) -> str:
+        """
+        Proje adı ve UUID kullanılarak benzersiz rapor ID'si oluşturur
+        
+        Args:
+            project_name: Proje adı
+            
+        Returns:
+            Rapor ID'si (format: {Projeadi}_{UUID})
+        """
+        safe_project = "".join(c if c.isalnum() or c in ['-', '_'] else '_' for c in project_name)
+        unique_id = str(uuid4())
+        return f"{safe_project}_{unique_id}"
+
+
 def sanitize_filename(name: str) -> str:
     """
     Dosya adını güvenli hale getirir.

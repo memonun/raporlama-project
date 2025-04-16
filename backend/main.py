@@ -41,7 +41,8 @@ from utils.pdf_utils import (
     save_pdf_content,
     extract_text_from_pdf,
     get_report_path,
-    get_pdf_info
+    get_pdf_info,
+    get_report_id,
 )
 
 app = FastAPI(title="Yatırımcı Raporu API")
@@ -557,6 +558,63 @@ async def generate_project_report(request: GenerateReportRequest):
             status_code=500,
             detail=f"Rapor oluşturulurken beklenmedik bir hata oluştu: {error_message}"
         )
+
+@app.post("/generate-report-by-agency")
+async def generate_report_by_agency(request: GenerateReportRequest):
+    """
+    Agency kullanarak rapor oluşturur.
+    """
+    try:
+        logger.info(f"[AGENCY_REPORT_GEN] Rapor oluşturma başlatıldı. Proje={request.project_name}")
+
+        # Request payload'ı hazırla
+        request_payload = {
+            "project_name": request.project_name,
+            "components_data": request.components_data,
+            "user_input": request.user_input,
+            "pdf_content": request.pdf_content,
+            "use_dynamic_html": request.use_dynamic_html
+        }
+
+        # JSON string'e çevir
+        request_payload_json = json.dumps(request_payload, indent=2)
+
+        # Agency prompt'unu hazırla
+        prompt = """
+        Lütfen verilen proje verilerini kullanarak bir yatırımcı raporu oluştur.
+        Rapor aşağıdaki bölümleri içermeli:
+        1. Proje Genel Bakış
+        2. Finansal Analiz
+        3. Risk Değerlendirmesi
+        4. Sonuç ve Öneriler
+
+        Verilen component_data ve pdf_content içeriklerini analiz ederek
+        profesyonel ve detaylı bir rapor hazırla.
+        """
+
+        # Agency'i çağır
+        from api.agency import agency
+        result = agency.get_completion(
+            request_payload_json,
+            prompt,
+            "generate_report"
+        )
+
+        logger.info(f"[AGENCY_REPORT_GEN] Agency rapor oluşturma tamamlandı. Proje={request.project_name}")
+
+        return {
+            "status": "success",
+            "message": "Rapor başarıyla oluşturuldu",
+            "report_content": result
+        }
+
+    except Exception as e:
+        logger.error(f"[AGENCY_REPORT_GEN] Rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Agency ile rapor oluşturulurken bir hata oluştu: {str(e)}"
+        )
+
 
 @app.get("/download-report/{project_name}")
 def download_report(project_name: str):

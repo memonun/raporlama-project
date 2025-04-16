@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
-
 # Set your API key
 set_openai_key(os.getenv("OPENAI_API_KEY"))
 # Acenteleri oluştur

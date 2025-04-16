@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Tuple
 import os
 import logging
-
+from utils.pdf_utils import ensure_active_report_structure
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -12,19 +12,6 @@ logger.setLevel(logging.INFO)
 BASE_DIR = Path(__file__).parent.parent.parent
 UPLOADS_DIR = BASE_DIR / "data" / "uploads"
 ACTIVE_REPORT_DIR = UPLOADS_DIR / "active_report"
-
-def ensure_directory_structure(project_name: str) -> None:
-    """
-    Creates the necessary directory structure under ACTIVE_REPORT_DIR for a given project.
-    """
-    project_dir = ACTIVE_REPORT_DIR / project_name.lower()
-    images_dir = project_dir / "images"
-    text_dir = project_dir / "text"
-    
-    for dir_path in [project_dir, images_dir, text_dir]:
-        if not dir_path.exists():
-            dir_path.mkdir(parents=True, exist_ok=True)
-            logger.info(f"[FILE] Dizin oluşturuldu: {dir_path}")
 
 class SaveUploadedImageTool(BaseTool):
     """
@@ -46,7 +33,7 @@ class SaveUploadedImageTool(BaseTool):
             Tuple (success: bool, new_filename: str, error_message: str)
         """
         try:
-            ensure_directory_structure(self.project_name)
+            ensure_active_report_structure(self.project_name)
             comp_clean = self.component_name.lower()\
                           .replace(" ", "_")\
                           .replace("ı", "i")\

@@ -1,5 +1,5 @@
 import axios from "axios";
-import agency from "backend/api/agency.py";
+
 
 // Development mode için API URL'ini düzenle
 const API_BASE_URL = "http://localhost:8000";
@@ -482,22 +482,22 @@ export const reportService = {
         pdf_content: pdfContent,
         use_dynamic_html: useDynamicHtml,
       };
-      const requestPayloadJSON = JSON.stringify(requestPayload, null, 2);
-      result = agency.get_completion(
-        requestPayloadJSON,
-        "generate_report",
-        "report"
+      // const requestPayloadJSON = JSON.stringify(requestPayload, null, 2);
+      // result = agency.get_completion(
+      //   requestPayloadJSON,
+      //   "generate_report",
+      //   "report"
+      // );
+
+      console.log(
+        "API isteği hazırlandı:",
+        JSON.stringify(requestPayload, null, 2).substring(0, 1000) + "..."
       );
 
-      // console.log(
-      //   "API isteği hazırlandı:",
-      //   JSON.stringify(requestPayload, null, 2).substring(0, 1000) + "..."
-      // );
-
-      // const response = await axiosInstance.post(
-      //   `/project/generate-report`,
-      //   requestPayload
-      // );
+      const response = await axiosInstance.post(
+        `/project/generate-report`,
+        requestPayload
+      );
 
       console.log("Rapor oluşturma yanıtı:", response.data);
       return response.data;
