@@ -18,7 +18,7 @@ from api.questions_handler import get_questions_for_component
 from api.data_storage import (
     save_component_data, get_project_data, get_all_projects, 
     save_generated_report, delete_project_data, archive_project, 
-    get_active_report, create_new_report, delete_report as delete_report_from_storage, get_report_id,
+    get_active_report, create_new_report, delete_report as delete_report_from_storage,
     finalize_report, get_project_path,
     reset_active_report_generation
 )
