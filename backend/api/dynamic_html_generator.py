@@ -114,9 +114,7 @@ def process_images_for_report(project_name: str, image_paths: List[str]) -> List
     
     return processed_images
 
-def generate_dynamic_html(project_name: str, components_data: Dict[str, Any], 
-                         style_config: Dict[str, Any], image_urls: List[Dict[str, str]],
-                         svg_backgrounds: Dict[str, str] = None) -> str:
+def generate_dynamic_html(project_name: str, components_data: Dict[str, Any],  style_config: Dict[str, Any], image_urls: List[Dict[str, str]],svg_backgrounds: Dict[str, str] = None) -> str:
     """
     GPT ile dinamik HTML içeriği oluşturur.
     
@@ -225,7 +223,7 @@ def generate_dynamic_html(project_name: str, components_data: Dict[str, Any],
     - Proje: {project_name}
     - Stil: {json.dumps(style_config, indent=2, ensure_ascii=False)}
     
-    ## Görev Tanımı
+    ## Görev Tanımı 
     Aşağıdaki bileşen metinlerini ve görselleri kullanarak, belirlenen stilde estetik ve profesyonel bir HTML raporu oluştur. 
     
     ## SVG Arkaplanlar ve Logo

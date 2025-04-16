@@ -55,6 +55,7 @@ Your HTML output must be fully compatible with the **WeasyPrint** PDF rendering 
 ## ✅ Output Format
 
 You should return:
+
 - A single **HTML document string** (not standalone file)
 - That includes: full `<html>`, `<head>`, `<body>`, `<style>`, and content blocks
 - Output must be **immediately renderable** by `weasyprint.HTML(string).write_pdf(...)`
