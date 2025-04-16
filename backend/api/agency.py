@@ -1,15 +1,29 @@
 from agency_swarm import Agency
 from web_content_agent.web_content_agent import WebContentAgent
 from investor_report_agent.investor_report_agent import InvestorReportAgent
+from ceo_agent.CeoAgent import CeoAgent
+from agency_swarm import set_openai_key
+import os
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
+
+# Set your API key
+set_openai_key(os.getenv("OPENAI_API_KEY"))
 # Acenteleri oluştur
+ceo_agent = CeoAgent()
 web_content_agent = WebContentAgent()
 investor_report_agent = InvestorReportAgent()
 
 # Agency yapısını tanımla
 agency = Agency(
     [
-        web_content_agent,  # İlk acente kullanıcıyla iletişim için giriş noktası olacak
+        ceo_agent, 
+        web_content_agent,
+        investor_report_agent,
+        [ceo_agent, web_content_agent],  # CEO, Web Content Agent ile iletişim kurabilir
+        [ceo_agent, investor_report_agent],  # CEO, Investor Report Agent ile iletişim kurabilir
         [web_content_agent, investor_report_agent],  # Web Content Agent, Investor Report Agent ile iletişim kurabilir
     ],
     shared_instructions='agency_manifesto.md',  # Tüm acenteler için paylaşılan talimatlar

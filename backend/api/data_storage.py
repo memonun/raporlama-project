@@ -68,19 +68,19 @@ def get_project_path(project_name: str) -> Path:
     safe_name = "".join(c if c.isalnum() or c in ['-', '_'] else '_' for c in project_name)
     return PROJECTS_DIR / f"{safe_name}.json"
 
-def get_report_id(project_name: str) -> str:
-    """
-    Proje adı ve o anki tarih kullanılarak rapor ID'si oluşturur
+# def get_report_id(project_name: str) -> str:
+#     """
+#     Proje adı ve o anki tarih kullanılarak rapor ID'si oluşturur
     
-    Args:
-        project_name: Proje adı
+#     Args:
+#         project_name: Proje adı
         
-    Returns:
-        Rapor ID'si (format: {Projeadi}_{YYYYMMDD})
-    """
-    safe_project = "".join(c if c.isalnum() or c in ['-', '_'] else '_' for c in project_name)
-    current_date = datetime.datetime.now().strftime("%Y%m%d")
-    return f"{safe_project}_{current_date}"
+#     Returns:
+#         Rapor ID'si (format: {Projeadi}_{YYYYMMDD})
+#     """
+#     safe_project = "".join(c if c.isalnum() or c in ['-', '_'] else '_' for c in project_name)
+#     current_date = datetime.datetime.now().strftime("%Y%m%d")
+#     return f"{safe_project}_{current_date}"
 
 def create_new_report(project_name: str, report_id: str) -> Dict[str, Any]:
     """

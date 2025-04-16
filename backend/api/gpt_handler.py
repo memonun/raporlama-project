@@ -604,88 +604,88 @@ def analyze_component_completion(answers: Dict[str, str], questions: list) -> Di
         "missing_info": missing_info
     }
 
-def extract_pdf_content(file_path: str) -> str:
-    """
-    PDF dosyasından metin ve tablo içeriğini çıkarır, tabloları markdown formatında düzenler.
-    pdfplumber kullanarak Türkçe karakterleri doğru şekilde işler.
+# # def extract_pdf_content(file_path: str) -> str:
+# #     """
+# #     PDF dosyasından metin ve tablo içeriğini çıkarır, tabloları markdown formatında düzenler.
+# #     pdfplumber kullanarak Türkçe karakterleri doğru şekilde işler.
     
-    Args:
-        file_path: PDF dosyasının yolu
+# #     Args:
+# #         file_path: PDF dosyasının yolu
         
-    Returns:
-        Çıkarılan metin içeriği (markdown formatında tablolar içerir)
-    """
-    extracted_text = ""
-    try:
-        # PDF dosyasının varlığını kontrol et
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"PDF dosyası bulunamadı: {file_path}")
+# #     Returns:
+# #         Çıkarılan metin içeriği (markdown formatında tablolar içerir)
+# #     """
+# #     extracted_text = ""
+# #     try:
+# #         # PDF dosyasının varlığını kontrol et
+# #         if not os.path.exists(file_path):
+# #             raise FileNotFoundError(f"PDF dosyası bulunamadı: {file_path}")
             
-        # PDF dosyasının boyutunu kontrol et
-        file_size = os.path.getsize(file_path)
-        if file_size == 0:
-            raise ValueError("PDF dosyası boş")
+# #         # PDF dosyasının boyutunu kontrol et
+# #         file_size = os.path.getsize(file_path)
+# #         if file_size == 0:
+# #             raise ValueError("PDF dosyası boş")
             
-        print(f"PDF dosyası işleniyor: {file_path} ({file_size} byte)")
+# #         print(f"PDF dosyası işleniyor: {file_path} ({file_size} byte)")
         
-        with pdfplumber.open(file_path) as pdf:
-            # PDF sayfa sayısını kontrol et
-            if len(pdf.pages) == 0:
-                raise ValueError("PDF dosyasında sayfa bulunamadı")
+# #         with pdfplumber.open(file_path) as pdf:
+# #             # PDF sayfa sayısını kontrol et
+# #             if len(pdf.pages) == 0:
+# #                 raise ValueError("PDF dosyasında sayfa bulunamadı")
                 
-            print(f"PDF sayfa sayısı: {len(pdf.pages)}")
+# #             print(f"PDF sayfa sayısı: {len(pdf.pages)}")
             
-            for page_num, page in enumerate(pdf.pages, 1):
-                # Sayfa numarası ekle
-                extracted_text += f"\n## Sayfa {page_num}\n\n"
+# #             for page_num, page in enumerate(pdf.pages, 1):
+# #                 # Sayfa numarası ekle
+# #                 extracted_text += f"\n## Sayfa {page_num}\n\n"
                 
-                # Metinleri Ayıkla
-                page_text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
-                if page_text:
-                    # Metin içeriğini temizle ve düzenle
-                    page_text = page_text.replace('\x00', '')  # Null karakterleri temizle
-                    extracted_text += page_text + "\n\n"
-                    print(f"Sayfa {page_num}: {len(page_text)} karakter çıkarıldı")
-                else:
-                    print(f"Sayfa {page_num}: Metin içeriği bulunamadı")
+# #                 # Metinleri Ayıkla
+# #                 page_text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
+# #                 if page_text:
+# #                     # Metin içeriğini temizle ve düzenle
+# #                     page_text = page_text.replace('\x00', '')  # Null karakterleri temizle
+# #                     extracted_text += page_text + "\n\n"
+# #                     print(f"Sayfa {page_num}: {len(page_text)} karakter çıkarıldı")
+# #                 else:
+# #                     print(f"Sayfa {page_num}: Metin içeriği bulunamadı")
 
-                # Tabloları Markdown formatında ayıkla
-                tables = page.extract_tables()
-                if tables:
-                    print(f"Sayfa {page_num}: {len(tables)} tablo bulundu")
-                    for table_num, table in enumerate(tables, 1):
-                        extracted_text += f"\n### Tablo {table_num}:\n\n"
+# #                 # Tabloları Markdown formatında ayıkla
+# #                 tables = page.extract_tables()
+# #                 if tables:
+# #                     print(f"Sayfa {page_num}: {len(tables)} tablo bulundu")
+# #                     for table_num, table in enumerate(tables, 1):
+# #                         extracted_text += f"\n### Tablo {table_num}:\n\n"
                         
-                        # Tablo başlığını oluştur
-                        if table and len(table) > 0:
-                            header = "| " + " | ".join([str(cell).replace('\x00', '') if cell else "" for cell in table[0]]) + " |"
-                            separator = "| " + " | ".join(["---" for _ in table[0]]) + " |"
-                            extracted_text += header + "\n" + separator + "\n"
+# #                         # Tablo başlığını oluştur
+# #                         if table and len(table) > 0:
+# #                             header = "| " + " | ".join([str(cell).replace('\x00', '') if cell else "" for cell in table[0]]) + " |"
+# #                             separator = "| " + " | ".join(["---" for _ in table[0]]) + " |"
+# #                             extracted_text += header + "\n" + separator + "\n"
                             
-                            # Tablo içeriğini ekle
-                            for row in table[1:]:
-                                row_text = "| " + " | ".join([str(cell).replace('\x00', '') if cell else "" for cell in row]) + " |"
-                                extracted_text += row_text + "\n"
+# #                             # Tablo içeriğini ekle
+# #                             for row in table[1:]:
+# #                                 row_text = "| " + " | ".join([str(cell).replace('\x00', '') if cell else "" for cell in row]) + " |"
+# #                                 extracted_text += row_text + "\n"
                             
-                            extracted_text += "\n"
-                else:
-                    print(f"Sayfa {page_num}: Tablo bulunamadı")
+# #                             extracted_text += "\n"
+# #                 else:
+# #                     print(f"Sayfa {page_num}: Tablo bulunamadı")
                     
-        print(f"PDF içeriği başarıyla çıkarıldı: {len(extracted_text)} karakter")
+# #         print(f"PDF içeriği başarıyla çıkarıldı: {len(extracted_text)} karakter")
         
-    except FileNotFoundError as e:
-        print(f"PDF dosyası bulunamadı: {str(e)}")
-        raise
-    except ValueError as e:
-        print(f"PDF değer hatası: {str(e)}")
-        raise
-    except Exception as e:
-        print(f"PDF içeriği çıkarılırken hata: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise Exception(f"PDF içeriği çıkarılırken hata: {str(e)}")
+#     except FileNotFoundError as e:
+#         print(f"PDF dosyası bulunamadı: {str(e)}")
+#         raise
+#     except ValueError as e:
+#         print(f"PDF değer hatası: {str(e)}")
+#         raise
+#     except Exception as e:
+#         print(f"PDF içeriği çıkarılırken hata: {str(e)}")
+#         import traceback
+#         traceback.print_exc()
+#         raise Exception(f"PDF içeriği çıkarılırken hata: {str(e)}")
     
-    return extracted_text.strip()
+#     return extracted_text.strip()
 
 def process_text_request(content: str) -> str:
     """
@@ -796,37 +796,37 @@ def process_text_request(content: str) -> str:
 #         print(error_msg)
 #         return error_msg
 
-async def analyze_content_async(content: str, analysis_type: str = 'summary') -> str:
-    """
-    İçeriği asenkron olarak analiz eder.
-    """
-    analysis_roles = {
-        'summary': 'özet',
-        'technical': 'teknik',
-        'financial': 'finans'
-    }
+# async def analyze_content_async(content: str, analysis_type: str = 'summary') -> str:
+#     """
+#     İçeriği asenkron olarak analiz eder.
+#     """
+#     analysis_roles = {
+#         'summary': 'özet',
+#         'technical': 'teknik',
+#         'financial': 'finans'
+#     }
     
-    role = analysis_roles.get(analysis_type, 'özet')
+#     role = analysis_roles.get(analysis_type, 'özet')
     
-    try:
-        # İçeriği token limitine göre böl
-        chunks = split_content(content, MAX_TOKEN_LIMIT)
+#     try:
+#         # İçeriği token limitine göre böl
+#         chunks = split_content(content, MAX_TOKEN_LIMIT)
         
-        analyzed_chunks = []
-        for chunk in chunks:
-            # Her chunk için asenkron işlem yap
-            analyzed_chunk = await process_text_request_async(
-                chunk,
-                role=role
-            )
-            analyzed_chunks.append(analyzed_chunk)
+#         analyzed_chunks = []
+#         for chunk in chunks:
+#             # Her chunk için asenkron işlem yap
+#             analyzed_chunk = await process_text_request_async(
+#                 chunk,
+#                 role=role
+#             )
+#             analyzed_chunks.append(analyzed_chunk)
         
-        # Analiz edilmiş chunkları birleştir
-        return '\n\n'.join(analyzed_chunks)
-    except Exception as e:
-        error_msg = f'İçerik analiz hatası: {str(e)}'
-        print(error_msg)
-        return error_msg
+#         # Analiz edilmiş chunkları birleştir
+#         return '\n\n'.join(analyzed_chunks)
+#     except Exception as e:
+#         error_msg = f'İçerik analiz hatası: {str(e)}'
+#         print(error_msg)
+#         return error_msg
 
 # async def test_complete_system():
     """

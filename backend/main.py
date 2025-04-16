@@ -12,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import io
-from api.gpt_handler import generate_report,  extract_pdf_content, get_project_reports
+from api.gpt_handler import generate_report, get_project_reports
 from api.mail_agent import send_missing_info_request, get_department_email, send_report_email as mail_agent_send_report
 from api.questions_handler import get_questions_for_component
 from api.data_storage import (
@@ -378,47 +378,47 @@ async def generate_project_report(request: GenerateReportRequest):
         static_assets_path = Path(__file__).parent / 'static' / 'assets'
 
         # Proje adına göre uygun SVG klasörü belirle
-        project_name_lower = request.project_name.lower()
-        if "mall" in project_name_lower:
-            svg_folder = "V_mall"
-        elif "metroway" in project_name_lower:
-            svg_folder = "V_metroway"
-        else:
-            svg_folder = None
+        # project_name_lower = request.project_name.lower()
+        # if "mall" in project_name_lower:
+        #     svg_folder = "V_mall"
+        # elif "metroway" in project_name_lower:
+        #     svg_folder = "V_metroway"
+        # else:
+        #     svg_folder = None
 
-        # SVG arkaplan dosyalarını hazırla
-        if svg_folder:
-            svg_path = static_assets_path / 'svg' / svg_folder
+        # # SVG arkaplan dosyalarını hazırla
+        # if svg_folder:
+        #     svg_path = static_assets_path / 'svg' / svg_folder
             
-            try:
-                # Genel SVG arkaplanı
-                genel_svg_path = svg_path / 'genel.svg'
-                if genel_svg_path.exists():
-                    with open(genel_svg_path, "rb") as f:
-                        svg_data = base64.b64encode(f.read()).decode('utf-8')
-                        svg_background_uris['general_bg'] = f'data:image/svg+xml;base64,{svg_data}'
-                        logger.info(f"[REPORT_GEN] Genel SVG arkaplanı yüklendi: {genel_svg_path}")
+        #     try:
+        #         # Genel SVG arkaplanı
+        #         genel_svg_path = svg_path / 'genel.svg'
+        #         if genel_svg_path.exists():
+        #             with open(genel_svg_path, "rb") as f:
+        #                 svg_data = base64.b64encode(f.read()).decode('utf-8')
+        #                 svg_background_uris['general_bg'] = f'data:image/svg+xml;base64,{svg_data}'
+        #                 logger.info(f"[REPORT_GEN] Genel SVG arkaplanı yüklendi: {genel_svg_path}")
             
-                # Kapak SVG arkaplanı
-                kapak_svg_path = svg_path / 'kapak.svg'
-                if kapak_svg_path.exists():
-                    with open(kapak_svg_path, "rb") as f:
-                        svg_data = base64.b64encode(f.read()).decode('utf-8')
-                        svg_background_uris['cover_bg'] = f'data:image/svg+xml;base64,{svg_data}'
-                        logger.info(f"[REPORT_GEN] Kapak SVG arkaplanı yüklendi: {kapak_svg_path}")
-            except Exception as e:
-                logger.error(f"[REPORT_GEN] SVG arkaplanları yüklenirken hata: {str(e)}")
+        #         # Kapak SVG arkaplanı
+        #         kapak_svg_path = svg_path / 'kapak.svg'
+        #         if kapak_svg_path.exists():
+        #             with open(kapak_svg_path, "rb") as f:
+        #                 svg_data = base64.b64encode(f.read()).decode('utf-8')
+        #                 svg_background_uris['cover_bg'] = f'data:image/svg+xml;base64,{svg_data}'
+        #                 logger.info(f"[REPORT_GEN] Kapak SVG arkaplanı yüklendi: {kapak_svg_path}")
+        #     except Exception as e:
+        #         logger.error(f"[REPORT_GEN] SVG arkaplanları yüklenirken hata: {str(e)}")
 
-        # Logo dosyasını hazırla
-        logo_path = static_assets_path / 'logos' / 'isra_logo.svg'
-        if logo_path.exists():
-            try:
-                with open(logo_path, "rb") as f:
-                    logo_data = base64.b64encode(f.read()).decode('utf-8')
-                    svg_background_uris['logo'] = f'data:image/svg+xml;base64,{logo_data}'
-                    logger.info(f"[REPORT_GEN] Logo dosyası yüklendi: {logo_path}")
-            except Exception as e:
-                logger.error(f"[REPORT_GEN] Logo yüklenirken hata: {str(e)}")
+        # # Logo dosyasını hazırla
+        # logo_path = static_assets_path / 'logos' / 'isra_logo.svg'
+        # if logo_path.exists():
+        #     try:
+        #         with open(logo_path, "rb") as f:
+        #             logo_data = base64.b64encode(f.read()).decode('utf-8')
+        #             svg_background_uris['logo'] = f'data:image/svg+xml;base64,{logo_data}'
+        #             logger.info(f"[REPORT_GEN] Logo dosyası yüklendi: {logo_path}")
+        #     except Exception as e:
+        #         logger.error(f"[REPORT_GEN] Logo yüklenirken hata: {str(e)}")
 
         # Yeni yöntem: Aktif rapordaki tüm bileşen görsellerini al
         component_images = get_active_report_images(request.project_name)
@@ -1017,19 +1017,19 @@ async def extract_pdf_endpoint(file: UploadFile = File(...)):
         logger.error(f"PDF işleme hatası: {str(e)}")
         raise HTTPException(status_code=500, detail=f"PDF işlenirken hata oluştu: {str(e)}")
 
-@app.post("/api/extract-pdf")
-async def extract_pdf_api_endpoint(file: UploadFile = File(...)):
-    """
-    PDF dosyasından içerik çıkarır ve metin olarak döndürür.
-    /api/ prefix'i ile aynı işlevselliği sunar.
+# @app.post("/api/extract-pdf")
+# async def extract_pdf_api_endpoint(file: UploadFile = File(...)):
+#     """
+#     PDF dosyasından içerik çıkarır ve metin olarak döndürür.
+#     /api/ prefix'i ile aynı işlevselliği sunar.
     
-    Args:
-        file: Yüklenecek PDF dosyası
+#     Args:
+#         file: Yüklenecek PDF dosyası
         
-    Returns:
-        Çıkarılan metin içeriği
-    """
-    return await extract_pdf_endpoint(file)
+#     Returns:
+#         Çıkarılan metin içeriği
+#     """
+#     return await extract_pdf_endpoint(file)
 
 # Jinja2 ortamını ayarla
 template_dir = Path(__file__).parent / 'templates'
@@ -1040,8 +1040,8 @@ STATIC_DIR = Path(__file__).parent / 'static'
 IMAGES_DIR = STATIC_DIR / 'images'
 
 # Renk paletini getir
-def get_project_colors(project_name):
-    return PROJECT_PALETTES.get(project_name.lower(), {})
+# def get_project_colors(project_name):
+#     return PROJECT_PALETTES.get(project_name.lower(), {})
 
 # Görsel yolunu veya base64 verisini getir
 def get_image_path_or_data(project_name: str, image_filename: Optional[str] = None) -> Optional[str]:

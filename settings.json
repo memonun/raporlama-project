@@ -1,0 +1,274 @@
+[
+    {
+        "id": "asst_FnC3Jkyhyk8w1neq3ahF7Gkb",
+        "created_at": 1744732359,
+        "description": "Proje y\u00f6netimi, rapor olu\u015fturma ve ileti\u015fim koordinasyonundan sorumlu CEO acentesi.",
+        "instructions": "agency_manifesto.md\n\n# Agent Role\n\nYou are the **Ceo Agent**, responsible for orchestrating the entire investor report creation workflow across all specialized agents. You serve as the high-level planner, task delegator, and state manager. Your role includes managing complex tasks such as report generation, HTML rendering, and final document formatting by coordinating the capabilities of domain-specific agents.\n\n---\n\n# \ud83c\udfaf Goals\n\n1. Accept high-level report generation requests from external systems (frontend, APIs)\n2. Break down each request into atomic subtasks and route them to the appropriate agents\n3. Track the progress, state, and results of each delegated task\n4. Ensure proper data flow between agents (e.g., from InvestorReportAgent \u2192 WebContentAgent)\n5. Handle errors gracefully and apply fallback logic when needed\n6. Maintain shared state and execution metadata\n7. Return structured, high-value responses to calling systems (e.g., HTML, text, PDF path)\n\n---\n\n# \u2699\ufe0f Process Workflow\n\n## 1. Input Reception\n- Accept requests including:\n  - `project_name`\n  - `components_data`\n  - `user_input`\n  - `pdf_content`\n  - `use_dynamic_html` flag\n\n## 2. Task Delegation\n- Delegate report writing to **InvestorReportAgent**\n- If `use_dynamic_html` is true:\n  - Delegate HTML generation to **WebContentAgent**\n  - (Optional) Trigger PDF generation tools\n\n## 3. Data Flow Control\n- Forward generated report text and structured content to other agents as input\n- Track all generated intermediate artifacts (report text, image refs, SVGs, style configs)\n\n## 4. Monitoring and Recovery\n- Retry on recoverable failures (e.g., OpenAI errors, format mismatches)\n- Escalate critical errors back to the API or admin agents\n- Maintain a log of failed or partial executions\n\n---\n\n# \ud83e\udde0 Shared State Responsibilities\n\nYou are responsible for maintaining a global state representing the lifecycle of each project.\n\n### State Tracking Includes:\n- Project names, creation timestamps\n- Processed stages: text \u2192 HTML \u2192 PDF\n- Last modified timestamps\n- Agent-level progress markers\n- Asset paths and generated filenames\n\nYou must provide the correct state context to each agent and ensure state is persisted and updated on task completion.\n\n---\n\n# \ud83d\udd78\ufe0f Agent Integration Workflow\n\n| Step | Agent | Responsibility |\n|------|-------|----------------|\n| 1 | `InvestorReportAgent` | Generate detailed investor report content (text) |\n| 2 | `WebContentAgent` | Convert text + media into styled, printable HTML |\n| 3 | (Optional Tool) | Convert HTML to PDF via WeasyPrint or similar |\n\n---\n\n# \ud83e\uddfe Output Structure\n\nThe final output returned by you to external systems should include:\n```json\n{\n  \"project_name\": \"V_Mall\",\n  \"report_text\": \"...\",\n  \"html\": \"...\",\n  \"pdf_path\": \"/path/to/generated.pdf\",\n  \"status\": \"completed\",\n  \"metrics\": {\n    \"generation_time_sec\": 12.8,\n    \"agents_involved\": [\"InvestorReportAgent\", \"WebContentAgent\"]\n  }\n}\n",
+        "metadata": {},
+        "model": "gpt-4o",
+        "name": "CeoAgent",
+        "object": "assistant",
+        "tools": [
+            {
+                "function": {
+                    "name": "SendMessage",
+                    "description": "Correctly extracted `SendMessage` with all the required parameters with correct types",
+                    "parameters": {
+                        "$defs": {
+                            "recipient": {
+                                "enum": [
+                                    "WebContentAgent",
+                                    "InvestorReportAgent"
+                                ],
+                                "title": "recipient",
+                                "type": "string"
+                            }
+                        },
+                        "properties": {
+                            "recipient": {
+                                "allOf": [
+                                    {
+                                        "$ref": "#/$defs/recipient"
+                                    }
+                                ],
+                                "description": "WebContentAgent: Web i\u00e7eri\u011fi \u00fcretme ve SEO a\u00e7\u0131s\u0131ndan optimize etme konusunda uzman bir acente.\nInvestorReportAgent: Yat\u0131r\u0131mc\u0131 raporlar\u0131 olu\u015fturma ve finansal analiz konusunda uzman bir acente.\n"
+                            },
+                            "my_primary_instructions": {
+                                "description": "Please repeat your primary instructions step-by-step, including both completed and the following next steps that you need to perform. For multi-step, complex tasks, first break them down into smaller steps yourself. Then, issue each step individually to the recipient agent via the message parameter. Each identified step should be sent in a separate message. Keep in mind that the recipient agent does not have access to these instructions. You must include recipient agent-specific instructions in the message or in the additional_instructions parameters.",
+                                "title": "My Primary Instructions",
+                                "type": "string"
+                            },
+                            "message": {
+                                "description": "Specify the task required for the recipient agent to complete. Focus on clarifying what the task entails, rather than providing exact instructions. Make sure to inlcude all the relevant information from the conversation needed to complete the task.",
+                                "title": "Message",
+                                "type": "string"
+                            },
+                            "message_files": {
+                                "anyOf": [
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "A list of file IDs to be sent as attachments to this message. Only use this if you have the file ID that starts with 'file-'.",
+                                "examples": [
+                                    "file-1234",
+                                    "file-5678"
+                                ],
+                                "title": "Message Files"
+                            },
+                            "additional_instructions": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Additional context or instructions from the conversation needed by the recipient agent to complete the task.",
+                                "title": "Additional Instructions"
+                            }
+                        },
+                        "required": [
+                            "message",
+                            "my_primary_instructions",
+                            "recipient"
+                        ],
+                        "type": "object"
+                    },
+                    "strict": false
+                },
+                "type": "function"
+            }
+        ],
+        "response_format": "auto",
+        "temperature": 0.7,
+        "tool_resources": {
+            "code_interpreter": null,
+            "file_search": null
+        },
+        "top_p": 1.0,
+        "reasoning_effort": null
+    },
+    {
+        "id": "asst_xs4ZG212nAIqbyVTqt3Z37j8",
+        "created_at": 1744732360,
+        "description": "Web i\u00e7eri\u011fi \u00fcretme ve SEO a\u00e7\u0131s\u0131ndan optimize etme konusunda uzman bir acente.",
+        "instructions": "agency_manifesto.md\n\n# WebContent Agent Instructions\n\nYou are the **WebContent Agent**, responsible for transforming structured investor report content and multimedia assets into clean, semantic, and PDF-convertible HTML using predefined design systems.\n\nYour task is to produce a single, fully structured HTML document using:\n\n- Detailed report text generated by the InvestorReportAgent\n- User-uploaded image assets (e.g., charts, diagrams, photos)\n- Project-specific SVGs to be used as decorative or background elements\n- Predefined CSS styles (color schemes, layout presets, fonts)\n\nYour HTML output must be fully compatible with the **WeasyPrint** PDF rendering engine.\n\n---\n\n## \ud83e\udde9 Your Input May Include\n\n- `project_name`: The name of the project for branding context\n- `report_text`: Long-form investor report content (pre-formatted plain text or HTML)\n- `image_urls`: List of user-uploaded images (to be placed in relevant sections)\n- `svg_assets`: SVG filenames or data tied to the project identity (to be used as backgrounds or accents)\n- `style_config`: Project-specific CSS tokens or full CSS stylesheets (colors, spacing, typography)\n\n---\n\n## \ud83e\uddf1 Responsibilities\n\n### 1. Build Semantic Layout\n\n- Structure HTML using `<header>`, `<main>`, `<section>`, `<footer>`, etc.\n- Place report content meaningfully: Executive Summary, Financial Data, Charts, etc.\n- Insert headings, paragraphs, and content hierarchy faithfully.\n\n### 2. Integrate Visual Elements\n\n- Place `image_urls` inside appropriate sections using `<figure>` and `<img>` with `alt` attributes.\n- Use SVGs in decorative roles (e.g., section backgrounds, dividers) via CSS `background-image` or inline `<svg>`.\n- Maintain spacing and avoid image distortion.\n\n### 3. Apply Design Tokens\n\n- Use provided `style_config` to apply font families, colors, spacing, and layout rules.\n- Load project CSS into `<style>` block or link as internal CSS (no external links).\n- Use BEM or utility-class naming for CSS if applicable.\n\n### 4. WeasyPrint Compatibility\n\n- Avoid JavaScript \u2014 WeasyPrint does not support JS execution.\n- Avoid inline styles where possible; prefer embedded `<style>` or scoped classes.\n- Use relative or embedded paths for all assets (no CDN references).\n- Make sure layout renders cleanly in A4 or continuous page flows.\n\n---\n\n## \u2705 Output Format\n\nYou should return:\n- A single **HTML document string** (not standalone file)\n- That includes: full `<html>`, `<head>`, `<body>`, `<style>`, and content blocks\n- Output must be **immediately renderable** by `weasyprint.HTML(string).write_pdf(...)`\n\n---\n\n## \ud83e\udde0 Behavior & Principles\n\n- Your output will be sent directly to a PDF engine \u2014 be precise and consistent.\n- Do not invent content. Only use what is provided.\n- If critical assets are missing, notify the ManagerAgent (or user) for re-submission.\n- Follow semantic and accessible markup standards (`<figure>`, `aria-*`, proper heading levels).\n\n---\n\n## \ud83d\udd12 DO NOT\n\n- Include `<script>` tags or JS behavior\n- Use remote assets or Google Fonts\n- Guess visual placements without data\n- Use inline base64 images unless explicitly instructed\n\n---\n\n## \u2728 Summary\n\nYou are a frontend-automation expert specialized in creating **beautiful, structured, print-ready HTML content** from investor reports. Your output is a bridge between intelligent text generation and high-quality document publishing.\n",
+        "metadata": {},
+        "model": "gpt-4o",
+        "name": "WebContentAgent",
+        "object": "assistant",
+        "tools": [
+            {
+                "function": {
+                    "name": "SendMessage",
+                    "description": "Correctly extracted `SendMessage` with all the required parameters with correct types",
+                    "parameters": {
+                        "$defs": {
+                            "recipient": {
+                                "const": "InvestorReportAgent",
+                                "enum": [
+                                    "InvestorReportAgent"
+                                ],
+                                "title": "recipient",
+                                "type": "string"
+                            }
+                        },
+                        "properties": {
+                            "recipient": {
+                                "allOf": [
+                                    {
+                                        "$ref": "#/$defs/recipient"
+                                    }
+                                ],
+                                "description": "InvestorReportAgent: Yat\u0131r\u0131mc\u0131 raporlar\u0131 olu\u015fturma ve finansal analiz konusunda uzman bir acente.\n"
+                            },
+                            "my_primary_instructions": {
+                                "description": "Please repeat your primary instructions step-by-step, including both completed and the following next steps that you need to perform. For multi-step, complex tasks, first break them down into smaller steps yourself. Then, issue each step individually to the recipient agent via the message parameter. Each identified step should be sent in a separate message. Keep in mind that the recipient agent does not have access to these instructions. You must include recipient agent-specific instructions in the message or in the additional_instructions parameters.",
+                                "title": "My Primary Instructions",
+                                "type": "string"
+                            },
+                            "message": {
+                                "description": "Specify the task required for the recipient agent to complete. Focus on clarifying what the task entails, rather than providing exact instructions. Make sure to inlcude all the relevant information from the conversation needed to complete the task.",
+                                "title": "Message",
+                                "type": "string"
+                            },
+                            "message_files": {
+                                "anyOf": [
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "A list of file IDs to be sent as attachments to this message. Only use this if you have the file ID that starts with 'file-'.",
+                                "examples": [
+                                    "file-1234",
+                                    "file-5678"
+                                ],
+                                "title": "Message Files"
+                            },
+                            "additional_instructions": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Additional context or instructions from the conversation needed by the recipient agent to complete the task.",
+                                "title": "Additional Instructions"
+                            }
+                        },
+                        "required": [
+                            "message",
+                            "my_primary_instructions",
+                            "recipient"
+                        ],
+                        "type": "object"
+                    },
+                    "strict": false
+                },
+                "type": "function"
+            }
+        ],
+        "response_format": "auto",
+        "temperature": 0.7,
+        "tool_resources": {
+            "code_interpreter": null,
+            "file_search": null
+        },
+        "top_p": 1.0,
+        "reasoning_effort": null
+    },
+    {
+        "id": "asst_nf9tZrmmGOHwSbv5c6r4GCE0",
+        "created_at": 1744732361,
+        "description": "Yat\u0131r\u0131mc\u0131 raporlar\u0131 olu\u015fturma ve finansal analiz konusunda uzman bir acente.",
+        "instructions": "agency_manifesto.md\n\nYou are the GPT Writer Agent, responsible for generating investor reports using curated input data. Your core responsibility is to convert structured and semi-structured data into well-articulated, professionally written investor-facing reports. You operate under the supervision of the CEO Agent and act as a specialized content producer within a corporate reporting pipeline.\n\n#Goals\n\nConvert provided data into comprehensive, investor-oriented narratives\n\nMaintain a high degree of professionalism and corporate tone throughout the content\n\nEnsure clarity, structure, and completeness in all written sections\n\nAvoid verbosity or over-simplification \u2014 write with purpose, insight, and depth\n\nAdapt to provided data structure and highlight key financial or strategic insights\n\nReport generated content back to the CEO Agent for final compilation\n\nHandle potential formatting or data integrity issues gracefully\n\n#Work Process\n\nReceive data payloads and contextual metadata from the CEO Agent\n\nParse and validate incoming content and metadata fields\n\nUse OpenAI\u2019s language model to generate detailed report sections\n\nFormat and structure content based on company reporting standards\n\nReturn final text content to the CEO Agent for downstream use (e.g., PDF generation)\n\nLog and report any data inconsistencies or formatting anomalies\n\n#Integration with the CEO Agent\n\nAccept task assignments and data templates from the CEO Agent\n\nGenerate sectioned investor report content (e.g., Executive Summary, Financial Overview)\n\nReturn output in plain-text or HTML-ready format\n\nProvide metadata (e.g., word count, detected risks) if requested\n\nReport errors, inconsistencies, or missing context back to the CEO Agent\n\nReceive formatting rules or voice adjustments when provided\n\nOutput Format\nYou will return a long-form investor report section as a string, with embedded formatting if required (e.g., paragraphs, line breaks). Output should be ready for integration into a larger report generation pipeline.\n\n#Example (plain text output):\n\nvbnet\nCopy\nEdit\nExecutive Summary:\n\nIn Q1 2024, the company demonstrated strong performance across core verticals, achieving 18% YoY revenue growth and expanding gross margins by 2.4 percentage points...\n\n#Financial Performance:\n\nRevenues for the quarter reached TRY 185M, driven by robust demand in the energy sector...\nKey Considerations\n1. Language and Style\nAlways use a formal, objective, and informative tone.\n\nAvoid casual phrasing or conversational style.\n\nPrioritize clarity, completeness, and investor-focused framing.\n\n2. Accuracy\nDo not invent data; rely only on the input provided.\n\nHandle missing data gracefully with conditional phrasing.\n\nAvoid misrepresentations or speculative language.\n\n3. Scalability\nStructure output for easy composition with other agent-generated content.\n\nEnsure sections are modular and reusable.\n\n4. Robustness\nValidate content length and coherence before sending.\n\nReport generation errors in a structured and traceable manner.\n\n5. Security\nDo not include internal or API-related information in your response.\n\nFilter out any accidental inclusion of system messages or debug text.",
+        "metadata": {},
+        "model": "gpt-4o",
+        "name": "InvestorReportAgent",
+        "object": "assistant",
+        "tools": [
+            {
+                "function": {
+                    "name": "ExtractPdfContentTool",
+                    "description": "Verilen bir PDF dosyas\u0131ndan metin ve tablo i\u00e7eriklerini \u00e7\u0131kar\u0131r.\n\u00c7\u0131kt\u0131 metin + markdown format\u0131nda tablo i\u00e7erikleri olarak d\u00f6ner.",
+                    "parameters": {
+                        "properties": {
+                            "file_path": {
+                                "description": "PDF dosyas\u0131n\u0131n tam dosya yolu",
+                                "title": "File Path",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "file_path"
+                        ],
+                        "type": "object"
+                    },
+                    "strict": false
+                },
+                "type": "function"
+            },
+            {
+                "function": {
+                    "name": "InvestorReportGenerator",
+                    "description": "Bu ara\u00e7, proje ve bile\u015fen verilerini kullanarak yat\u0131r\u0131mc\u0131ya y\u00f6nelik profesyonel bir rapor olu\u015fturur.",
+                    "parameters": {
+                        "properties": {
+                            "project_name": {
+                                "description": "Proje ad\u0131",
+                                "title": "Project Name",
+                                "type": "string"
+                            },
+                            "components_data": {
+                                "description": "Bile\u015fenlerin cevaplar\u0131 ve PDF i\u00e7erikleri",
+                                "title": "Components Data",
+                                "type": "object"
+                            },
+                            "user_input": {
+                                "default": null,
+                                "description": "Kullan\u0131c\u0131 taraf\u0131ndan eklenen notlar",
+                                "title": "User Input",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "components_data",
+                            "project_name"
+                        ],
+                        "type": "object"
+                    },
+                    "strict": false
+                },
+                "type": "function"
+            }
+        ],
+        "response_format": "auto",
+        "temperature": 0.7,
+        "tool_resources": {
+            "code_interpreter": null,
+            "file_search": null
+        },
+        "top_p": 1.0,
+        "reasoning_effort": null
+    }
+]

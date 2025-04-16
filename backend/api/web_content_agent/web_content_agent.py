@@ -6,7 +6,8 @@ class WebContentAgent(Agent):
             name="WebContentAgent",
             description="Web içeriği üretme ve SEO açısından optimize etme konusunda uzman bir acente.",
             instructions="instructions.md",
-            llm_model="gpt-4-turbo",
-            # Web içeriği oluşturma acentesi için gerekli yapılandırmalar
-            tools_folder="tools"
+            tools=[
+                # WebContentGenerator,
+                # WebContentOptimizer
+            ]
         )
