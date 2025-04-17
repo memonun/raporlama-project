@@ -1,9 +1,9 @@
-from agency_swarm import Agency
-from web_content_agent.web_content_agent import WebContentAgent
-from investor_report_agent.investor_report_agent import InvestorReportAgent
-from ceo_agent.CeoAgent import CeoAgent
-from agency_swarm import set_openai_key
 import os
+from agency_swarm import Agency
+from agency_swarm import set_openai_key
+from api.web_content_agent.web_content_agent import WebContentAgent
+from api.investor_report_agent.investor_report_agent import InvestorReportAgent
+from api.ceo_agent.ceo_agent import CeoAgent
 from dotenv import load_dotenv
 
 # Load environment variables

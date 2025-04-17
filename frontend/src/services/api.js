@@ -495,7 +495,7 @@ export const reportService = {
       );
 
       const response = await axiosInstance.post(
-        `/project/generate-report`,
+        `/project/generate-report-by-agency`,
         requestPayload
       );
 

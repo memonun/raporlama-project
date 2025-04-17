@@ -44,6 +44,15 @@ from utils.pdf_utils import (
     get_pdf_info,
     get_report_id,
 )
+import sys
+
+project_root = Path(__file__).parent.parent
+backend_path = Path(__file__).parent
+
+backend_path_str = str(backend_path)
+
+if backend_path_str not in sys.path:
+    sys.path.insert(0, backend_path_str)
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
@@ -559,7 +568,7 @@ async def generate_project_report(request: GenerateReportRequest):
             detail=f"Rapor oluşturulurken beklenmedik bir hata oluştu: {error_message}"
         )
 
-@app.post("/generate-report-by-agency")
+@app.post("/project/generate-report-by-agency")
 async def generate_report_by_agency(request: GenerateReportRequest):
     """
     Agency kullanarak rapor oluşturur.
@@ -570,7 +579,7 @@ async def generate_report_by_agency(request: GenerateReportRequest):
         # Request payload'ı hazırla
         request_payload = {
             "project_name": request.project_name,
-            "components_data": request.components_data,
+            "components_data": request.components_data, 
             "user_input": request.user_input,
             "pdf_content": request.pdf_content,
             "use_dynamic_html": request.use_dynamic_html
