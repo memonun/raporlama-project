@@ -16,9 +16,12 @@ class GenerateDynamicHtmlTool(BaseTool):
     
     project_name: str = Field(..., description="Proje adı")
     report_text: str = Field(..., description="Investor Report Agent tarafından oluşturulan rapor metni")
-    style_config: Dict[str, Any] = Field(..., description="Proje stil yapılandırması")
-    image_urls: List[Dict[str, str]] = Field(..., description="İşlenmiş görseller listesi")
+    style_config: Dict[str, Any] = Field(..., description="Proje stil yapılandırması,get_project_style_config_tool tarafından alınır")
+    image_urls: List[Dict[str, str]] = Field(..., description="İşlenmiş görseller listesi, direkt files folderından alınabilir.")
     svg_backgrounds: Dict[str, str] = Field({}, description="SVG arkaplan görsellerinin data URI'leri")
+    
+    class ToolConfig:
+        one_call_at_a_time = True
     
     def run(self) -> str:
         """

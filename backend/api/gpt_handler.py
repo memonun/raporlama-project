@@ -15,9 +15,6 @@ from fastapi import UploadFile, File, Form
 from datetime import datetime
 from openai import OpenAI
 
-from config import (
-    OPENAI_API_KEY, GPT_MODEL, GPT_TEMPERATURE, GPT_MAX_TOKENS,
-)
 from utils.pdf_utils import (
     save_pdf_content,
     extract_text_from_pdf,
@@ -80,34 +77,34 @@ class OpenAIMessage(BaseModel):
     role: str
     content: str
 
-class OpenAIRequest(BaseModel):
-    model: str = GPT_MODEL
-    messages: List[OpenAIMessage]
-    temperature: float = GPT_TEMPERATURE
-    max_tokens: int = GPT_MAX_TOKENS
+# class OpenAIRequest(BaseModel):
+#     model: str = GPT_MODEL
+#     messages: List[OpenAIMessage]
+#     temperature: float = GPT_TEMPERATURE
+#     max_tokens: int = GPT_MAX_TOKENS
 
-def create_chat_completion(model: str, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
-    """
-    OpenAI API için chat completion fonksiyonu
-    """
-    try:
-        # OpenAI istemcisini düzgün şekilde yapılandır - proxies parametresi kullanma
-        client = OpenAI(api_key=OPENAI_API_KEY)
+# def create_chat_completion(model: str, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+#     """
+#     OpenAI API için chat completion fonksiyonu
+#     """
+#     try:
+#         # OpenAI istemcisini düzgün şekilde yapılandır - proxies parametresi kullanma
+#         client = OpenAI(api_key=OPENAI_API_KEY)
         
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            response_format={"type": "text"},
-            presence_penalty=0.0,
-            frequency_penalty=0.0,
-            seed=42  # Tutarlı yanıtlar için
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        print(f"OpenAI API hatası: {e}")
-        raise
+#         response = client.chat.completions.create(
+#             model=model,
+#             messages=messages,
+#             temperature=temperature,
+#             max_tokens=max_tokens,
+#             response_format={"type": "text"},
+#             presence_penalty=0.0,
+#             frequency_penalty=0.0,
+#             seed=42  # Tutarlı yanıtlar için
+#         )
+#         return response.choices[0].message.content
+#     except Exception as e:
+#         print(f"OpenAI API hatası: {e}")
+#         raise
 
 def check_font_availability() -> str:
     """
@@ -198,28 +195,28 @@ async def handle_rate_limit(func):
                 raise
                 
 
-async def process_text_request_async(content: str) -> str:
-    """
-    Asenkron olarak metin işleme isteği gönderir.
-    """
-    system_content = 'Sen kurumsal dilde raporlar yazan bir asistansın.'
-    print(f"[LOG] process_text_request_async fonksiyonu başlatıldı*************************************************")
-    async def make_request():
-        return await asyncio.to_thread(
-            create_chat_completion,
-            GPT_MODEL,
-            [{"role": "system", "content": system_content},
-             {"role": "user", "content": content}],
-            GPT_TEMPERATURE,
-            int(GPT_MAX_TOKENS / 2)
-        )
+# async def process_text_request_async(content: str) -> str:
+#     """
+#     Asenkron olarak metin işleme isteği gönderir.
+#     """
+#     system_content = 'Sen kurumsal dilde raporlar yazan bir asistansın.'
+#     print(f"[LOG] process_text_request_async fonksiyonu başlatıldı*************************************************")
+#     async def make_request():
+#         return await asyncio.to_thread(
+#             create_chat_completion,
+#             GPT_MODEL,
+#             [{"role": "system", "content": system_content},
+#              {"role": "user", "content": content}],
+#             GPT_TEMPERATURE,
+#             int(GPT_MAX_TOKENS / 2)
+#         )
     
-    try:
-        return await handle_rate_limit(make_request)
-    except Exception as e:
-        error_msg = f'Asenkron işlem hatası: {str(e)}'
-        print(error_msg)
-        return error_msg
+#     try:
+#         return await handle_rate_limit(make_request)
+#     except Exception as e:
+#         error_msg = f'Asenkron işlem hatası: {str(e)}'
+#         print(error_msg)
+#         return error_msg
 
 def create_storage_path(project_name: str) -> str:
     """
@@ -356,220 +353,220 @@ def save_report_path(project_name: str, pdf_path: str) -> None:
 #         print(error_msg)
 #         raise Exception(error_msg)
 
-def process_request(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Gelen isteği değerlendirir ve OpenAI API'a gönderir.
-    Hem text field verilerini hem de PDF verilerini işleyebilir.
+# def process_request(data: Dict[str, Any]) -> Dict[str, Any]:
+#     """
+#     Gelen isteği değerlendirir ve OpenAI API'a gönderir.
+#     Hem text field verilerini hem de PDF verilerini işleyebilir.
     
-    Args:
-        data: İşlenecek veri (metin veya PDF içeriği)
+#     Args:
+#         data: İşlenecek veri (metin veya PDF içeriği)
         
-    Returns:
-        İşlenmiş veri sonuçları
-    """
-    try:
-        # Gelen veriyi Pydantic modeline dönüştür
-        request_data = AIRequest(**data)
-        combined_input = ""
+#     Returns:
+#         İşlenmiş veri sonuçları
+#     """
+#     try:
+#         # Gelen veriyi Pydantic modeline dönüştür
+#         request_data = AIRequest(**data)
+#         combined_input = ""
 
-        # Proje raporu oluşturma isteği varsa
-        if request_data.project_name and request_data.components_data:
-            report_content = generate_report(request_data.project_name, request_data.components_data, request_data.user_input)
-            combined_input += f"Proje Raporu:\n{report_content}\n\n"
+#         # Proje raporu oluşturma isteği varsa
+#         if request_data.project_name and request_data.components_data:
+#             report_content = generate_report(request_data.project_name, request_data.components_data, request_data.user_input)
+#             combined_input += f"Proje Raporu:\n{report_content}\n\n"
 
-        # Kullanıcı metni varsa
-        if request_data.user_input:
-            combined_input += f"Kullanıcı Metni:\n{request_data.user_input}\n\n"
+#         # Kullanıcı metni varsa
+#         if request_data.user_input:
+#             combined_input += f"Kullanıcı Metni:\n{request_data.user_input}\n\n"
 
-        # PDF içeriği varsa
-        if request_data.pdf_content:
-            combined_input += f"PDF İçeriği:\n{request_data.pdf_content}\n\n"
-        # Log combined input
-        print(f"[LOG] Combined input prepared: {len(combined_input)} characters*************************************************")
-        print(f"[LOG] Input components: Project Report: {'Proje Raporu' in combined_input}, User Text: {'Kullanıcı Metni' in combined_input}, PDF Content: {'PDF İçeriği' in combined_input}")
+#         # PDF içeriği varsa
+#         if request_data.pdf_content:
+#             combined_input += f"PDF İçeriği:\n{request_data.pdf_content}\n\n"
+#         # Log combined input
+#         print(f"[LOG] Combined input prepared: {len(combined_input)} characters*************************************************")
+#         print(f"[LOG] Input components: Project Report: {'Proje Raporu' in combined_input}, User Text: {'Kullanıcı Metni' in combined_input}, PDF Content: {'PDF İçeriği' in combined_input}")
 
-        # İçeriği token limitine göre böl
-        chunks = split_content(combined_input, max_tokens=GPT_MAX_TOKENS)
+#         # İçeriği token limitine göre böl
+#         chunks = split_content(combined_input, max_tokens=GPT_MAX_TOKENS)
 
-        # Her parçayı işle
-        outputs = []
-        for chunk in chunks:
-            output = create_chat_completion(
-                model=GPT_MODEL,
-                messages=[
-                    {"role": "system", "content": "Sen profesyonel raporlar hazırlayan bir asistansın."},
-                    {"role": "user", "content": chunk}
-                ],
-                temperature=GPT_TEMPERATURE,
-                max_tokens=int(GPT_MAX_TOKENS / 2)
-            )
-            outputs.append(output)
+#         # Her parçayı işle
+#         outputs = []
+#         for chunk in chunks:
+#             output = create_chat_completion(
+#                 model=GPT_MODEL,
+#                 messages=[
+#                     {"role": "system", "content": "Sen profesyonel raporlar hazırlayan bir asistansın."},
+#                     {"role": "user", "content": chunk}
+#                 ],
+#                 temperature=GPT_TEMPERATURE,
+#                 max_tokens=int(GPT_MAX_TOKENS / 2)
+#             )
+#             outputs.append(output)
         
-        # Sonuçları birleştir
-        combined_output = "\n\n".join(outputs)
+#         # Sonuçları birleştir
+#         combined_output = "\n\n".join(outputs)
 
-        # PDF oluştur
-        project_name = request_data.project_name or "rapor"
-        pdf_path = create_pdf(combined_output, project_name)
+#         # PDF oluştur
+#         project_name = request_data.project_name or "rapor"
+#         pdf_path = create_pdf(combined_output, project_name)
 
-        # Yanıtı Pydantic modeline dönüştür
-        response_data = AIResponse(
-            combined_output=combined_output,
-            pdf_path=pdf_path
-        )
+#         # Yanıtı Pydantic modeline dönüştür
+#         response_data = AIResponse(
+#             combined_output=combined_output,
+#             pdf_path=pdf_path
+#         )
 
-        return response_data.dict()
-    except Exception as e:
-        return AIResponse(error=str(e)).dict()
+#         return response_data.dict()
+#     except Exception as e:
+#         return AIResponse(error=str(e)).dict()
 
-def generate_report(project_name: str, components_data: Dict[str, Dict[str, Any]], user_input: Optional[str] = None) -> str:
-    """
-    Proje, bileşen ve kullanıcı notu verilerini kullanarak GPT ile rapor oluşturur.
-    PDF içerikleri components_data içindeki answers objelerinden alınır.
+# def generate_report(project_name: str, components_data: Dict[str, Dict[str, Any]], user_input: Optional[str] = None) -> str:
+#     """
+#     Proje, bileşen ve kullanıcı notu verilerini kullanarak GPT ile rapor oluşturur.
+#     PDF içerikleri components_data içindeki answers objelerinden alınır.
     
-    Args:
-        project_name: Proje adı
-        components_data: Her bileşen için soru-cevap verilerini içeren sözlük (PDF objeleri dahil)
-        user_input: Kullanıcının eklediği notlar (opsiyonel)
+#     Args:
+#         project_name: Proje adı
+#         components_data: Her bileşen için soru-cevap verilerini içeren sözlük (PDF objeleri dahil)
+#         user_input: Kullanıcının eklediği notlar (opsiyonel)
         
-    Returns:
-        Oluşturulan rapor metni
-    """
-    # Verileri düzenli bir formata getir
-    formatted_components = {}
-    all_pdf_contents = []
+#     Returns:
+#         Oluşturulan rapor metni
+#     """
+#     # Verileri düzenli bir formata getir
+#     formatted_components = {}
+#     all_pdf_contents = []
     
-    # Bileşen verilerini işle (PDF'leri de burada ayıkla)
-    for comp_name, comp_data in components_data.items():
-        # Bu kontrol artık gereksiz, çünkü pdf_contents ayrı gelmeyecek
-        # if comp_name.endswith('_pdf_contents'):
-        #     continue
+#     # Bileşen verilerini işle (PDF'leri de burada ayıkla)
+#     for comp_name, comp_data in components_data.items():
+#         # Bu kontrol artık gereksiz, çünkü pdf_contents ayrı gelmeyecek
+#         # if comp_name.endswith('_pdf_contents'):
+#         #     continue
             
-        formatted_answers = {}
-        component_pdf_contents = [] # Bu bileşene ait PDF'ler
+#         formatted_answers = {}
+#         component_pdf_contents = [] # Bu bileşene ait PDF'ler
 
-        # comp_data içinde answers var mı kontrol et
-        if 'answers' in comp_data and isinstance(comp_data['answers'], dict):
-            for q_id, answer in comp_data['answers'].items():
-                # Cevap bir PDF objesi mi kontrol et (stringified JSON veya direct object)
-                pdf_data = None
-                is_pdf = False
-                if isinstance(answer, str):
-                    try:
-                        parsed_value = json.loads(answer)
-                        if isinstance(parsed_value, dict) and 'fileName' in parsed_value and 'content' in parsed_value:
-                            pdf_data = parsed_value
-                            is_pdf = True
-                            print(f"String JSON PDF bulundu: {pdf_data.get('fileName')}")
-                    except json.JSONDecodeError:
-                        pass # JSON değilse normal cevaptır
-                elif isinstance(answer, dict) and 'fileName' in answer and 'content' in answer:
-                     pdf_data = answer
-                     is_pdf = True
-                     print(f"Object PDF bulundu: {pdf_data.get('fileName')}")
+#         # comp_data içinde answers var mı kontrol et
+#         if 'answers' in comp_data and isinstance(comp_data['answers'], dict):
+#             for q_id, answer in comp_data['answers'].items():
+#                 # Cevap bir PDF objesi mi kontrol et (stringified JSON veya direct object)
+#                 pdf_data = None
+#                 is_pdf = False
+#                 if isinstance(answer, str):
+#                     try:
+#                         parsed_value = json.loads(answer)
+#                         if isinstance(parsed_value, dict) and 'fileName' in parsed_value and 'content' in parsed_value:
+#                             pdf_data = parsed_value
+#                             is_pdf = True
+#                             print(f"String JSON PDF bulundu: {pdf_data.get('fileName')}")
+#                     except json.JSONDecodeError:
+#                         pass # JSON değilse normal cevaptır
+#                 elif isinstance(answer, dict) and 'fileName' in answer and 'content' in answer:
+#                      pdf_data = answer
+#                      is_pdf = True
+#                      print(f"Object PDF bulundu: {pdf_data.get('fileName')}")
 
-                if is_pdf and pdf_data:
-                    # PDF içeriğini all_pdf_contents'e ekle
-                    pdf_content_info = {
-                        'component': comp_name,
-                        'fileName': pdf_data.get('fileName', 'Adsız PDF'),
-                        'content': pdf_data.get('content', '')
-                    }
-                    all_pdf_contents.append(pdf_content_info)
-                    # PDF'i formatlanmış cevaplardan çıkarabilir veya yer tutucu ekleyebiliriz.
-                    # Şimdilik yer tutucu ekleyelim:
-                    formatted_answers[q_id] = f"(Yüklenen PDF: {pdf_data.get('fileName')})"
-                else:
-                    # Normal cevap
-                    formatted_answers[q_id] = str(answer)
-            formatted_components[comp_name] = formatted_answers
-        else:
-            # Eğer 'answers' anahtarı yoksa veya dict değilse, bileşeni boş geç
-            formatted_components[comp_name] = {}
-            print(f"Uyarı: {comp_name} için 'answers' verisi bulunamadı veya formatı yanlış.")
+#                 if is_pdf and pdf_data:
+#                     # PDF içeriğini all_pdf_contents'e ekle
+#                     pdf_content_info = {
+#                         'component': comp_name,
+#                         'fileName': pdf_data.get('fileName', 'Adsız PDF'),
+#                         'content': pdf_data.get('content', '')
+#                     }
+#                     all_pdf_contents.append(pdf_content_info)
+#                     # PDF'i formatlanmış cevaplardan çıkarabilir veya yer tutucu ekleyebiliriz.
+#                     # Şimdilik yer tutucu ekleyelim:
+#                     formatted_answers[q_id] = f"(Yüklenen PDF: {pdf_data.get('fileName')})"
+#                 else:
+#                     # Normal cevap
+#                     formatted_answers[q_id] = str(answer)
+#             formatted_components[comp_name] = formatted_answers
+#         else:
+#             # Eğer 'answers' anahtarı yoksa veya dict değilse, bileşeni boş geç
+#             formatted_components[comp_name] = {}
+#             print(f"Uyarı: {comp_name} için 'answers' verisi bulunamadı veya formatı yanlış.")
     
-    # PDF içeriklerini toplamak için ikinci döngüye gerek kalmadı.
+#     # PDF içeriklerini toplamak için ikinci döngüye gerek kalmadı.
 
-    # Bileşen verilerini JSON formatına dönüştür
-    formatted_data = json.dumps(formatted_components, indent=2, ensure_ascii=False)
+#     # Bileşen verilerini JSON formatına dönüştür
+#     formatted_data = json.dumps(formatted_components, indent=2, ensure_ascii=False)
     
-    # Sistem talimatı (değişiklik yok)
-    system_instruction = """
-    Sen profesyonel bir yatırımcı raporu hazırlama uzmanısın. 
-    Verilen proje bilgilerini, departman verilerini, kullanıcı notlarını ve ek PDF içeriğini kullanarak kapsamlı bir yatırımcı raporu oluştur.
-    Rapor şu bölümleri içermelidir:
+#     # Sistem talimatı (değişiklik yok)
+#     system_instruction = """
+#     Sen profesyonel bir yatırımcı raporu hazırlama uzmanısın. 
+#     Verilen proje bilgilerini, departman verilerini, kullanıcı notlarını ve ek PDF içeriğini kullanarak kapsamlı bir yatırımcı raporu oluştur.
+#     Rapor şu bölümleri içermelidir:
     
-    1. Yönetici Özeti
-    2. Proje Durumu
-    3. Finansal Analiz
-    4. İşletme Verileri
-    5. Kısa ve Uzun Vadeli Tahminler
-    6. Öneriler
+#     1. Yönetici Özeti
+#     2. Proje Durumu
+#     3. Finansal Analiz
+#     4. İşletme Verileri
+#     5. Kısa ve Uzun Vadeli Tahminler
+#     6. Öneriler
     
-    Raporun profesyonel, bilgilendirici ve yatırımcılar için değerli içgörüler sağlayacak şekilde olmalıdır.
-    """
+#     Raporun profesyonel, bilgilendirici ve yatırımcılar için değerli içgörüler sağlayacak şekilde olmalıdır.
+#     """
     
-    # Kullanıcı mesajı
-    user_message = f"""
-    Proje: {project_name}
+#     # Kullanıcı mesajı
+#     user_message = f"""
+#     Proje: {project_name}
     
-    Departman Verileri:
-    {formatted_data}
-    """
+#     Departman Verileri:
+#     {formatted_data}
+#     """
 
-    # Kullanıcı notlarını ekle
-    if user_input:
-        user_message += f"\n\nKullanıcı Notları:\n{user_input}"
+#     # Kullanıcı notlarını ekle
+#     if user_input:
+#         user_message += f"\n\nKullanıcı Notları:\n{user_input}"
 
-    # Genel PDF içeriğini ekleme kısmı tamamen kaldırıldı.
-    # if pdf_content:
-    #     user_message += f"\n\nEk PDF İçeriği:\n{pdf_content}"
+#     # Genel PDF içeriğini ekleme kısmı tamamen kaldırıldı.
+#     # if pdf_content:
+#     #     user_message += f"\n\nEk PDF İçeriği:\n{pdf_content}"
     
-    # Bileşenlere ait PDF içeriklerini ekle (artık all_pdf_contents dolu olmalı)
-    if all_pdf_contents:
-        user_message += "\n\n## Bileşen PDF İçerikleri:\n\n"
+#     # Bileşenlere ait PDF içeriklerini ekle (artık all_pdf_contents dolu olmalı)
+#     if all_pdf_contents:
+#         user_message += "\n\n## Bileşen PDF İçerikleri:\n\n"
         
-        for idx, pdf_info in enumerate(all_pdf_contents, 1):
-            component = pdf_info['component']
-            file_name = pdf_info['fileName']
-            content = pdf_info['content']
+#         for idx, pdf_info in enumerate(all_pdf_contents, 1):
+#             component = pdf_info['component']
+#             file_name = pdf_info['fileName']
+#             content = pdf_info['content']
             
-            # Her PDF için başlık ve içerik ekle
-            user_message += f"### {component} - {file_name} (PDF {idx}):\n\n"
+#             # Her PDF için başlık ve içerik ekle
+#             user_message += f"### {component} - {file_name} (PDF {idx}):\n\n"
             
-            # İçeriği kısalt (çok uzunsa)
-            MAX_CONTENT_LENGTH = 10000  # Makul bir uzunluk limiti
-            if len(content) > MAX_CONTENT_LENGTH:
-                truncated_content = content[:MAX_CONTENT_LENGTH] + "...\n[İçerik çok uzun olduğu için kısaltıldı]"
-                user_message += truncated_content + "\n\n"
-                print(f"PDF içeriği kısaltıldı: {file_name} ({len(content)} -> {MAX_CONTENT_LENGTH} karakter)")
-            else:
-                user_message += content + "\n\n"
+#             # İçeriği kısalt (çok uzunsa)
+#             MAX_CONTENT_LENGTH = 10000  # Makul bir uzunluk limiti
+#             if len(content) > MAX_CONTENT_LENGTH:
+#                 truncated_content = content[:MAX_CONTENT_LENGTH] + "...\n[İçerik çok uzun olduğu için kısaltıldı]"
+#                 user_message += truncated_content + "\n\n"
+#                 print(f"PDF içeriği kısaltıldı: {file_name} ({len(content)} -> {MAX_CONTENT_LENGTH} karakter)")
+#             else:
+#                 user_message += content + "\n\n"
     
-    user_message += "\n\nLütfen bu bilgilere dayanarak kapsamlı bir yatırımcı raporu oluştur."
+#     user_message += "\n\nLütfen bu bilgilere dayanarak kapsamlı bir yatırımcı raporu oluştur."
     
-    try:
-        print(f"Rapor oluşturma isteği gönderiliyor: {project_name} projesi için")
-        print(f"Toplam PDF içeriği sayısı: {len(all_pdf_contents)}")
+#     try:
+#         print(f"Rapor oluşturma isteği gönderiliyor: {project_name} projesi için")
+#         print(f"Toplam PDF içeriği sayısı: {len(all_pdf_contents)}")
         
-        # OpenAI API çağrısı
-        response = create_chat_completion(
-            model=GPT_MODEL,
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": user_message}
-            ],
-            temperature=GPT_TEMPERATURE,
-            max_tokens=GPT_MAX_TOKENS
-        )
+#         # OpenAI API çağrısı
+#         response = create_chat_completion(
+#             model=GPT_MODEL,
+#             messages=[
+#                 {"role": "system", "content": system_instruction},
+#                 {"role": "user", "content": user_message}
+#             ],
+#             temperature=GPT_TEMPERATURE,
+#             max_tokens=GPT_MAX_TOKENS
+#         )
         
-        print(f"Rapor başarıyla oluşturuldu: {len(response)} karakter")
-        return response
+#         print(f"Rapor başarıyla oluşturuldu: {len(response)} karakter")
+#         return response
         
-    except Exception as e:
-        error_msg = f"GPT raporu oluşturulurken hata: {str(e)}"
-        print(error_msg)
-        raise Exception(error_msg)
+#     except Exception as e:
+#         error_msg = f"GPT raporu oluşturulurken hata: {str(e)}"
+#         print(error_msg)
+#         raise Exception(error_msg)
 
 def analyze_component_completion(answers: Dict[str, str], questions: list) -> Dict[str, Any]:
     """
@@ -687,47 +684,47 @@ def analyze_component_completion(answers: Dict[str, str], questions: list) -> Di
     
 #     return extracted_text.strip()
 
-def process_text_request(content: str) -> str:
-    """
-    Kullanıcıdan gelen metin girdisini OpenAI API'ına gönderir ve sonucu döndürür.
+# def process_text_request(content: str) -> str:
+#     """
+#     Kullanıcıdan gelen metin girdisini OpenAI API'ına gönderir ve sonucu döndürür.
     
-    Args:
-        content: İşlenecek metin içeriği
+#     Args:
+#         content: İşlenecek metin içeriği
         
-    Returns:
-        İşlenmiş metin çıktısı
-    """
-    system_content = 'Sen kurumsal dilde raporlar yazan bir asistansın.'
-    print(f"[LOG] process_text_request fonksiyonu başlatıldı*************************************************")
-    print(f"[LOG] İşlenecek metin içeriği: {content[:100]}...")
-    print(f"[LOG] Sistem içeriği: {system_content}")
-    try:
-        # OpenAI API çağrısı için Pydantic modeli oluştur
-        request = OpenAIRequest(
-            model=GPT_MODEL,
-            messages=[
-                OpenAIMessage(role="system", content=system_content),
-                OpenAIMessage(role="user", content=content)
-            ],
-            temperature=GPT_TEMPERATURE,
-            max_tokens=int(GPT_MAX_TOKENS / 2)
-        )
+#     Returns:
+#         İşlenmiş metin çıktısı
+#     """
+#     system_content = 'Sen kurumsal dilde raporlar yazan bir asistansın.'
+#     print(f"[LOG] process_text_request fonksiyonu başlatıldı*************************************************")
+#     print(f"[LOG] İşlenecek metin içeriği: {content[:100]}...")
+#     print(f"[LOG] Sistem içeriği: {system_content}")
+#     try:
+#         # OpenAI API çağrısı için Pydantic modeli oluştur
+#         request = OpenAIRequest(
+#             model=GPT_MODEL,
+#             messages=[
+#                 OpenAIMessage(role="system", content=system_content),
+#                 OpenAIMessage(role="user", content=content)
+#             ],
+#             temperature=GPT_TEMPERATURE,
+#             max_tokens=int(GPT_MAX_TOKENS / 2)
+#         )
         
-        # API çağrısını yap
-        response = create_chat_completion(
-            request.model,
-            [{"role": m.role, "content": m.content} for m in request.messages],
-            request.temperature,
-            request.max_tokens
-        )
+#         # API çağrısını yap
+#         response = create_chat_completion(
+#             request.model,
+#             [{"role": m.role, "content": m.content} for m in request.messages],
+#             request.temperature,
+#             request.max_tokens
+#         )
         
-        return response.strip()
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        error_msg = f'OpenAI API hatası: {str(e)}'
-        print(error_msg)
-        return error_msg
+#         return response.strip()
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         error_msg = f'OpenAI API hatası: {str(e)}'
+#         print(error_msg)
+#         return error_msg
 
 # async def process_report_request(user_input: str = None, pdf_content: str = None, project_name: str = "rapor") -> dict:
 #     """
@@ -989,29 +986,29 @@ def update_report_status(pdf_path: str, is_finalized: bool = True) -> bool:
         print(error_msg)
         return False
 
-def query_gpt(prompt: str, max_tokens: int = 4000, temperature: float = GPT_TEMPERATURE) -> str:
-    """
-    GPT modelini kullanarak verilen prompt'a yanıt döndürür.
-    Bu fonksiyon, dynamic_html_generator.py tarafından HTML üretmek için kullanılır.
+# def query_gpt(prompt: str, max_tokens: int = 4000, temperature: float = GPT_TEMPERATURE) -> str:
+#     """
+#     GPT modelini kullanarak verilen prompt'a yanıt döndürür.
+#     Bu fonksiyon, dynamic_html_generator.py tarafından HTML üretmek için kullanılır.
 
-    Args:
-        prompt: GPT modeline gönderilecek prompt metni
-        max_tokens: Üretilecek maksimum token sayısı
-        temperature: Çıktı çeşitliliğini belirleyen sıcaklık değeri
+#     Args:
+#         prompt: GPT modeline gönderilecek prompt metni
+#         max_tokens: Üretilecek maksimum token sayısı
+#         temperature: Çıktı çeşitliliğini belirleyen sıcaklık değeri
 
-    Returns:
-        GPT modelinin yanıtı
-    """
-    try:
-        return create_chat_completion(
-            model=GPT_MODEL,
-            messages=[
-                {"role": "system", "content": "Sen HTML ve CSS konusunda uzman bir web geliştiricisisin. Verilen içerik ve stil bilgilerini kullanarak estetik, modern ve profesyonel görünümlü HTML kod parçaları oluşturursun."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-    except Exception as e:
-        print(f"GPT sorgusu sırasında hata: {str(e)}")
-        raise Exception(f"HTML oluşturulamadı: {str(e)}")
+#     Returns:
+#         GPT modelinin yanıtı
+#     """
+#     try:
+#         return create_chat_completion(
+#             model=GPT_MODEL,
+#             messages=[
+#                 {"role": "system", "content": "Sen HTML ve CSS konusunda uzman bir web geliştiricisisin. Verilen içerik ve stil bilgilerini kullanarak estetik, modern ve profesyonel görünümlü HTML kod parçaları oluşturursun."},
+#                 {"role": "user", "content": prompt}
+#             ],
+#             temperature=temperature,
+#             max_tokens=max_tokens
+#         )
+#     except Exception as e:
+#         print(f"GPT sorgusu sırasında hata: {str(e)}")
+#         raise Exception(f"HTML oluşturulamadı: {str(e)}")

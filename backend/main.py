@@ -12,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import io
-from api.gpt_handler import generate_report, get_project_reports
+from api.gpt_handler import  get_project_reports
 from api.mail_agent import send_missing_info_request, get_department_email, send_report_email as mail_agent_send_report
 from api.questions_handler import get_questions_for_component
 from api.data_storage import (
@@ -22,7 +22,7 @@ from api.data_storage import (
     finalize_report, get_project_path,
     reset_active_report_generation
 )
-from api.dynamic_html_generator import generate_dynamic_html, get_project_style_config, process_images_for_report
+
 from api.file_handler import ensure_directory_structure, save_uploaded_image, save_component_text, get_active_report_images, clean_active_report
 from models.report_schema import ReportData, ComponentStatus
 from fastapi.staticfiles import StaticFiles
@@ -34,7 +34,7 @@ from uuid import uuid4
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
-from config import PROJECT_PALETTES, CORPORATE_COLORS
+
 import base64
 import logging
 from utils.pdf_utils import (
@@ -46,13 +46,14 @@ from utils.pdf_utils import (
 )
 import sys
 
-project_root = Path(__file__).parent.parent
-backend_path = Path(__file__).parent
+project_root = Path(__file__).resolve().parent.parent
 
-backend_path_str = str(backend_path)
+# Proje kök dizinini sys.path listesine ekle (eğer zaten yoksa)
+project_root_str = str(project_root)
+if project_root_str not in sys.path:
+    sys.path.insert(0, project_root_str)
 
-if backend_path_str not in sys.path:
-    sys.path.insert(0, backend_path_str)
+from agency import agency
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
@@ -183,6 +184,7 @@ def create_report(request: ProjectRequest):
     """Yeni bir rapor oluşturur."""
     try:
         report_id = get_report_id(request.project_name)
+        print(f"Report ID: {report_id}")
         report_data = create_new_report(
             request.project_name,
             report_id
@@ -329,244 +331,244 @@ async def upload_component_image(
         logger.error(f"[IMAGE] Görsel yükleme hatası: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Görsel yükleme sırasında beklenmeyen hata: {str(e)}")
 
-@app.post("/project/generate-report", response_model=Dict[str, Any])
-async def generate_project_report(request: GenerateReportRequest):
-    """
-    Proje verilerini, kullanıcı girdilerini ve PDF içeriklerini kullanarak
-    GPT ile rapor oluşturur, stilize PDF olarak kaydeder ve sonucu döndürür. 
-    Yeni dynamic_html modu ile AI-driven estetik HTML yapısı kullanılabilir.
-    """
-    logger.info(f"[REPORT_GEN] Rapor oluşturma isteği alındı: Proje={request.project_name}")
-    try:
-        # Bileşen verilerini kontrol et
-        logger.info(f"[REPORT_GEN] Bileşen verileri kontrol ediliyor...")
-        if not request.components_data:
-            logger.error(f"[REPORT_GEN] Hata: Bileşen verileri boş. Proje={request.project_name}")
-            raise HTTPException(
-                status_code=400, 
-                detail="Bileşen verileri bulunamadı. Lütfen en az bir bileşen için veri sağlayın."
-            )
-        logger.info(f"[REPORT_GEN] Bileşen verileri geçerli.")
+# @app.post("/project/generate-report", response_model=Dict[str, Any])
+# async def generate_project_report(request: GenerateReportRequest):
+#     """
+#     Proje verilerini, kullanıcı girdilerini ve PDF içeriklerini kullanarak
+#     GPT ile rapor oluşturur, stilize PDF olarak kaydeder ve sonucu döndürür. 
+#     Yeni dynamic_html modu ile AI-driven estetik HTML yapısı kullanılabilir.
+#     """
+#     logger.info(f"[REPORT_GEN] Rapor oluşturma isteği alındı: Proje={request.project_name}")
+#     try:
+#         # Bileşen verilerini kontrol et
+#         logger.info(f"[REPORT_GEN] Bileşen verileri kontrol ediliyor...")
+#         if not request.components_data:
+#             logger.error(f"[REPORT_GEN] Hata: Bileşen verileri boş. Proje={request.project_name}")
+#             raise HTTPException(
+#                 status_code=400, 
+#                 detail="Bileşen verileri bulunamadı. Lütfen en az bir bileşen için veri sağlayın."
+#             )
+#         logger.info(f"[REPORT_GEN] Bileşen verileri geçerli.")
 
-        # 1. Metin içeriğini oluştur (GPT çağrısı)
-        logger.info(f"[REPORT_GEN] GPT ile rapor içeriği oluşturuluyor... Proje={request.project_name}")
-        try:
-            report_content_text = generate_report(
-                request.project_name,
-                request.components_data,
-                request.user_input
-            )
-            logger.info(f"[REPORT_GEN] GPT rapor içeriği başarıyla oluşturuldu.")
-        except Exception as gpt_error:
-            logger.error(f"[REPORT_GEN] GPT çağrısı sırasında hata: {gpt_error}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"Yapay zeka ile rapor oluşturulurken hata: {gpt_error}")
+#         # 1. Metin içeriğini oluştur (GPT çağrısı)
+#         logger.info(f"[REPORT_GEN] GPT ile rapor içeriği oluşturuluyor... Proje={request.project_name}")
+#         try:
+#             report_content_text = generate_report(
+#                 request.project_name,
+#                 request.components_data,
+#                 request.user_input
+#             )
+#             logger.info(f"[REPORT_GEN] GPT rapor içeriği başarıyla oluşturuldu.")
+#         except Exception as gpt_error:
+#             logger.error(f"[REPORT_GEN] GPT çağrısı sırasında hata: {gpt_error}", exc_info=True)
+#             raise HTTPException(status_code=500, detail=f"Yapay zeka ile rapor oluşturulurken hata: {gpt_error}")
 
-        # Rapor ID'si oluştur
-        # logger.info(f"[REPORT_GEN] Rapor ID alınıyor...")
-        # report_id = get_report_id(request.project_name)
-        # logger.info(f"[REPORT_GEN] Rapor ID alındı: {report_id}")
+#         # Rapor ID'si oluştur
+#         # logger.info(f"[REPORT_GEN] Rapor ID alınıyor...")
+#         # report_id = get_report_id(request.project_name)
+#         # logger.info(f"[REPORT_GEN] Rapor ID alındı: {report_id}")
 
-        # # 2. Rapora görsel/stil özellikleri ekleyerek PDF oluştur
-        # logger.info(f"[REPORT_GEN] PDF oluşturma süreci başlıyor...")
+#         # # 2. Rapora görsel/stil özellikleri ekleyerek PDF oluştur
+#         # logger.info(f"[REPORT_GEN] PDF oluşturma süreci başlıyor...")
         
-        # # 2.1 Projeye özel renkleri ve görsel bilgilerini al
-        # logger.info(f"[REPORT_GEN] Proje renkleri ve stili alınıyor...")
-        # project_colors = get_project_colors(request.project_name)
-        # # Yeni: Dinamik HTML modu için daha kapsamlı stil yapılandırması al
-        # style_config = get_project_style_config(request.project_name)
-        # logger.info(f"[REPORT_GEN] Proje stili ve renkleri alındı.")
+#         # # 2.1 Projeye özel renkleri ve görsel bilgilerini al
+#         # logger.info(f"[REPORT_GEN] Proje renkleri ve stili alınıyor...")
+#         # project_colors = get_project_colors(request.project_name)
+#         # # Yeni: Dinamik HTML modu için daha kapsamlı stil yapılandırması al
+#         # style_config = get_project_style_config(request.project_name)
+#         # logger.info(f"[REPORT_GEN] Proje stili ve renkleri alındı.")
         
-        # 2.2 Görselleri hazırla 
-        logger.info(f"[REPORT_GEN] Proje görselleri belirleniyor...")
+#         # 2.2 Görselleri hazırla 
+#         logger.info(f"[REPORT_GEN] Proje görselleri belirleniyor...")
         
-        # Eski yöntem (geriye dönük uyumluluk için)
-        report_image_filename = f"{request.project_name.lower()}-inşaat-1.jpg"
-        image_data_uri = get_image_path_or_data(request.project_name, report_image_filename)
+#         # Eski yöntem (geriye dönük uyumluluk için)
+#         report_image_filename = f"{request.project_name.lower()}-inşaat-1.jpg"
+#         image_data_uri = get_image_path_or_data(request.project_name, report_image_filename)
         
-        # SVG arka plan dosyalarını hazırla
-        svg_background_uris = {}
-        static_assets_path = Path(__file__).parent / 'static' / 'assets'
+#         # SVG arka plan dosyalarını hazırla
+#         svg_background_uris = {}
+#         static_assets_path = Path(__file__).parent / 'static' / 'assets'
 
-        # Proje adına göre uygun SVG klasörü belirle
-        # project_name_lower = request.project_name.lower()
-        # if "mall" in project_name_lower:
-        #     svg_folder = "V_mall"
-        # elif "metroway" in project_name_lower:
-        #     svg_folder = "V_metroway"
-        # else:
-        #     svg_folder = None
+#         # Proje adına göre uygun SVG klasörü belirle
+#         # project_name_lower = request.project_name.lower()
+#         # if "mall" in project_name_lower:
+#         #     svg_folder = "V_mall"
+#         # elif "metroway" in project_name_lower:
+#         #     svg_folder = "V_metroway"
+#         # else:
+#         #     svg_folder = None
 
-        # # SVG arkaplan dosyalarını hazırla
-        # if svg_folder:
-        #     svg_path = static_assets_path / 'svg' / svg_folder
+#         # # SVG arkaplan dosyalarını hazırla
+#         # if svg_folder:
+#         #     svg_path = static_assets_path / 'svg' / svg_folder
             
-        #     try:
-        #         # Genel SVG arkaplanı
-        #         genel_svg_path = svg_path / 'genel.svg'
-        #         if genel_svg_path.exists():
-        #             with open(genel_svg_path, "rb") as f:
-        #                 svg_data = base64.b64encode(f.read()).decode('utf-8')
-        #                 svg_background_uris['general_bg'] = f'data:image/svg+xml;base64,{svg_data}'
-        #                 logger.info(f"[REPORT_GEN] Genel SVG arkaplanı yüklendi: {genel_svg_path}")
+#         #     try:
+#         #         # Genel SVG arkaplanı
+#         #         genel_svg_path = svg_path / 'genel.svg'
+#         #         if genel_svg_path.exists():
+#         #             with open(genel_svg_path, "rb") as f:
+#         #                 svg_data = base64.b64encode(f.read()).decode('utf-8')
+#         #                 svg_background_uris['general_bg'] = f'data:image/svg+xml;base64,{svg_data}'
+#         #                 logger.info(f"[REPORT_GEN] Genel SVG arkaplanı yüklendi: {genel_svg_path}")
             
-        #         # Kapak SVG arkaplanı
-        #         kapak_svg_path = svg_path / 'kapak.svg'
-        #         if kapak_svg_path.exists():
-        #             with open(kapak_svg_path, "rb") as f:
-        #                 svg_data = base64.b64encode(f.read()).decode('utf-8')
-        #                 svg_background_uris['cover_bg'] = f'data:image/svg+xml;base64,{svg_data}'
-        #                 logger.info(f"[REPORT_GEN] Kapak SVG arkaplanı yüklendi: {kapak_svg_path}")
-        #     except Exception as e:
-        #         logger.error(f"[REPORT_GEN] SVG arkaplanları yüklenirken hata: {str(e)}")
+#         #         # Kapak SVG arkaplanı
+#         #         kapak_svg_path = svg_path / 'kapak.svg'
+#         #         if kapak_svg_path.exists():
+#         #             with open(kapak_svg_path, "rb") as f:
+#         #                 svg_data = base64.b64encode(f.read()).decode('utf-8')
+#         #                 svg_background_uris['cover_bg'] = f'data:image/svg+xml;base64,{svg_data}'
+#         #                 logger.info(f"[REPORT_GEN] Kapak SVG arkaplanı yüklendi: {kapak_svg_path}")
+#         #     except Exception as e:
+#         #         logger.error(f"[REPORT_GEN] SVG arkaplanları yüklenirken hata: {str(e)}")
 
-        # # Logo dosyasını hazırla
-        # logo_path = static_assets_path / 'logos' / 'isra_logo.svg'
-        # if logo_path.exists():
-        #     try:
-        #         with open(logo_path, "rb") as f:
-        #             logo_data = base64.b64encode(f.read()).decode('utf-8')
-        #             svg_background_uris['logo'] = f'data:image/svg+xml;base64,{logo_data}'
-        #             logger.info(f"[REPORT_GEN] Logo dosyası yüklendi: {logo_path}")
-        #     except Exception as e:
-        #         logger.error(f"[REPORT_GEN] Logo yüklenirken hata: {str(e)}")
+#         # # Logo dosyasını hazırla
+#         # logo_path = static_assets_path / 'logos' / 'isra_logo.svg'
+#         # if logo_path.exists():
+#         #     try:
+#         #         with open(logo_path, "rb") as f:
+#         #             logo_data = base64.b64encode(f.read()).decode('utf-8')
+#         #             svg_background_uris['logo'] = f'data:image/svg+xml;base64,{logo_data}'
+#         #             logger.info(f"[REPORT_GEN] Logo dosyası yüklendi: {logo_path}")
+#         #     except Exception as e:
+#         #         logger.error(f"[REPORT_GEN] Logo yüklenirken hata: {str(e)}")
 
-        # Yeni yöntem: Aktif rapordaki tüm bileşen görsellerini al
-        component_images = get_active_report_images(request.project_name)
-        # Görselleri base64 veya URL formatına işle
-        image_urls = process_images_for_report(request.project_name, component_images)
-        logger.info(f"[REPORT_GEN] Proje görselleri hazırlandı. Toplam: {len(image_urls)} görsel")
+#         # Yeni yöntem: Aktif rapordaki tüm bileşen görsellerini al
+#         component_images = get_active_report_images(request.project_name)
+#         # Görselleri base64 veya URL formatına işle
+#         image_urls = process_images_for_report(request.project_name, component_images)
+#         logger.info(f"[REPORT_GEN] Proje görselleri hazırlandı. Toplam: {len(image_urls)} görsel")
         
-        html_content = ""
+#         html_content = ""
         
-        # Dynamic HTML modunu kullan (varsayılan)
-        if request.use_dynamic_html:
-            logger.info(f"[REPORT_GEN] Dinamik HTML modu kullanılıyor...")
-            try:
-                # AI ile dinamik HTML yapısı oluştur
-                html_content = generate_dynamic_html(
-                    request.project_name, 
-                    request.components_data,
-                    style_config,
-                    image_urls,
-                    svg_background_uris  # SVG arka plan ve logo URI'lerini ekle
-                )
+#         # Dynamic HTML modunu kullan (varsayılan)
+#         if request.use_dynamic_html:
+#             logger.info(f"[REPORT_GEN] Dinamik HTML modu kullanılıyor...")
+#             try:
+#                 # AI ile dinamik HTML yapısı oluştur
+#                 html_content = generate_dynamic_html(
+#                     request.project_name, 
+#                     request.components_data,
+#                     style_config,
+#                     image_urls,
+#                     svg_background_uris  # SVG arka plan ve logo URI'lerini ekle
+#                 )
                 
-                # Şablonu yükle ve render et
-                template = env.get_template('report_template.html')
-                html_content = template.render(
-                    project_name=request.project_name,
-                    report_data=html_content,  # AI tarafından oluşturulan HTML içeriği
-                    project_colors=project_colors,
-                    corporate_colors=CORPORATE_COLORS,
-                    project_image=image_data_uri,  # Geriye dönük uyumluluk için
-                    logo_path=svg_background_uris.get('logo', ''),
-                    page_background_svg=svg_background_uris.get('general_bg', ''),
-                    cover_background_svg=svg_background_uris.get('cover_bg', ''),
-                    css_path='style.css'
-                )
-                logger.info(f"[REPORT_GEN] Dinamik HTML şablonu başarıyla render edildi.")
-            except Exception as dynamic_html_error:
-                logger.error(f"[REPORT_GEN] Dinamik HTML oluşturma hatası: {dynamic_html_error}", exc_info=True)
-                # Dinamik HTML başarısız olursa klasik moda düş
-                logger.warning(f"[REPORT_GEN] Dinamik HTML modu başarısız oldu, klasik moda geçiliyor...")
-                request.use_dynamic_html = False
+#                 # Şablonu yükle ve render et
+#                 template = env.get_template('report_template.html')
+#                 html_content = template.render(
+#                     project_name=request.project_name,
+#                     report_data=html_content,  # AI tarafından oluşturulan HTML içeriği
+#                     project_colors=project_colors,
+#                     corporate_colors=CORPORATE_COLORS,
+#                     project_image=image_data_uri,  # Geriye dönük uyumluluk için
+#                     logo_path=svg_background_uris.get('logo', ''),
+#                     page_background_svg=svg_background_uris.get('general_bg', ''),
+#                     cover_background_svg=svg_background_uris.get('cover_bg', ''),
+#                     css_path='style.css'
+#                 )
+#                 logger.info(f"[REPORT_GEN] Dinamik HTML şablonu başarıyla render edildi.")
+#             except Exception as dynamic_html_error:
+#                 logger.error(f"[REPORT_GEN] Dinamik HTML oluşturma hatası: {dynamic_html_error}", exc_info=True)
+#                 # Dinamik HTML başarısız olursa klasik moda düş
+#                 logger.warning(f"[REPORT_GEN] Dinamik HTML modu başarısız oldu, klasik moda geçiliyor...")
+#                 request.use_dynamic_html = False
         
-        # Klasik modu kullan (dinamik HTML başarısız olursa veya istek klasik mod için geldiyse)
-        if not request.use_dynamic_html:
-            logger.info(f"[REPORT_GEN] Klasik HTML modu kullanılıyor...")
-            try:
-                template = env.get_template('report_template.html')
-                html_content = template.render(
-                    project_name=request.project_name,
-                    report_data=report_content_text,  # AI'dan gelen metin içeriği
-                    project_colors=project_colors,
-                    corporate_colors=CORPORATE_COLORS,
-                    project_image=image_data_uri
-                )
-                logger.info(f"[REPORT_GEN] Klasik Jinja2 şablonu başarıyla render edildi.")
-            except jinja2.exceptions.TemplateNotFound:
-                logger.warning(f"[REPORT_GEN] Uyarı: Rapor şablonu 'report_template.html' bulunamadı, basit HTML oluşturuluyor.")
-                # Fallback HTML creation
-                html_content = f"<html><body><h1>{request.project_name} Raporu</h1>{report_content_text}</body></html>"
-            except Exception as render_error:
-                logger.error(f"[REPORT_GEN] Jinja2 render sırasında hata: {render_error}", exc_info=True)
-                raise HTTPException(status_code=500, detail=f"Rapor şablonu işlenirken hata: {render_error}")
+#         # Klasik modu kullan (dinamik HTML başarısız olursa veya istek klasik mod için geldiyse)
+#         if not request.use_dynamic_html:
+#             logger.info(f"[REPORT_GEN] Klasik HTML modu kullanılıyor...")
+#             try:
+#                 template = env.get_template('report_template.html')
+#                 html_content = template.render(
+#                     project_name=request.project_name,
+#                     report_data=report_content_text,  # AI'dan gelen metin içeriği
+#                     project_colors=project_colors,
+#                     corporate_colors=CORPORATE_COLORS,
+#                     project_image=image_data_uri
+#                 )
+#                 logger.info(f"[REPORT_GEN] Klasik Jinja2 şablonu başarıyla render edildi.")
+#             except jinja2.exceptions.TemplateNotFound:
+#                 logger.warning(f"[REPORT_GEN] Uyarı: Rapor şablonu 'report_template.html' bulunamadı, basit HTML oluşturuluyor.")
+#                 # Fallback HTML creation
+#                 html_content = f"<html><body><h1>{request.project_name} Raporu</h1>{report_content_text}</body></html>"
+#             except Exception as render_error:
+#                 logger.error(f"[REPORT_GEN] Jinja2 render sırasında hata: {render_error}", exc_info=True)
+#                 raise HTTPException(status_code=500, detail=f"Rapor şablonu işlenirken hata: {render_error}")
 
-        # 2.4 WeasyPrint ile HTML'den PDF oluştur
-        logger.info(f"[REPORT_GEN] WeasyPrint ile PDF oluşturuluyor...")
-        font_config = FontConfiguration()
-        css = CSS(string='@page { size: A4; margin: 1.5cm; @bottom-left { content: "İsra Holding"; font-size: 9pt; color: #666; } @bottom-right { content: "Sayfa " counter(page) " / " counter(pages); font-size: 9pt; color: #666; } }', font_config=font_config)
-        css_file_path = template_dir / 'style.css'
+#         # 2.4 WeasyPrint ile HTML'den PDF oluştur
+#         logger.info(f"[REPORT_GEN] WeasyPrint ile PDF oluşturuluyor...")
+#         font_config = FontConfiguration()
+#         css = CSS(string='@page { size: A4; margin: 1.5cm; @bottom-left { content: "İsra Holding"; font-size: 9pt; color: #666; } @bottom-right { content: "Sayfa " counter(page) " / " counter(pages); font-size: 9pt; color: #666; } }', font_config=font_config)
+#         css_file_path = template_dir / 'style.css'
         
-        # CSS path for template
-        css_path_uri = css_file_path.as_uri() if css_file_path.exists() else None
+#         # CSS path for template
+#         css_path_uri = css_file_path.as_uri() if css_file_path.exists() else None
         
-        # HTML oluştur
-        html = HTML(string=html_content, base_url=str(template_dir))
+#         # HTML oluştur
+#         html = HTML(string=html_content, base_url=str(template_dir))
         
-        # Template'i güncellenmiş değişkenlerle tekrar render et
-        template = env.get_template('report_template.html')
-        html_content = template.render(
-            project_name=request.project_name,
-            report_data=report_content_text if not request.use_dynamic_html else html_content,  # Uygun içerik
-            project_colors=project_colors,
-            corporate_colors=CORPORATE_COLORS,
-            project_image=image_data_uri,
-            logo_path=svg_background_uris.get('logo', ''),
-            css_path=css_path_uri,
-            page_background_svg=svg_background_uris.get('general_bg', ''),
-            cover_background_svg=svg_background_uris.get('cover_bg', '')
-        )
+#         # Template'i güncellenmiş değişkenlerle tekrar render et
+#         template = env.get_template('report_template.html')
+#         html_content = template.render(
+#             project_name=request.project_name,
+#             report_data=report_content_text if not request.use_dynamic_html else html_content,  # Uygun içerik
+#             project_colors=project_colors,
+#             corporate_colors=CORPORATE_COLORS,
+#             project_image=image_data_uri,
+#             logo_path=svg_background_uris.get('logo', ''),
+#             css_path=css_path_uri,
+#             page_background_svg=svg_background_uris.get('general_bg', ''),
+#             cover_background_svg=svg_background_uris.get('cover_bg', '')
+#         )
         
-        # Yeniden HTML nesnesi oluştur
-        html = HTML(string=html_content, base_url=str(template_dir))
+#         # Yeniden HTML nesnesi oluştur
+#         html = HTML(string=html_content, base_url=str(template_dir))
         
-        stylesheets = [css]
-        if css_file_path.is_file():
-            logger.info(f"[REPORT_GEN] Stil dosyası kullanılıyor: {css_file_path}")
-            stylesheets.append(CSS(filename=str(css_file_path)))
-        else:
-            logger.warning(f"[REPORT_GEN] Stil dosyası bulunamadı: {css_file_path}, sadece temel CSS kullanılıyor.")
+#         stylesheets = [css]
+#         if css_file_path.is_file():
+#             logger.info(f"[REPORT_GEN] Stil dosyası kullanılıyor: {css_file_path}")
+#             stylesheets.append(CSS(filename=str(css_file_path)))
+#         else:
+#             logger.warning(f"[REPORT_GEN] Stil dosyası bulunamadı: {css_file_path}, sadece temel CSS kullanılıyor.")
             
-        # PDF'i oluştur ve kaydet
-        pdf_bytes = html.write_pdf(stylesheets=stylesheets, font_config=font_config)
-        logger.info(f"[REPORT_GEN] WeasyPrint PDF başarıyla oluşturuldu (bytes: {len(pdf_bytes)}).")
+#         # PDF'i oluştur ve kaydet
+#         pdf_bytes = html.write_pdf(stylesheets=stylesheets, font_config=font_config)
+#         logger.info(f"[REPORT_GEN] WeasyPrint PDF başarıyla oluşturuldu (bytes: {len(pdf_bytes)}).")
         
-        # PDF'i kaydet
-        pdf_path, success = save_pdf_content(pdf_bytes, request.project_name, report_id)
-        if not success:
-            raise HTTPException(status_code=500, detail="PDF dosyası kaydedilemedi")
+#         # PDF'i kaydet
+#         pdf_path, success = save_pdf_content(pdf_bytes, request.project_name, report_id)
+#         if not success:
+#             raise HTTPException(status_code=500, detail="PDF dosyası kaydedilemedi")
         
-        logger.info(f"[REPORT_GEN] PDF dosyası başarıyla kaydedildi: {pdf_path}")
+#         logger.info(f"[REPORT_GEN] PDF dosyası başarıyla kaydedildi: {pdf_path}")
         
-        # Rapor meta verilerini kaydet
-        logger.info(f"[REPORT_GEN] Rapor meta verileri kaydediliyor...")
-        result = save_generated_report(
-            request.project_name,
-            report_id,
-            report_content_text, 
-            str(pdf_path)
-        )
-        logger.info(f"[REPORT_GEN] Rapor meta verileri başarıyla kaydedildi.")
+#         # Rapor meta verilerini kaydet
+#         logger.info(f"[REPORT_GEN] Rapor meta verileri kaydediliyor...")
+#         result = save_generated_report(
+#             request.project_name,
+#             report_id,
+#             report_content_text, 
+#             str(pdf_path)
+#         )
+#         logger.info(f"[REPORT_GEN] Rapor meta verileri başarıyla kaydedildi.")
         
-        logger.info(f"[REPORT_GEN] Rapor oluşturma başarıyla tamamlandı. Proje={request.project_name}, ID={report_id}, Path={pdf_path}")
+#         logger.info(f"[REPORT_GEN] Rapor oluşturma başarıyla tamamlandı. Proje={request.project_name}, ID={report_id}, Path={pdf_path}")
         
-        # Dynamic HTML modunda kullanıldı mı bilgisini ekle
-        result["dynamic_html_used"] = request.use_dynamic_html
+#         # Dynamic HTML modunda kullanıldı mı bilgisini ekle
+#         result["dynamic_html_used"] = request.use_dynamic_html
         
-        return result
+#         return result
         
-    except HTTPException as http_exc: # Re-raise HTTP exceptions directly
-        # Logging for HTTP exceptions is already done where they are raised
-        raise http_exc
-    except Exception as e:
-        logger.error(f"[REPORT_GEN] Genel rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
-        error_message = str(e)
-        # ... (rest of the general error handling)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Rapor oluşturulurken beklenmedik bir hata oluştu: {error_message}"
-        )
+#     except HTTPException as http_exc: # Re-raise HTTP exceptions directly
+#         # Logging for HTTP exceptions is already done where they are raised
+#         raise http_exc
+#     except Exception as e:
+#         logger.error(f"[REPORT_GEN] Genel rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
+#         error_message = str(e)
+#         # ... (rest of the general error handling)
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Rapor oluşturulurken beklenmedik bir hata oluştu: {error_message}"
+#         )
 
 @app.post("/project/generate-report-by-agency")
 async def generate_report_by_agency(request: GenerateReportRequest):
@@ -576,12 +578,30 @@ async def generate_report_by_agency(request: GenerateReportRequest):
     try:
         logger.info(f"[AGENCY_REPORT_GEN] Rapor oluşturma başlatıldı. Proje={request.project_name}")
 
+        # Flatten components data into a single message
+        messages = []
+        for comp_name, comp in request.components_data.items():
+            if "answers" in comp:
+                for question_id, answer in comp["answers"].items():
+                    try:
+                        data = json.loads(answer)
+                        if isinstance(data, dict):
+                            content = data.get('content', '')
+                            file_name = data.get('fileName', 'Unnamed')
+                            messages.append(f"{comp_name} - {file_name}:\n{content}")
+                        else:
+                            messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
+                    except json.JSONDecodeError:
+                        # If answer is not JSON, use it directly
+                        messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
+
+        flattened_content = "\n\n".join(messages)
+
         # Request payload'ı hazırla
         request_payload = {
             "project_name": request.project_name,
-            "components_data": request.components_data, 
+            "flattened_content": flattened_content,
             "user_input": request.user_input,
-            "pdf_content": request.pdf_content,
             "use_dynamic_html": request.use_dynamic_html
         }
 
@@ -590,23 +610,25 @@ async def generate_report_by_agency(request: GenerateReportRequest):
 
         # Agency prompt'unu hazırla
         prompt = """
-        Lütfen verilen proje verilerini kullanarak bir yatırımcı raporu oluştur.
+        Lütfen verilen proje verilerini kullanarak bir yatırımcı rapor metni oluştur.
         Rapor aşağıdaki bölümleri içermeli:
         1. Proje Genel Bakış
         2. Finansal Analiz
         3. Risk Değerlendirmesi
         4. Sonuç ve Öneriler
 
-        Verilen component_data ve pdf_content içeriklerini analiz ederek
+        Verilen flattened_content ve pdf_content içeriklerini analiz ederek
         profesyonel ve detaylı bir rapor hazırla.
         """
 
         # Agency'i çağır
-        from api.agency import agency
+        print(request_payload_json)
+
+        
         result = agency.get_completion(
             request_payload_json,
-            prompt,
-            "generate_report"
+            additional_instructions=prompt,
+            verbose=True
         )
 
         logger.info(f"[AGENCY_REPORT_GEN] Agency rapor oluşturma tamamlandı. Proje={request.project_name}")
@@ -623,7 +645,6 @@ async def generate_report_by_agency(request: GenerateReportRequest):
             status_code=500,
             detail=f"Agency ile rapor oluşturulurken bir hata oluştu: {str(e)}"
         )
-
 
 @app.get("/download-report/{project_name}")
 def download_report(project_name: str):
@@ -738,122 +759,6 @@ def send_email(request: EmailRequest):
         return {"message": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"E-posta gönderilirken bir hata oluştu: {str(e)}")
-
-# @app.post("/process-report")
-# async def process_report(
-#     user_input: Optional[str] = Form(None),
-#     pdf_file: Optional[UploadFile] = File(None)
-# ):
-#     """
-#     Kullanıcının metin ve/veya PDF dosyasını işler ve sonuçlarını döndürür.
-#     Dosya işleme, OpenAI API kullanılarak gerçekleştirilir.
-#     """
-#     if not user_input and not pdf_file:
-#         raise HTTPException(status_code=400, detail="Metin veya PDF dosyası gereklidir")
-    
-#     try:
-#         # PDF dosyasını geçici olarak kaydet
-#         temp_file_path = None
-#         if pdf_file:
-#             try:
-#                 # PDF dosyasını oku
-#                 content = await pdf_file.read()
-#                 if not content:
-#                     raise HTTPException(status_code=400, detail="Yüklenen PDF dosyası boş")
-                
-#                 # Dosya boyutunu kontrol et
-#                 file_size = len(content)
-#                 if file_size == 0:
-#                     raise HTTPException(status_code=400, detail="PDF dosyası boş")
-#                 print(f"PDF dosyası boyutu: {file_size} byte")
-                
-#                 # Geçici dosya oluştur
-#                 import tempfile
-#                 import os
-                
-#                 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-#                 temp_file_path = temp_file.name
-#                 temp_file.write(content)
-#                 temp_file.close()
-                
-#                 # Dosya kontrolü
-#                 if not os.path.exists(temp_file_path):
-#                     raise HTTPException(status_code=400, detail="PDF dosyası geçici olarak kaydedilemedi")
-                
-#                 file_saved_size = os.path.getsize(temp_file_path)
-#                 if file_saved_size == 0:
-#                     os.unlink(temp_file_path)
-#                     raise HTTPException(status_code=400, detail="Kaydedilen PDF dosyası boş")
-                    
-#                 print(f"PDF dosyası geçici olarak kaydedildi: {temp_file_path} ({file_saved_size} byte)")
-#             except HTTPException as e:
-#                 # HTTP hataları yukarıya ilet
-#                 if temp_file_path and os.path.exists(temp_file_path):
-#                     os.unlink(temp_file_path)
-#                 raise e
-#             except Exception as e:
-#                 if temp_file_path and os.path.exists(temp_file_path):
-#                     os.unlink(temp_file_path)
-#                 print(f"PDF dosyası işlenirken hata: {str(e)}")
-#                 raise HTTPException(status_code=400, detail=f"PDF dosyası işlenirken hata: {str(e)}")
-        
-#         # İşlem parametrelerini hazırla
-#         process_params = {}
-#         if user_input:
-#             process_params['user_input'] = user_input
-#             print(f"Kullanıcı metni: {user_input[:50]}...")
-        
-#         if temp_file_path:
-#             try:
-#                 # PDF içeriğini çıkar
-#                 pdf_content = extract_pdf_content(temp_file_path)
-#                 if not pdf_content or pdf_content.strip() == "":
-#                     raise HTTPException(status_code=400, detail="PDF içeriği çıkarılamadı veya PDF boş")
-                
-#                 process_params['pdf_content'] = pdf_content
-#                 print(f"PDF içeriği çıkarıldı: {len(pdf_content)} karakter")
-#             except Exception as e:
-#                 print(f"PDF içeriği çıkarılırken hata: {str(e)}")
-#                 raise HTTPException(status_code=400, detail=f"PDF içeriği çıkarılırken hata: {str(e)}")
-#             finally:
-#                 # Geçici dosyayı temizle
-#                 if temp_file_path and os.path.exists(temp_file_path):
-#                     os.unlink(temp_file_path)
-#                     print(f"Geçici dosya silindi: {temp_file_path}")
-        
-#         # Rapor işleme
-#         try:
-#             result = await process_report_request(**process_params)
-#             print(f"Rapor başarıyla işlendi: {result.get('success', False)}")
-            
-#             # Sonuç kontrolü
-#             if not result:
-#                 raise HTTPException(status_code=500, detail="İşlem sonucu boş")
-                
-#             if "error" in result and result["error"]:
-#                 raise HTTPException(status_code=500, detail=result["error"])
-                
-#             # PDF yolunu daha erişilebilir yap
-#             if result.get('pdf_path'):
-#                 result['download_url'] = f"/download/{result['pdf_path']}"
-            
-#             return result
-#         except HTTPException as e:
-#             # HTTP hataları yukarıya ilet
-#             raise e
-#         except Exception as e:
-#             import traceback
-#             traceback.print_exc()
-#             print(f"Rapor işlenirken beklenmeyen hata: {str(e)}")
-#             raise HTTPException(status_code=500, detail=f"Rapor işlenirken hata oluştu: {str(e)}")
-#     except HTTPException as e:
-#         # Önceden oluşturulan HTTP hataları
-#         raise e
-#     except Exception as e:
-#         import traceback
-#         traceback.print_exc()
-#         print(f"Rapor işlenirken beklenmeyen hata: {str(e)}")
-#         raise HTTPException(status_code=500, detail=f"Rapor işlenirken hata oluştu: {str(e)}")
 
 @app.post("/project/finalize-report", response_model=Dict[str, Any])
 def finalize_project_report(request: ProjectRequest):

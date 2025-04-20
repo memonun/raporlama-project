@@ -25,13 +25,7 @@ LOGOS_DIR = ASSETS_DIR / "logos"
 COLORS_DIR = ASSETS_DIR / "colors"
 
 # Kurumsal renkler
-CORPORATE_COLORS = {
-    "dark_blue": "#1a5276",
-    "light_blue": "#2980b9",
-    "navy": "#154360",
-    "light_gray_bg": "#ebf5fb",
-    "gray_alt": "#d6dbdf"
-}
+
 
 # Proje renk paletleri
 def load_project_palettes():
@@ -67,12 +61,6 @@ PDF_SETTINGS = {
     "margin_bottom": "2cm",
     "margin_left": "2cm",
     "encoding": "utf-8"
-}
-
-# Şablon ayarları
-TEMPLATE_SETTINGS = {
-    "report_template": "report_template.html",
-    "report_css": "style.css"
 }
 
 # Email gönderme ayarları
@@ -115,39 +103,6 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 os.makedirs(REPORTS_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
-# GPT modeli ayarları
-GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4-turbo-preview")
-GPT_TEMPERATURE = float(os.getenv("GPT_TEMPERATURE", "0.7"))
-GPT_MAX_TOKENS = int(os.getenv("GPT_MAX_TOKENS", "4096"))
 
-# Renk Paletleri
-CORPORATE_COLORS = {
-    'dark_blue': '#163860',
-    'light_blue': '#1f6599',
-    'navy': '#15375f',
-    'light_gray_bg': '#f8f9fa',
-    'gray_alt': '#e9ecef',
-}
 
-PROJECT_PALETTES = {
-    'v_mall': {
-        'primary': '#4b4b4b',
-        'secondary': '#7c0a02',
-        'background': '#e9ecef',
-        'corporate_accent': CORPORATE_COLORS['dark_blue'],
-    },
-    'v_metroway': {
-        'primary': '#f7941d',
-        'secondary': '#c1272d',
-        'background': '#cccccc',
-        'corporate_accent': CORPORATE_COLORS['light_blue'],
-    },
-    'v_orman': {
-        'primary': '#2e5339',
-        'secondary': '#8b5e3c',
-        'accent': '#a3d5d3',
-        'corporate_accent': CORPORATE_COLORS['navy'],
-    }
-    # Diğer projeler buraya eklenebilir
-}
 

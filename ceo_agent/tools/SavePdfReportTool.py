@@ -3,8 +3,7 @@ from pydantic import Field
 from typing import Dict, Any
 import logging
 from pathlib import Path
-from utils.pdf_utils import save_pdf_content, get_report_path
-
+from backend.utils.pdf_utils import save_pdf_content, get_report_path 
 class SavePdfReportTool(BaseTool):
     """
     Oluşturulan PDF raporunu uygun dizine kaydeder ve rapor meta verilerini günceller.
@@ -14,6 +13,9 @@ class SavePdfReportTool(BaseTool):
     project_name: str = Field(..., description="Proje adı")
     report_id: str = Field(..., description="Rapor ID")
     pdf_content: bytes = Field(..., description="Kaydedilecek PDF içeriği (bytes)")
+    
+    class ToolConfig:
+        one_call_at_a_time = True
     
     def run(self) -> Dict[str, Any]:
         """

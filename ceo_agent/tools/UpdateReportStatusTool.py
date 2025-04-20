@@ -4,7 +4,7 @@ from typing import Dict, Any
 import logging
 import json
 from pathlib import Path
-from api.data_storage import save_generated_report, get_project_path
+from backend.api.data_storage import save_generated_report, get_project_path
 
 class UpdateReportStatusTool(BaseTool):
     """
@@ -16,6 +16,9 @@ class UpdateReportStatusTool(BaseTool):
     report_id: str = Field(..., description="Rapor ID")
     report_content: str = Field(..., description="Rapor metin içeriği")
     pdf_path: str = Field(..., description="Kaydedilen PDF'in dosya yolu")
+    
+    class ToolConfig:
+        one_call_at_a_time = True
     
     def run(self) -> Dict[str, Any]:
         """
