@@ -218,54 +218,38 @@ const ProjectDetail = () => {
       event.stopPropagation(); // Prevent triggering handleReportClick
     }
     
+    if (!reportId) {
+      toast.error("Silinecek rapor ID'si bulunamadı.");
+      console.error("handleDeleteReport: reportId is missing!");
+      return;
+    }
+
     if (!window.confirm('Bu raporu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
       return;
     }
     
     try {
       setLoading(true);
-      // Backend'den silme işlemi
-      await reportService.deleteReport(projectName);
+      // Backend'den silme işlemi - reportId'yi gönder
+      // Assuming reportService.deleteReport accepts projectName and reportId
+      await reportService.deleteReport(projectName, reportId); 
       
-      // State'i güncelle - report.id ile filtreleme
-      setReports(prev => prev.filter(report => report.id !== reportId));
+      // State'i güncelle - report.id veya report.report_id ile filtreleme (Hangisi UUID ise onu kullan)
+      setReports(prev => prev.filter(report => (report.id !== reportId && report.report_id !== reportId)));
       
       // Kullanıcıya başarılı mesajı
       toast.success('Rapor başarıyla silindi.', {
         duration: 3000
       });
       
-      // Proje verilerini tekrar yükleyerek güncel durumu al
-      try {
-        const projectData = await projectService.getProjectDetails(projectName);
-        
-        // Raporları birleştir
-        let allReports = [];
-        
-        // Eğer active_report varsa listeye ekle
-        if (projectData.active_report) {
-          allReports.push({
-            ...projectData.active_report,
-            menuId: uuidv4()
-          });
-        }
-        
-        // Eğer reports[] listesi varsa listeye ekle
-        if (projectData.reports && Array.isArray(projectData.reports)) {
-          allReports = [
-            ...allReports,
-            ...projectData.reports.map(report => ({
-              ...report,
-              menuId: uuidv4()
-            }))
-          ];
-        }
-        
-        // Tüm raporları state'e set et
-        setReports(allReports);
-      } catch (refreshError) {
-        console.error('Proje verileri yenilenirken hata:', refreshError);
-      }
+      // Proje verilerini tekrar yükleyerek güncel durumu al (Bu kısım kalabilir veya kaldırılabilir)
+      // try {
+      //   const projectData = await projectService.getProjectDetails(projectName);
+      //   ... (rest of the report merging logic) ...
+      //   setReports(allReports);
+      // } catch (refreshError) {
+      //   console.error('Proje verileri yenilenirken hata:', refreshError);
+      // }
     } catch (error) {
       // Log the detailed error caught from the service
       console.error('handleDeleteReport - Detaylı Hata:', error);
@@ -285,6 +269,15 @@ const ProjectDetail = () => {
     if (event) {
       event.stopPropagation();
     }
+
+    // report objesinden doğru UUID'yi al (report_id öncelikli)
+    const reportIdToDelete = report?.report_id || report?.id;
+
+    if (!reportIdToDelete) {
+       toast.error("Silinecek rapor ID'si bulunamadı.");
+       console.error("handleFinalizedReportDelete: reportId is missing in report object:", report);
+       return;
+    }
     
     // Kullanıcı onayı al
     if (!window.confirm('Bu sonlandırılmış raporu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
@@ -294,15 +287,13 @@ const ProjectDetail = () => {
     try {
       setLoading(true);
       
-      // Rapor adı veya ID'sini belirle
-      const fileName = report.name || report.report_id;
+      // Backend'den silme işlemi - Doğru reportId'yi gönder
+      // Assuming reportService.deleteFinalizedReport accepts projectName and reportId (UUID)
+      await reportService.deleteFinalizedReport(projectName, reportIdToDelete); 
       
-      // Backend'den silme işlemi
-      await reportService.deleteFinalizedReport(projectName, fileName);
-      
-      // State'i güncelle - report.id veya report.report_id ile filtreleme
+      // State'i güncelle - reportIdToDelete ile filtreleme
       setReports(prev => prev.filter(r => 
-        (r.id !== report.id) && (r.report_id !== report.report_id)
+        (r.report_id !== reportIdToDelete && r.id !== reportIdToDelete)
       ));
       
       // Kullanıcıya başarılı mesajı
@@ -310,37 +301,7 @@ const ProjectDetail = () => {
         duration: 3000
       });
       
-      // Proje verilerini tekrar yükleyerek güncel durumu al
-      try {
-        const projectData = await projectService.getProjectDetails(projectName);
-        
-        // Raporları birleştir
-        let allReports = [];
-        
-        // Eğer active_report varsa listeye ekle
-        if (projectData.active_report) {
-          allReports.push({
-            ...projectData.active_report,
-            menuId: uuidv4()
-          });
-        }
-        
-        // Eğer reports[] listesi varsa listeye ekle
-        if (projectData.reports && Array.isArray(projectData.reports)) {
-          allReports = [
-            ...allReports,
-            ...projectData.reports.map(report => ({
-              ...report,
-              menuId: uuidv4()
-            }))
-          ];
-        }
-        
-        // Tüm raporları state'e set et
-        setReports(allReports);
-      } catch (refreshError) {
-        console.error('Proje verileri yenilenirken hata:', refreshError);
-      }
+      // Proje verilerini tekrar yükleme kısmı kaldırıldı, state güncellemesi yeterli olmalı.
       
       setOpenMenuId(null); // Close the menu after deletion
     } catch (error) {

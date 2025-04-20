@@ -610,27 +610,19 @@ async def generate_report_by_agency(request: GenerateReportRequest):
 
         # Agency prompt'unu hazırla
         prompt = """
-        Lütfen verilen proje verilerini kullanarak bir yatırımcı rapor metni oluştur.
-        Rapor aşağıdaki bölümleri içermeli:
-        1. Proje Genel Bakış
-        2. Finansal Analiz
-        3. Risk Değerlendirmesi
-        4. Sonuç ve Öneriler
-
-        Verilen flattened_content ve pdf_content içeriklerini analiz ederek
-        profesyonel ve detaylı bir rapor hazırla.
+        Bu aldığın veriler ışığında görevine başlayabilirsin. 
+        İnputların dorğu şekilde ilgili ajanlara gönderildiğinden emin ol ve bileşenlerin gönderilmesinde sıkıntı olursa işlemi durdur.
         """
 
         # Agency'i çağır
         print(request_payload_json)
 
-        
         result = agency.get_completion(
-            request_payload_json,
+            message=f"investor_report_agent: project_name: {request.project_name}, flattened_content: {json.dumps(flattened_content)}",
             additional_instructions=prompt,
             verbose=True
         )
-
+        print(result)
         logger.info(f"[AGENCY_REPORT_GEN] Agency rapor oluşturma tamamlandı. Proje={request.project_name}")
 
         return {

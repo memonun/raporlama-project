@@ -514,27 +514,6 @@
         "tools": [
             {
                 "function": {
-                    "name": "ExtractPdfContentTool",
-                    "description": "Verilen bir PDF dosyas\u0131ndan metin ve tablo i\u00e7eriklerini \u00e7\u0131kar\u0131r.\n\u00c7\u0131kt\u0131 metin + markdown format\u0131nda tablo i\u00e7erikleri olarak d\u00f6ner.",
-                    "parameters": {
-                        "properties": {
-                            "file_path": {
-                                "description": "PDF dosyas\u0131n\u0131n tam dosya yolu",
-                                "title": "File Path",
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "file_path"
-                        ],
-                        "type": "object"
-                    },
-                    "strict": false
-                },
-                "type": "function"
-            },
-            {
-                "function": {
                     "name": "InvestorReportGenerator",
                     "description": "Bu ara\u00e7, proje ve bile\u015fen verilerini kullanarak yat\u0131r\u0131mc\u0131ya y\u00f6nelik profesyonel bir rapor olu\u015fturur.",
                     "parameters": {
@@ -544,25 +523,20 @@
                                 "title": "Project Name",
                                 "type": "string"
                             },
-                            "components_data": {
+                            "flattened_content": {
                                 "description": "Bile\u015fenlerin cevaplar\u0131 ve PDF i\u00e7erikleri",
-                                "title": "Components Data",
-                                "type": "object"
-                            },
-                            "user_input": {
-                                "default": null,
-                                "description": "Kullan\u0131c\u0131 taraf\u0131ndan eklenen notlar",
-                                "title": "User Input",
+                                "title": "Flattened Content",
                                 "type": "string"
                             }
                         },
                         "required": [
-                            "components_data",
+                            "flattened_content",
                             "project_name"
                         ],
-                        "type": "object"
+                        "type": "object",
+                        "additionalProperties": false
                     },
-                    "strict": false
+                    "strict": true
                 },
                 "type": "function"
             }
