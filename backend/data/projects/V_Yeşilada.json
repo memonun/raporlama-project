@@ -1,8 +1,43 @@
 {
   "project_name": "V Yeşilada",
   "created_at": "2025-03-26T10:35:24.133091",
-  "last_updated": "2025-04-14T12:48:21.952664",
-  "active_report": null,
+  "last_updated": "2025-04-18T11:35:28.527135",
+  "active_report": {
+    "report_id": "V_Yeşilada_1f9916f3-82d0-4fd4-a2d7-3a7cc4cb1c40",
+    "report_date": "2025-04-17",
+    "created_at": "2025-04-17T16:24:31.126113",
+    "last_updated": "2025-04-18T11:35:28.527135",
+    "components": {
+      "Kurumsal İletişim": {
+        "answers": {
+          "corporate_report": "{\"fileName\":\"Finans_Raporu.pdf\",\"content\":\"Finans Raporu - Mutaz Bey\\nProje: İsra Holding Yatırım Portföyü\\n2024 Yılı Kar: 12.500.000 TL\\n2025 Projeksiyonu: 18.000.000 TL\\nGelir Kaynakları: AVM Kiralamaları, Tatil Köyü Gelirleri, Ticari İşletmeler\",\"questionId\":\"corporate_report\"}"
+        },
+        "last_updated": "2025-04-18T11:35:28.527135"
+      },
+      "İnşaat": {
+        "answers": {
+          "construction_images": "{\"fileName\":\"İşletme_Raporu.pdf\",\"content\":\"İşletme Raporu - ECE Türkiye\\nProje Adı: V Metroway\\nKiralanabilir Alan: 25.000 m²\\nMağaza Sayısı: 81\\nYönetim: ECE Türkiye tarafından devralınacak\\nBeklenen Açılış Tarihi: 20 Haziran 2025\",\"questionId\":\"construction_images\"}"
+        },
+        "last_updated": "2025-04-18T11:35:28.523247"
+      },
+      "Finans": {
+        "answers": {
+          "finance_report": "{\"fileName\":\"Kurumsal_İletişim_Raporu.pdf\",\"content\":\"Kurumsal İletişim Raporu - Pazarlama\\nProje: V Orman Resort\\nTanıtım Kampanyaları: Sosyal Medya, Basılı Medya, Etkinlikler\\nHedef Kitle: Doğa Turizmi Meraklıları\\nVizyon: Bolu’nun doğal güzellikleri ile konforu bir araya getirmek\",\"questionId\":\"finance_report\"}",
+          "finance_report_image_0": "finans-0.jpg"
+        },
+        "last_updated": "2025-04-18T11:35:28.517798"
+      },
+      "İşletme": {
+        "answers": {
+          "business_report": "{\"fileName\":\"Finans_Raporu.pdf\",\"content\":\"Finans Raporu - Mutaz Bey\\nProje: İsra Holding Yatırım Portföyü\\n2024 Yılı Kar: 12.500.000 TL\\n2025 Projeksiyonu: 18.000.000 TL\\nGelir Kaynakları: AVM Kiralamaları, Tatil Köyü Gelirleri, Ticari İşletmeler\",\"questionId\":\"business_report\"}",
+          "business_report_image_0": "i̇sletme-0.webp"
+        },
+        "last_updated": "2025-04-18T11:35:28.507208"
+      }
+    },
+    "status": "in_progress",
+    "report_generated": false
+  },
   "finalized_reports": [],
   "reports": []
 }

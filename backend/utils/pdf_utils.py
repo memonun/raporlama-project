@@ -8,11 +8,11 @@ import pdfplumber
 import re
 import shutil
 import json
-
+from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 # Constants
-BASE_REPORTS_DIR = Path("data/reports")
+BASE_REPORTS_DIR = Path("backend/data/reports")
 BASE_ACTIVE_REPORT_DIR = Path("backend/data/uploads/active_report")
 
 def get_report_id(project_name: str) -> str:

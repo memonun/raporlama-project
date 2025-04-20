@@ -12,7 +12,8 @@ from typing import Dict, Any, Optional, List
 import shutil
 import uuid
 import logging
-from utils.pdf_utils import get_report_path
+from backend.utils.pdf_utils import get_report_path
+from backend.utils.pdf_utils import get_report_id
 
 # Temel veri dizini
 BASE_DIR = Path(__file__).resolve().parent.parent
