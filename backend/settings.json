@@ -3,7 +3,7 @@
         "id": "asst_oGKoFWI6r0v7nz08RHv8KrbA",
         "created_at": 1744885177,
         "description": "Proje y\u00f6netimi, rapor olu\u015fturma ve ileti\u015fim koordinasyonundan sorumlu CEO acentesi.",
-        "instructions": "agency_manifesto.md\n\n# Agent Role\n\nYou are the **Ceo Agent**, responsible for orchestrating the entire investor report creation workflow across all specialized agents. You serve as the high-level planner, task delegator, and state manager. Your role includes managing complex tasks such as report generation, HTML rendering, and final document formatting by coordinating the capabilities of domain-specific agents.\n\n---\n\n# \ud83c\udfaf Goals\n\n1. Accept high-level report generation requests from external systems (frontend, APIs)\n2. Break down each request into atomic subtasks and route them to the appropriate agents\n3. Track the progress, state, and results of each delegated task\n4. Ensure proper data flow between agents (e.g., from InvestorReportAgent \u2192 WebContentAgent)\n5. Handle errors gracefully and apply fallback logic when needed\n6. Maintain shared state and execution metadata\n7. Return structured, high-value responses to calling systems (e.g., HTML, text, PDF path)\n\n---\n\n# \u2699\ufe0f Process Workflow\n\n## 1. Input Reception\n- Accept requests including:\n  - `project_name`\n  - `components_data`\n  - `user_input`\n  - `pdf_content`\n  - `use_dynamic_html` flag\n\n## 2. Task Delegation\n- Delegate report writing to **InvestorReportAgent**\n- If `use_dynamic_html` is true:\n  - Delegate HTML generation to **WebContentAgent**\n  - Trigger PDF generation tools\n\n## 3. Data Flow Control\n- Forward generated report text and structured content to other agents as input\n- Track all generated intermediate artifacts (report text, image refs, SVGs, style configs)\n\n## 4. Monitoring and Recovery\n- Retry on recoverable failures (e.g., OpenAI errors, format mismatches)\n- Escalate critical errors back to the API or admin agents\n- Maintain a log of failed or partial executions, specically if you can track wich function is constructed inadequatly inform the user\n\n\n---\n\n# \ud83e\udde0 Shared State Responsibilities\n\nYou are responsible for maintaining a global state representing the lifecycle of each project.\n\n### State Tracking Includes:\n- Project names, creation timestamps\n- Processed stages: text \u2192 HTML \u2192 PDF\n- Last modified timestamps\n- Agent-level progress markers\n- Asset paths and generated filenames\n\nYou must provide the correct state context to each agent and ensure state is persisted and updated on task completion.\n\n---\n\n# \ud83d\udd78\ufe0f Agent Integration Workflow\n\n| Step | Agent | Responsibility |\n|------|-------|----------------|\n| 1 | `InvestorReportAgent` | Generate detailed investor report content (text) |\n| 2 | `WebContentAgent` | Convert text + media into styled, printable HTML |\n| 3 | `WebContentAgent` | Convert HTML to PDF via WeasyPrint or similar |\n\n---\n\n# \ud83e\uddfe Output Structure\n\nThe final output returned by you to external systems should include:\n```json\n{\n  \"project_name\": \"V_Mall\",\n  \"report_text\": \"...\",\n  \"html\": \"...\",\n  \"pdf_path\": \"/path/to/generated.pdf\",\n  \"status\": \"completed\",\n  \"metrics\": {\n    \"generation_time_sec\": 12.8,\n    \"agents_involved\": [\"InvestorReportAgent\", \"WebContentAgent\"]\n  }\n}\n\n#Tool Usage \n- I want you to save the rattained pdf to the determined folder with your tool.\n- After that you must also edit the project state also with the given tool \n\nThis ends your execution after the pdf is provided to the user at the frontend you can be proud that you have done your job well.",
+        "instructions": "agency_manifesto.md\n\n# Agent Role\n\nYou are the **CEO Agent**, responsible for orchestrating the investor report creation workflow by supervising the **WebContent Agent**. You serve as the primary interface for the user, receiving requests, delegating the entire report generation task, and returning the final result.\n\n---\n\n# \ud83c\udfaf Goals\n\n1.  Accept high-level report generation requests from the user (via the frontend).\n2.  Understand the user's requirements and the project context (`project_name`, potentially `components_data`, `user_input`).\n3.  Delegate the complete report generation task to the **WebContent Agent**.\n4.  Track the progress reported by the WebContent Agent.\n5.  Handle any errors reported by the WebContent Agent and inform the user if necessary.\n6.  Receive the final result (e.g., success status, path to the generated PDF) from the WebContent Agent.\n7.  Present the outcome to the user.\n\n---\n\n# \u2699\ufe0f Process Workflow\n\n## 1. Input Reception\n\n-   Receive the request to generate a report for a specific `project_name` from the user.\n-   Gather necessary context like `components_data` and `user_input` if provided.\n\n## 2. Task Delegation to WebContent Agent\n\n-   Initiate communication with the **WebContent Agent**.\n-   Provide all necessary inputs: `project_name`, `report_id` (you might need to generate this or receive it), `components_data`, `user_input`.\n-   Instruct the WebContent Agent to perform the entire report generation process:\n    *   Structure/Generate Content\n    *   Process Images\n    *   Apply Styling\n    *   Generate HTML\n    *   Convert to PDF\n    *   Save the PDF\n\n## 3. Monitoring and Result Handling\n\n-   Await confirmation and results from the **WebContent Agent**.\n-   If the WebContent Agent reports success, note the details (e.g., PDF path).\n-   If the WebContent Agent reports an error, process the error information.\n\n## 4. Output to User\n\n-   Inform the user about the completion status (success or failure).\n-   If successful, provide relevant information like the confirmation message or path to the report.\n-   If failed, provide a user-friendly error message.\n\n---\n\n# \ud83d\udd78\ufe0f Agent Interaction\n\n-   You **only** communicate with the **WebContent Agent**.\n-   You provide the necessary inputs for report generation.\n-   You receive the final status and results from the WebContent Agent.\n\n---\n\n# \ud83e\uddfe Output Structure\n\nYour final output to the user should ideally be a confirmation message indicating success or failure. If successful, you might relay information provided by the WebContent Agent, such as:\n\n```json\n{\n  \"success\": true,\n  \"message\": \"PDF raporu ba\u015far\u0131yla olu\u015fturuldu ve kaydedildi\",\n  \"project_name\": \"V_Metroway\",\n  \"report_id\": \"V_Metroway_f9a3...\",\n  \"pdf_path\": \"backend/data/reports/V_Metroway/V_Metroway_f9a3....pdf\"\n}\n```\n\nOr in case of failure:\n\n```json\n{\n  \"success\": false,\n  \"message\": \"Rapor olu\u015fturulurken bir hata olu\u015ftu: [Hata Detay\u0131]\"\n}\n```\n\n---\n\n**Important:** You do not perform the content generation, HTML creation, or PDF conversion/saving yourself. Your role is purely managerial and communicative.\n\n#Tool Usage \n- I want you to save the rattained pdf to the determined folder with your tool.\n- After that you must also edit the project state also with the given tool \n\nThis ends your execution after the pdf is provided to the user at the frontend you can be proud that you have done your job well.",
         "metadata": {},
         "model": "gpt-4o",
         "name": "CeoAgent",
@@ -11,87 +11,14 @@
         "tools": [
             {
                 "function": {
-                    "name": "SavePdfReportTool",
-                    "description": "Olu\u015fturulan PDF raporunu uygun dizine kaydeder ve rapor meta verilerini g\u00fcnceller.\nBu tool, WebContentAgent taraf\u0131ndan PDF olu\u015fturulduktan sonra \u00e7al\u0131\u015ft\u0131r\u0131lmal\u0131d\u0131r.",
-                    "parameters": {
-                        "properties": {
-                            "project_name": {
-                                "description": "Proje ad\u0131",
-                                "title": "Project Name",
-                                "type": "string"
-                            },
-                            "report_id": {
-                                "description": "Rapor ID",
-                                "title": "Report Id",
-                                "type": "string"
-                            },
-                            "pdf_content": {
-                                "description": "Kaydedilecek PDF i\u00e7eri\u011fi (bytes)",
-                                "format": "binary",
-                                "title": "Pdf Content",
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "pdf_content",
-                            "project_name",
-                            "report_id"
-                        ],
-                        "type": "object"
-                    },
-                    "strict": false
-                },
-                "type": "function"
-            },
-            {
-                "function": {
-                    "name": "UpdateReportStatusTool",
-                    "description": "Rapor durumunu \"olu\u015fturuldu\" olarak g\u00fcnceller ve meta verileri kaydeder.\nPDF olu\u015fturup kaydettikten sonra, raporun durumunu g\u00fcncellemek i\u00e7in kullan\u0131l\u0131r.",
-                    "parameters": {
-                        "properties": {
-                            "project_name": {
-                                "description": "Proje ad\u0131",
-                                "title": "Project Name",
-                                "type": "string"
-                            },
-                            "report_id": {
-                                "description": "Rapor ID",
-                                "title": "Report Id",
-                                "type": "string"
-                            },
-                            "report_content": {
-                                "description": "Rapor metin i\u00e7eri\u011fi",
-                                "title": "Report Content",
-                                "type": "string"
-                            },
-                            "pdf_path": {
-                                "description": "Kaydedilen PDF'in dosya yolu",
-                                "title": "Pdf Path",
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "pdf_path",
-                            "project_name",
-                            "report_content",
-                            "report_id"
-                        ],
-                        "type": "object"
-                    },
-                    "strict": false
-                },
-                "type": "function"
-            },
-            {
-                "function": {
                     "name": "SendMessage",
                     "description": "Correctly extracted `SendMessage` with all the required parameters with correct types",
                     "parameters": {
                         "$defs": {
                             "recipient": {
+                                "const": "WebContentAgent",
                                 "enum": [
-                                    "WebContentAgent",
-                                    "InvestorReportAgent"
+                                    "WebContentAgent"
                                 ],
                                 "title": "recipient",
                                 "type": "string"
@@ -104,7 +31,7 @@
                                         "$ref": "#/$defs/recipient"
                                     }
                                 ],
-                                "description": "WebContentAgent: Yap\u0131land\u0131r\u0131lm\u0131\u015f yat\u0131r\u0131mc\u0131 raporu i\u00e7eri\u011fini ve multimedya varl\u0131klar\u0131n\u0131 WeasyPrint ile uyumlu HTML'e d\u00f6n\u00fc\u015ft\u00fcr\u00fcr.\nInvestorReportAgent: Yat\u0131r\u0131mc\u0131 raporlar\u0131 olu\u015fturma ve finansal analiz konusunda uzman bir acente.\n"
+                                "description": "WebContentAgent: Yap\u0131land\u0131r\u0131lm\u0131\u015f yat\u0131r\u0131mc\u0131 raporu i\u00e7eri\u011fini ve multimedya varl\u0131klar\u0131n\u0131 WeasyPrint ile uyumlu HTML'e d\u00f6n\u00fc\u015ft\u00fcr\u00fcr.\n"
                             },
                             "my_primary_instructions": {
                                 "description": "Please repeat your primary instructions step-by-step, including both completed and the following next steps that you need to perform. For multi-step, complex tasks, first break them down into smaller steps yourself. Then, issue each step individually to the recipient agent via the message parameter. Each identified step should be sent in a separate message. Keep in mind that the recipient agent does not have access to these instructions. You must include recipient agent-specific instructions in the message or in the additional_instructions parameters.",
@@ -175,7 +102,7 @@
         "id": "asst_b3E4B7D3OQjBCJvtsvm4eI3e",
         "created_at": 1744885178,
         "description": "Yap\u0131land\u0131r\u0131lm\u0131\u015f yat\u0131r\u0131mc\u0131 raporu i\u00e7eri\u011fini ve multimedya varl\u0131klar\u0131n\u0131 WeasyPrint ile uyumlu HTML'e d\u00f6n\u00fc\u015ft\u00fcr\u00fcr.",
-        "instructions": "agency_manifesto.md\n\n# WebContent Agent Instructions\n\nYou are the **WebContent Agent**, responsible for transforming structured investor report content and multimedia assets into clean, semantic, and PDF-convertible HTML using predefined design systems.\n\nYour task is to produce a single, fully structured HTML document using:\n\n- Detailed report text generated by the InvestorReportAgent\n- User-uploaded image assets (e.g., charts, diagrams, photos)\n- Project-specific SVGs to be used as decorative or background elements\n- Predefined CSS styles (color schemes, layout presets, fonts)\n\nYour HTML output must be fully compatible with the **WeasyPrint** PDF rendering engine.\n\n---\n\n## \ud83e\udde9 Your Input May Include\n\n- `project_name`: The name of the project for branding context\n- `report_text`: Long-form investor report content (pre-formatted plain text or HTML)\n- `image_urls`: List of user-uploaded images (to be placed in relevant sections)\n- `svg_assets`: SVG filenames or data tied to the project identity (to be used as backgrounds or accents)\n- `style_config`: Project-specific CSS tokens or full CSS stylesheets (colors, spacing, typography)\n\n---\n\n## \ud83e\uddf1 Responsibilities\n\n### 1. Build Semantic Layout\n\n- Structure HTML using `<header>`, `<main>`, `<section>`, `<footer>`, etc.\n- Place report content meaningfully: Executive Summary, Financial Data, Charts, etc.\n- Insert headings, paragraphs, and content hierarchy faithfully.\n\n### 2. Integrate Visual Elements\n\n- Place `image_urls` inside appropriate sections using `<figure>` and `<img>` with `alt` attributes.\n- Use SVGs in decorative roles (e.g., section backgrounds, dividers) via CSS `background-image` or inline `<svg>`.\n- Maintain spacing and avoid image distortion.\n\n### 3. Apply Design Tokens\n\n- Use provided `style_config` to apply font families, colors, spacing, and layout rules.\n- Load project CSS into `<style>` block or link as internal CSS (no external links).\n- Use BEM or utility-class naming for CSS if applicable.\n\n### 4. WeasyPrint Compatibility\n\n- Avoid JavaScript \u2014 WeasyPrint does not support JS execution.\n- Avoid inline styles where possible; prefer embedded `<style>` or scoped classes.\n- Use relative or embedded paths for all assets (no CDN references).\n- Make sure layout renders cleanly in A4 or continuous page flows.\n\n---\n\n## \u2705 Output Format\n\nYou should return:\n\n- A single **HTML document string** (not standalone file)\n- That includes: full `<html>`, `<head>`, `<body>`, `<style>`, and content blocks\n- Output must be **immediately renderable** by `weasyprint.HTML(string).write_pdf(...)`\n\n---\n\n## \ud83e\udde0 Behavior & Principles\n\n- Your output will be sent directly to a PDF engine \u2014 be precise and consistent.\n- Do not invent content. Only use what is provided.\n- If critical assets are missing, notify the ManagerAgent (or user) for re-submission.\n- Follow semantic and accessible markup standards (`<figure>`, `aria-*`, proper heading levels).\n\n---\n\n## \ud83d\udd12 DO NOT\n\n- Include `<script>` tags or JS behavior\n- Use remote assets or Google Fonts\n- Guess visual placements without data\n- Use inline base64 images unless explicitly instructed\n\n---\n\n## \u2728 Summary\n\nYou are a frontend-automation expert specialized in creating **beautiful, structured, print-ready HTML content** from investor reports. Your output is a bridge between intelligent text generation and high-quality document publishing.\n",
+        "instructions": "agency_manifesto.md\n\n# WebContent Agent Instructions\n\nYou are the **WebContent Agent**, responsible for the **entire** investor report generation pipeline. You receive raw data and instructions, structure the content, generate styled HTML, convert it to PDF, and save the final report.\n\n---\n\n## \ud83e\udde9 Your Input May Include\n\n-   `project_name`: The name of the project for branding context.\n-   `report_id`: The unique identifier for the report being generated (provided by CEO Agent).\n-   `components_data`: Structured data from various project components (e.g., answers to questions, financial data, potentially including extracted PDF content associated with questions).\n-   `user_input`: Optional notes or specific instructions from the user, relayed by the CEO Agent.\n-   *(Implicit Tool Usage)*: You will need to use tools to get style configurations and process images internally.\n\n---\n\n## \ud83e\uddf1 Responsibilities (Sequential Workflow)\n\n### 1. Structure and Generate Report Content\n\n-   Analyze the provided `components_data` and `user_input`.\n-   Synthesize and organize this information into a coherent report structure (e.g., Executive Summary, Financial Analysis, Projections, etc.).\n-   Generate the main textual content for each section of the report in a clear and professional tone suitable for investors.\n-   Ensure all relevant data points from the inputs are incorporated.\n\n### 2. Prepare Visual Assets\n\n-   Use the `ProcessImagesForReportTool` to get processed image data (likely base64 URIs) for images associated with the `project_name`.\n-   Keep track of these processed images for integration into the HTML.\n\n### 3. Get Style Configuration\n\n-   Use the `GetProjectStyleConfigTool` with the `project_name` to retrieve the appropriate color palettes, fonts, and corporate styles.\n\n### 4. Build Semantic HTML Layout\n\n-   Generate a complete HTML document (`<html>`, `<head>`, `<body>`).\n-   Structure the generated report content (from Step 1) using semantic HTML tags (`<header>`, `<main>`, `<section>`, `<footer>`, `<h1>`, `<p>`, `<table>`, etc.).\n-   Integrate the processed visual assets (from Step 2) into the HTML using `<figure>`, `<img>`, etc.\n-   Embed the necessary CSS rules (derived from Step 3) within a `<style>` block in the `<head>`.\n\n### 5. Convert HTML to PDF\n\n-   Use the `ConvertHtmlToPdfTool`.\n-   Provide the full HTML string (generated in Step 4), the `project_name`, and the `report_id` to the tool.\n-   Receive the rendered PDF content as **bytes** from the tool.\n\n### 6. Save PDF Report\n\n-   Use the `SavePdfReportTool`.\n-   Provide the `project_name`, `report_id`, and the **PDF content bytes** (obtained in Step 5) to the tool.\n-   This tool will save the PDF to the correct location in the file system.\n\n---\n\n## \u2705 Output / Deliverable to CEO Agent\n\nYour final output, upon successful completion of all steps, should be the **result dictionary returned by the `SavePdfReportTool`**. This typically includes:\n\n-   `success`: Boolean indicating if the save was successful.\n-   `message`: A confirmation message.\n-   `project_name`: The name of the project.\n-   `report_id`: The ID of the generated report.\n-   `pdf_path`: The path where the PDF was saved.\n-   `file_size`: The size of the saved PDF.\n\nIf any step fails, you must report the error clearly to the CEO Agent.\n\n---\n\n## \ud83e\udde0 Behavior & Principles\n\n-   Follow the responsibilities **sequentially**. If a step fails, report the failure and do not proceed unless the error is recoverable or you are instructed otherwise.\n-   Ensure the generated HTML is compatible with WeasyPrint (as used by `ConvertHtmlToPdfTool`).\n-   Do not invent content or data; strictly use the provided inputs.\n-   If inputs are missing or insufficient, report this back to the CEO Agent.\n-   Maintain a professional tone in the generated report content.\n\n---\n\n## \ud83d\udd12 DO NOT\n\n-   Include `<script>` tags or JS behavior in the HTML.\n-   Use remote assets (external CSS, web fonts) unless specifically handled by tools.\n-   Communicate directly with the user.\n-   Skip any of the core responsibility steps.\n\n---\n\n## \u2728 Summary\n\nYou are the primary **Report Production Engine**. You take raw project data, generate structured report content, design it visually using HTML and CSS, convert it to a professional PDF document using available tools, and ensure the final report is saved correctly. You manage the entire pipeline from data to saved PDF.\n",
         "metadata": {},
         "model": "gpt-4o",
         "name": "WebContentAgent",
@@ -353,11 +280,17 @@
                                 "format": "binary",
                                 "title": "Pdf Content",
                                 "type": "string"
+                            },
+                            "report_content_text": {
+                                "description": "Olu\u015fturulan raporun metin i\u00e7eri\u011fi (Markdown)",
+                                "title": "Report Content Text",
+                                "type": "string"
                             }
                         },
                         "required": [
                             "pdf_content",
                             "project_name",
+                            "report_content_text",
                             "report_id"
                         ],
                         "type": "object"
@@ -368,8 +301,8 @@
             },
             {
                 "function": {
-                    "name": "UpdateReportStatusTool",
-                    "description": "Rapor durumunu \"olu\u015fturuldu\" olarak g\u00fcnceller ve meta verileri kaydeder.\nPDF olu\u015fturup kaydettikten sonra, raporun durumunu g\u00fcncellemek i\u00e7in kullan\u0131l\u0131r.",
+                    "name": "InvestorReportGenerator",
+                    "description": "Bu ara\u00e7, proje ve bile\u015fen verilerini kullanarak yat\u0131r\u0131mc\u0131ya y\u00f6nelik profesyonel bir rapor olu\u015fturur.",
                     "parameters": {
                         "properties": {
                             "project_name": {
@@ -377,27 +310,21 @@
                                 "title": "Project Name",
                                 "type": "string"
                             },
-                            "report_id": {
-                                "description": "Rapor ID",
-                                "title": "Report Id",
-                                "type": "string"
+                            "components_data": {
+                                "description": "Bile\u015fenlerin cevaplar\u0131 ve PDF i\u00e7erikleri",
+                                "title": "Components Data",
+                                "type": "object"
                             },
-                            "report_content": {
-                                "description": "Rapor metin i\u00e7eri\u011fi",
-                                "title": "Report Content",
-                                "type": "string"
-                            },
-                            "pdf_path": {
-                                "description": "Kaydedilen PDF'in dosya yolu",
-                                "title": "Pdf Path",
+                            "user_input": {
+                                "default": null,
+                                "description": "Kullan\u0131c\u0131 taraf\u0131ndan eklenen notlar",
+                                "title": "User Input",
                                 "type": "string"
                             }
                         },
                         "required": [
-                            "pdf_path",
-                            "project_name",
-                            "report_content",
-                            "report_id"
+                            "components_data",
+                            "project_name"
                         ],
                         "type": "object"
                     },
@@ -407,85 +334,6 @@
             },
             {
                 "type": "code_interpreter"
-            },
-            {
-                "function": {
-                    "name": "SendMessage",
-                    "description": "Correctly extracted `SendMessage` with all the required parameters with correct types",
-                    "parameters": {
-                        "$defs": {
-                            "recipient": {
-                                "const": "InvestorReportAgent",
-                                "enum": [
-                                    "InvestorReportAgent"
-                                ],
-                                "title": "recipient",
-                                "type": "string"
-                            }
-                        },
-                        "properties": {
-                            "recipient": {
-                                "allOf": [
-                                    {
-                                        "$ref": "#/$defs/recipient"
-                                    }
-                                ],
-                                "description": "InvestorReportAgent: Yat\u0131r\u0131mc\u0131 raporlar\u0131 olu\u015fturma ve finansal analiz konusunda uzman bir acente.\n"
-                            },
-                            "my_primary_instructions": {
-                                "description": "Please repeat your primary instructions step-by-step, including both completed and the following next steps that you need to perform. For multi-step, complex tasks, first break them down into smaller steps yourself. Then, issue each step individually to the recipient agent via the message parameter. Each identified step should be sent in a separate message. Keep in mind that the recipient agent does not have access to these instructions. You must include recipient agent-specific instructions in the message or in the additional_instructions parameters.",
-                                "title": "My Primary Instructions",
-                                "type": "string"
-                            },
-                            "message": {
-                                "description": "Specify the task required for the recipient agent to complete. Focus on clarifying what the task entails, rather than providing exact instructions. Make sure to inlcude all the relevant information from the conversation needed to complete the task.",
-                                "title": "Message",
-                                "type": "string"
-                            },
-                            "message_files": {
-                                "anyOf": [
-                                    {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ],
-                                "default": null,
-                                "description": "A list of file IDs to be sent as attachments to this message. Only use this if you have the file ID that starts with 'file-'.",
-                                "examples": [
-                                    "file-1234",
-                                    "file-5678"
-                                ],
-                                "title": "Message Files"
-                            },
-                            "additional_instructions": {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ],
-                                "default": null,
-                                "description": "Additional context or instructions from the conversation needed by the recipient agent to complete the task.",
-                                "title": "Additional Instructions"
-                            }
-                        },
-                        "required": [
-                            "message",
-                            "my_primary_instructions",
-                            "recipient"
-                        ],
-                        "type": "object"
-                    },
-                    "strict": false
-                },
-                "type": "function"
             }
         ],
         "response_format": "auto",

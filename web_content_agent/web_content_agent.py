@@ -3,8 +3,7 @@ from web_content_agent.tools.get_project_style_config_tool import GetProjectStyl
 from web_content_agent.tools.generate_dynamic_html_tool import GenerateDynamicHtmlTool
 from web_content_agent.tools.process_images_for_report_tool import ProcessImagesForReportTool
 from web_content_agent.tools.ConvertHtmlToPdfTool import ConvertHtmlToPdfTool
-from ceo_agent.tools.SavePdfReportTool import SavePdfReportTool
-from ceo_agent.tools.UpdateReportStatusTool import UpdateReportStatusTool
+from web_content_agent.tools.SavePdfReportTool import SavePdfReportTool
 from agency_swarm.tools import FileSearch
 from web_content_agent.tools.InvestorReportGenerator import InvestorReportGenerator
 class WebContentAgent(Agent):
@@ -20,7 +19,6 @@ class WebContentAgent(Agent):
                 ProcessImagesForReportTool,
                 ConvertHtmlToPdfTool,
                 SavePdfReportTool,
-                UpdateReportStatusTool,
                 InvestorReportGenerator,
             ],
             files_folder=["../assets/images",],
