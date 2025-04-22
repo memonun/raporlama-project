@@ -29,4 +29,4 @@ agency = Agency(
 
 # Demo çalıştırma
 if __name__ == "__main__":
-    agency.run_demo()  # Terminal üzerinde acente ağını başlatır
+    agency.demo_gradio()  # Terminal üzerinde acente ağını başlatır

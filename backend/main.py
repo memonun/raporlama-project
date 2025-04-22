@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import jinja2
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Any, Union
 import uvicorn
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
@@ -85,9 +85,7 @@ class ComponentDataRequest(BaseModel):
 class GenerateReportRequest(BaseModel):
     project_name: str
     components_data: Dict[str, Dict[str, Any]] = {}
-    user_input: Optional[str] = None
-    pdf_content: Optional[str] = None
-    use_dynamic_html: bool = True
+    
 
 class EmailRequest(BaseModel):
     component_name: str
@@ -104,6 +102,13 @@ class ProjectActionRequest(BaseModel):
 class ShareReportRequest(BaseModel):
     project_name: str
     email_addresses: List[str]
+
+# Yeni Model: Ajansın nihai yanıt yapısı için
+class AgencyFinalResponse(BaseModel):
+    status: str = Field(..., description="İşlemin başarı durumunu belirtir ('success' veya 'error').")
+    message: str = Field(..., description="Başarı veya hata hakkında açıklayıcı mesaj.")
+    report_id: Optional[str] = Field(None, description="Oluşturulan veya işlenen raporun UUID'si.")
+    pdf_path: Optional[str] = Field(None, description="Kaydedilen PDF dosyasının sunucudaki yolu.")
 
 # Endpoints
 @app.get("/")
@@ -573,17 +578,18 @@ async def upload_component_image(
 @app.post("/project/generate-report-by-agency")
 async def generate_report_by_agency(request: GenerateReportRequest):
     """
-    Agency kullanarak rapor oluşturur.
+    Agency Swarm kullanarak asenkron olarak rapor oluşturur, kaydeder ve sonucu döndürür.
     """
     try:
         logger.info(f"[AGENCY_REPORT_GEN] Rapor oluşturma başlatıldı. Proje={request.project_name}")
 
-        # Flatten components data into a single message
+        # --- 1. Veri Hazırlama --- 
         messages = []
         for comp_name, comp in request.components_data.items():
             if "answers" in comp:
                 for question_id, answer in comp["answers"].items():
                     try:
+                        # Cevap JSON formatında mı diye kontrol et (örn. PDF içeriği)
                         data = json.loads(answer)
                         if isinstance(data, dict):
                             content = data.get('content', '')
@@ -595,18 +601,9 @@ async def generate_report_by_agency(request: GenerateReportRequest):
                         # If answer is not JSON, use it directly
                         messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
 
-        flattened_content = "\n\n".join(messages)
-
-        # Request payload'ı hazırla
-        request_payload = {
-            "project_name": request.project_name,
-            "flattened_content": flattened_content,
-            "user_input": request.user_input,
-            "use_dynamic_html": request.use_dynamic_html
-        }
-
-        # JSON string'e çevir
-        request_payload_json = json.dumps(request_payload, indent=2)
+        components_data = str("\n\n".join(messages))
+       
+       
 
         # Agency prompt'unu hazırla
         prompt = """
@@ -614,11 +611,8 @@ async def generate_report_by_agency(request: GenerateReportRequest):
         İnputların dorğu şekilde ilgili ajanlara gönderildiğinden emin ol ve bileşenlerin gönderilmesinde sıkıntı olursa işlemi durdur.
         """
 
-        # Agency'i çağır
-        print(request_payload_json)
-
         result = agency.get_completion(
-            message=f"investor_report_agent: project_name: {request.project_name}, flattened_content: {json.dumps(flattened_content)}",
+            message=f"Oluşturulacak raporun ait oudğu proje: project_name: {request.project_name}, bütün bileşen içerikleri daha fazla bilgi talep etme: {(components_data)}",
             additional_instructions=prompt,
             verbose=True
         )

@@ -14,9 +14,8 @@ class ConvertHtmlToPdfTool(BaseTool):
     """
     
     project_name: str = Field(..., description="Proje adı")
-    report_id: str = Field(..., description="Rapor ID")
     html_content: str = Field(..., description="PDF'e dönüştürülecek HTML içeriği")
-    css_path: Optional[str] = Field(None, description="Opsiyonel CSS dosya yolu")
+    
     class ToolConfig:
         one_call_at_a_time = True
     def run(self) -> bytes:
@@ -35,11 +34,6 @@ class ConvertHtmlToPdfTool(BaseTool):
             # font_config referansı kaldırıldı
             stylesheets = [CSS(string=css_str)]
             
-            # Eğer CSS dosyası belirtilmişse ekle
-            if self.css_path and Path(self.css_path).is_file():
-                # font_config referansı kaldırıldı
-                stylesheets.append(CSS(filename=self.css_path))
-                logger.info(f"[PDF_GEN] Harici CSS eklendi: {self.css_path}")
             
             # HTML oluştur ve PDF'e dönüştür
             html = HTML(string=self.html_content)

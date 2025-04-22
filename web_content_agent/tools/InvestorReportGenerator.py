@@ -12,8 +12,7 @@ class InvestorReportGenerator(BaseTool):
     """
     project_name: str = Field(..., description="Proje adı")
     components_data: dict = Field(..., description="Bileşenlerin cevapları ve PDF içerikleri")
-    user_input: str = Field(None, description="Kullanıcı tarafından eklenen notlar")
-
+    
     class ToolConfig:
         one_call_at_a_time = True
 
