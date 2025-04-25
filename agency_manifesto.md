@@ -1,35 +1,33 @@
 # Rapor Otomasyon Ajansı
 
 ## Ajans Açıklaması
-Bu ajans, yatırımcı raporları oluşturma sürecini otomatikleştirmek için tasarlanmış iki yapay zeka ajanından oluşan bir sistemdir. CEO Agent kullanıcı etkileşimini yönetirken, WebContent Agent raporun tamamını (içerik oluşturma, biçimlendirme, PDF'e dönüştürme ve kaydetme) hazırlar.
+Bu ajans, yatırımcı raporları için **HTML içeriği** oluşturma sürecini otomatikleştirmek üzere tasarlanmış iki yapay zeka ajanından oluşan bir sistemdir. CEO Agent kullanıcı/sistem etkileşimini yönetirken, WebContent Agent rapor içeriğini HTML formatında hazırlar.
 
 ## Misyon Bildirisi
-Yapay zeka ajanları kullanarak rapor oluşturma sürecini hızlandırmak, otomatikleştirmek ve bu süreçlerin kalitesini artırmak. Kullanıcıların minimum çaba ile profesyonel PDF raporlar üretmesini sağlamak.
+Yapay zeka ajanları kullanarak rapor için **HTML içeriği** oluşturma sürecini hızlandırmak ve otomatikleştirmek. Kullanıcıların/Sistemin minimum çaba ile raporlama için gerekli olan profesyonel HTML içeriğini üretmesini sağlamak.
 
 ## Çalışma Ortamı
-Bu ajans, bir web uygulaması bünyesinde çalışır. Kullanıcılar proje verilerini sisteme girerler ve ajanlar bu verileri işleyerek raporlar oluşturur. Ajanlar, OpenAI API'yi kullanarak ileri düzey metin oluşturma ve işleme yeteneklerine sahiptir ve rapor oluşturma için gerekli araçları kullanır.
- 
+Bu ajans, genellikle bir web uygulaması backend'i tarafından çağrılır (`main.py` gibi). Ajanlar, kendilerine sağlanan proje verilerini işleyerek HTML rapor içeriği oluşturur. Ajanlar, OpenAI API'yi kullanarak ileri düzey metin oluşturma ve işleme yeteneklerine sahiptir ve HTML oluşturma için gerekli araçları kullanır.
+
 ## Ajanların Rolleri ve Sorumlulukları
 
 ### CEO Agent (Yönetici)
-- Kullanıcı ile etkileşim kurar, raporlama taleplerini alır ve anlar.
-- Görevi WebContent Agent'a devreder ve süreci denetler.
-- Tamamlanan rapor bilgilerini (başarı durumu, dosya yolu vb.) kullanıcıya sunar.
+- Backend sisteminden gelen raporlama taleplerini alır ve anlar.
+- Görevi (HTML oluşturma) WebContent Agent'a devreder ve süreci denetler.
+- Tamamlanan HTML içeriğini veya hata mesajını backend sistemine geri döndürür.
 
-### WebContent Agent (Rapor Üretici)
+### WebContent Agent (HTML İçerik Üretici)
 - CEO Agent'tan aldığı talimatlar ve proje verileri doğrultusunda rapor içeriğini oluşturur/yapılandırır.
-- Gerekli stil bilgilerini ve görselleri kullanarak raporu HTML formatında hazırlar.
-- Oluşturulan HTML'i PDF formatına dönüştürür.
-- Nihai PDF raporunu sisteme kaydeder.
-- İşlem sonucunu CEO Agent'a bildirir.
+- Gerekli stil bilgilerini ve görselleri kullanarak raporu **tam bir HTML dizesi** olarak hazırlar.
+- Oluşturulan HTML dizesini (veya bir hata mesajını) CEO Agent'a bildirir.
+- **PDF dönüştürme veya dosya kaydetme yapmaz.**
 
 ## İletişim Akışı
-Kullanıcı -> CEO Agent -> WebContent Agent (Rapor Oluşturma) -> CEO Agent -> Kullanıcı
+Backend Sistem (`main.py`) -> CEO Agent -> WebContent Agent (HTML Oluşturma) -> CEO Agent -> Backend Sistem (`main.py`)
 
 ## İletişim Kuralları
 - Tüm ajanlar, tutarlı ve profesyonel bir ifade tarzı kullanmalıdır.
-- Kullanıcının bilgi güvenliği her zaman korunmalıdır.
-- WebContent Agent, rapor oluşturma sürecindeki adımları takip etmeli ve olası sorunları CEO Agent'a bildirmelidir.
+- WebContent Agent, HTML oluşturma sürecindeki adımları takip etmeli ve olası sorunları CEO Agent'a bildirmelidir.
 
 ### Önemli Not!
 Başarısız istekleri tekrar denemeyin, şu anda hata ayıklama aşamasındayız.

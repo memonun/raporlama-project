@@ -603,26 +603,35 @@ async def generate_report_by_agency(request: GenerateReportRequest):
 
         components_data = str("\n\n".join(messages))
        
-       
-
         # Agency prompt'unu hazırla
         prompt = """
         Bu aldığın veriler ışığında görevine başlayabilirsin. 
         İnputların dorğu şekilde ilgili ajanlara gönderildiğinden emin ol ve bileşenlerin gönderilmesinde sıkıntı olursa işlemi durdur.
         """
 
+        # Get response from agency
         result = agency.get_completion(
             message=f"Oluşturulacak raporun ait oudğu proje: project_name: {request.project_name}, bütün bileşen içerikleri daha fazla bilgi talep etme: {(components_data)}",
             additional_instructions=prompt,
             verbose=True
         )
-        print(result)
         logger.info(f"[AGENCY_REPORT_GEN] Agency rapor oluşturma tamamlandı. Proje={request.project_name}")
+
+        # Generate PDF from agency response
+        pdf_result = await generate_pdf_from_agency_response(request.project_name, result)
+        
+        if pdf_result.status == "error":
+            raise HTTPException(
+                status_code=500,
+                detail=pdf_result.message
+            )
 
         return {
             "status": "success",
             "message": "Rapor başarıyla oluşturuldu",
-            "report_content": result
+            "report_content": result,
+            "report_id": pdf_result.report_id,
+            "pdf_path": pdf_result.pdf_path
         }
 
     except Exception as e:
@@ -1079,6 +1088,66 @@ def reset_active_report_endpoint(project_name: str):
     except Exception as e:
         logger.error(f"[API] Reset failed for {project_name}: Unexpected error. Detail: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
+
+async def generate_pdf_from_agency_response(project_name: str, agency_response: str) -> AgencyFinalResponse:
+    """
+    Takes the agency's response and generates a PDF using WeasyPrint.
+    
+    Args:
+        project_name: Name of the project
+        agency_response: HTML/text content from the agency
+        
+    Returns:
+        AgencyFinalResponse object containing status and file details
+    """
+    try:
+        logger.info(f"[PDF_GEN] Starting PDF generation for project: {project_name}")
+        
+        # Get report ID
+        report_id = get_report_id(project_name)
+        logger.info(f"[PDF_GEN] Generated report ID: {report_id}")
+        
+        # Create basic HTML structure
+        html_content = agency_response
+        # Configure WeasyPrint
+        font_config = FontConfiguration()
+        css = CSS(string='', font_config=font_config)
+        
+        # Generate PDF
+        html = HTML(string=html_content)
+        pdf_bytes = html.write_pdf(stylesheets=[css], font_config=font_config)
+        logger.info(f"[PDF_GEN] PDF generated successfully, size: {len(pdf_bytes)} bytes")
+        
+        # Save PDF
+        pdf_path, success = save_pdf_content(pdf_bytes, project_name, report_id)
+        if not success:
+            raise ValueError("Failed to save PDF file")
+        logger.info(f"[PDF_GEN] PDF saved successfully at: {pdf_path}")
+        
+        # Update project metadata
+        result = save_generated_report(
+            project_name,
+            report_id,
+            agency_response,  # Store the original content
+            str(pdf_path)
+        )
+        logger.info(f"[PDF_GEN] Project metadata updated successfully")
+        
+        return AgencyFinalResponse(
+            status="success",
+            message="PDF report successfully generated and saved",
+            report_id=report_id,
+            pdf_path=str(pdf_path)
+        )
+        
+    except Exception as e:
+        logger.error(f"[PDF_GEN] Error generating PDF: {str(e)}", exc_info=True)
+        return AgencyFinalResponse(
+            status="error",
+            message=f"Failed to generate PDF: {str(e)}",
+            report_id=None,
+            pdf_path=None
+        )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
