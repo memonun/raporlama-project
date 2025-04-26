@@ -14,8 +14,53 @@ logger = logging.getLogger(__name__)
 # Constants
 BASE_REPORTS_DIR = Path("backend/data/reports")
 BASE_ACTIVE_REPORT_DIR = Path("backend/data/uploads/active_report")
+def get_active_report_id(project_name: str) -> str:
+    """
+    Proje adına göre aktif rapor ID'sini döndürür.
+    
+    Args:
+        project_name: Proje adı
+    """
+    """
+    Proje adına göre aktif rapor ID'sini döndürür.
+    
+    Args:
+        project_name: Proje adı
+        
+    Returns:
+        str: Aktif rapor ID'si veya None (aktif rapor yoksa)
+    """
+    try:
+        # Proje dosyasının yolunu oluştur
+        project_file = Path(f"backend/data/projects/{project_name}.json")
+        
+        # Proje dosyasını oku
+        if not project_file.exists():
+            logger.warning(f"Proje dosyası bulunamadı: {project_file}")
+            return None
+            
+        with open(project_file, 'r', encoding='utf-8') as f:
+            project_data = json.load(f)
+            
+        # Active report kontrolü
+        active_report = project_data.get('active_report')
+        if not active_report:
+            logger.info(f"Aktif rapor bulunamadı: {project_name}")
+            return None
+            
+        report_id = active_report.get('report_id')
+        if not report_id:
+            logger.warning(f"Aktif raporda report_id bulunamadı: {project_name}")
+            return None
+            
+        logger.info(f"Aktif rapor ID'si bulundu: {report_id}")
+        return report_id
+        
+    except Exception as e:
+        logger.error(f"Aktif rapor ID'si alınırken hata: {str(e)}", exc_info=True)
+        return None
 
-def get_report_id(project_name: str) -> str:
+def create_report_id(project_name: str) -> str:
         """
         Proje adı ve UUID kullanılarak benzersiz rapor ID'si oluşturur
         

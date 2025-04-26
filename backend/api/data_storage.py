@@ -13,7 +13,8 @@ import shutil
 import uuid
 import logging
 from utils.pdf_utils import get_report_path
-from utils.pdf_utils import get_report_id
+
+from utils.pdf_utils import create_report_id
 
 # Temel veri dizini
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -213,7 +214,7 @@ def save_component_data(project_name: str, component_name: str, answers: Dict[st
         if not active_report:
             # Aktif rapor bulunamadıysa, yeni bir rapor oluştur
             print(f"Proje {project_name} için aktif rapor bulunamadı, yeni rapor oluşturuluyor...")
-            report_id = get_report_id(project_name)
+            report_id = create_report_id(project_name)
             active_report = {
                 "report_id": report_id,
                 "report_date": datetime.datetime.now().strftime("%Y-%m-%d"),

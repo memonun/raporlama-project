@@ -1,40 +1,36 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-import jinja2
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Any, Union
 import uvicorn
-from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from fastapi.responses import FileResponse
 import os
 from pathlib import Path
 import smtplib
-from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import io
+import re
 from api.gpt_handler import  get_project_reports
 from api.mail_agent import send_missing_info_request, get_department_email, send_report_email as mail_agent_send_report
 from api.questions_handler import get_questions_for_component
 from api.data_storage import (
     save_component_data, get_project_data, get_all_projects, 
     save_generated_report, delete_project_data, archive_project, 
-    get_active_report, create_new_report, delete_report as delete_report_from_storage,
+    create_new_report, delete_report as delete_report_from_storage,
     finalize_report, get_project_path,
     reset_active_report_generation
 )
 
-from api.file_handler import ensure_directory_structure, save_uploaded_image, save_component_text, get_active_report_images, clean_active_report
-from models.report_schema import ReportData, ComponentStatus
+from api.file_handler import  save_uploaded_image, clean_active_report
 from fastapi.staticfiles import StaticFiles
 import json
 import datetime
-import shutil
 import tempfile
-from uuid import uuid4
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
-
+from openai import OpenAI
 import base64
 import logging
 from utils.pdf_utils import (
@@ -42,9 +38,30 @@ from utils.pdf_utils import (
     extract_text_from_pdf,
     get_report_path,
     get_pdf_info,
-    get_report_id,
+    create_report_id,
+    get_active_report_id,
 )
 import sys
+from agency import agency
+
+def upload_file(file_path: str, purpose: str = "assistants") -> str:
+    """
+    Uploads a local file to OpenAI and returns the file ID for assistant usage.
+    
+    Parameters:
+    - file_path: str — the full path to the image or document
+    - purpose: str — must be 'assistants' for assistant agents
+    
+    Returns:
+    - str: The OpenAI file ID
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"{file_path} not found.")
+
+    with file_path.open("rb") as f:
+        response = OpenAI.files.create(file=f, purpose=purpose)
+    return response.id
 
 project_root = Path(__file__).resolve().parent.parent
 
@@ -53,7 +70,6 @@ project_root_str = str(project_root)
 if project_root_str not in sys.path:
     sys.path.insert(0, project_root_str)
 
-from agency import agency
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
@@ -95,6 +111,10 @@ class MissingInfoRequest(BaseModel):
     project_name: str
     component_name: str
     recipient_name: str
+
+class MyHTMLResponse(BaseModel):
+    content: str
+
 
 class ProjectActionRequest(BaseModel):
     project_name: str
@@ -188,7 +208,7 @@ def get_active_report(project_name: str):
 def create_report(request: ProjectRequest):
     """Yeni bir rapor oluşturur."""
     try:
-        report_id = get_report_id(request.project_name)
+        report_id = create_report_id(request.project_name)
         print(f"Report ID: {report_id}")
         report_data = create_new_report(
             request.project_name,
@@ -602,22 +622,47 @@ async def generate_report_by_agency(request: GenerateReportRequest):
                         messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
 
         components_data = str("\n\n".join(messages))
+
+        # Get project image paths
+        image_paths = get_project_image_paths(request.project_name)
+        image_attachments = get_image_attachments(image_paths)
        
         # Agency prompt'unu hazırla
-        prompt = """
-        Bu aldığın veriler ışığında görevine başlayabilirsin. 
-        İnputların dorğu şekilde ilgili ajanlara gönderildiğinden emin ol ve bileşenlerin gönderilmesinde sıkıntı olursa işlemi durdur.
-        """
+        prompt = f"""
+                Bu görev için ilgili proje adı: {request.project_name}.
+        Kullanıcı, bu görev için bazı görseller yükledi. Bu görseller, raporda uygun yerlerde kullanılmalıdır. 
+
+        Görseller arasında finansal tablolar, işletme fotoğrafları veya proje logoları olabilir. Aşağıdaki kurallara dikkat et:
+
+        1. Her görseli en uygun bölümde yerleştir.
+        2. Görselleri html formatında düzgün <img> etiketiyle kullan. MIME türünü belirtmeye gerek yok.
+        3. Görsel adı genellikle içeriği açıklar. Adlara dikkat et ve hangi bölümde kullanılabileceğini tahmin et.
+        4. Görsel açıklaması gerekiyorsa, uygun bir başlık veya altyazı kullan.
+
+        Raporu HTML formatında oluştur, stil ve düzen açısından şık bir yapı kullan. Gerekiyorsa <section> ve <figure> etiketlerinden faydalan.
+                """
 
         # Get response from agency
-        result = agency.get_completion(
+        result = agency.get_completion_parse(
             message=f"Oluşturulacak raporun ait oudğu proje: project_name: {request.project_name}, bütün bileşen içerikleri daha fazla bilgi talep etme: {(components_data)}",
             additional_instructions=prompt,
-            verbose=True
+            response_format=MyHTMLResponse,
+            attachments=image_attachments
         )
-        logger.info(f"[AGENCY_REPORT_GEN] Agency rapor oluşturma tamamlandı. Proje={request.project_name}")
+        logger.info(f"[AGENCY_REPORT_GEN] Agency response received. Proje={request.project_name}")
 
-        # Generate PDF from agency response
+        # Check if the agency returned an error message or HTML
+        # A simple check: valid HTML usually starts with <!DOCTYPE or <html>
+        if not isinstance(result, str) or not result.strip().lower().startswith(("<!doctype", "<html")):
+            logger.error(f"[AGENCY_REPORT_GEN] Agency returned an error or invalid content: {result}")
+            # Assuming the result string IS the error message based on updated CEO instructions
+            raise HTTPException(
+                status_code=500,
+                detail=f"Agency failed to generate HTML content: {result}"
+            )
+        
+        logger.info(f"[AGENCY_REPORT_GEN] Agency returned valid HTML content. Proceeding with PDF generation.")
+        # Generate PDF from agency response (HTML content is in 'result')
         pdf_result = await generate_pdf_from_agency_response(request.project_name, result)
         
         if pdf_result.status == "error":
@@ -640,6 +685,40 @@ async def generate_report_by_agency(request: GenerateReportRequest):
             status_code=500,
             detail=f"Agency ile rapor oluşturulurken bir hata oluştu: {str(e)}"
         )
+
+
+def get_project_image_paths(project_name: str) -> list[str]:
+    # Convert project name like "V_Yeşilada" → "v_yeşilada"
+    slug = re.sub(r"[^\w]", "_", project_name.lower()).strip("_")
+    
+    image_dir = Path(f"uploads/active_report/{slug}/images")
+    if not image_dir.exists():
+        return []
+
+    image_paths = [str(img_path) for img_path in image_dir.glob("*") if img_path.is_file()]
+    return image_paths    
+def get_image_attachments(image_paths: list[str]) -> list[dict]:
+    attachments = []
+    for path in image_paths:
+        file_id = upload_file(path)
+        mime_type = get_mime_type(path)
+        attachments.append({
+            "file_id": file_id,
+            "name": Path(path).name,
+            "mime_type": mime_type
+        })
+    return attachments
+
+def get_mime_type(path: str) -> str:
+    ext = Path(path).suffix.lower()
+    return {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".svg": "image/xml",
+        ".webp": "image/webp"
+    }.get(ext, "application/octet-stream")
 
 @app.get("/download-report/{project_name}")
 def download_report(project_name: str):
@@ -1104,7 +1183,7 @@ async def generate_pdf_from_agency_response(project_name: str, agency_response: 
         logger.info(f"[PDF_GEN] Starting PDF generation for project: {project_name}")
         
         # Get report ID
-        report_id = get_report_id(project_name)
+        report_id = get_active_report_id(project_name)
         logger.info(f"[PDF_GEN] Generated report ID: {report_id}")
         
         # Create basic HTML structure
