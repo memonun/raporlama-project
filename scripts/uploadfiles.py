@@ -47,13 +47,13 @@ def upload_file_cached(file_path: str, purpose: str = "assistants") -> str:
     return response.id
 
 CONFIG_PATH = Path("project_assets.json")
-ASSETS_ROOT = Path(__file__).parent / "assets"
+ASSETS_ROOT = Path(__file__).parent.parent / "assets"
 ASSETS = {
     "V_mall": {
     },
     "V_Metroway": {
-        "ara": ASSETS_ROOT / "svg" / "V_metroway" / "genel.svg",
-        "cover": ASSETS_ROOT / "svg" / "V_metroway" / "kapak.svg"
+        "ara": ASSETS_ROOT / "constants" / "V_metroway" / "genel.png",
+        "cover": ASSETS_ROOT / "constants" / "V_metroway" / "kapak.png"
     }
 }
 

@@ -4,6 +4,9 @@ from web_content_agent.tools.generate_dynamic_html_tool import GenerateDynamicHt
 from web_content_agent.tools.process_images_for_report_tool import ProcessImagesForReportTool
 from agency_swarm.tools import FileSearch
 from web_content_agent.tools.InvestorReportGenerator import InvestorReportGenerator
+import json
+from pathlib import Path
+
 class WebContentAgent(Agent):
     def __init__(self):
         super().__init__(
@@ -19,10 +22,14 @@ class WebContentAgent(Agent):
             ],
             files_folder=["../assets/images",],
             parallel_tool_calls=False,
-            file_search={'max_num_results': 25}
+            file_search={'max_num_results': 25},
+            tool_resources={
+                "file_search": [
+                    "file-Dnup26R7LssPs2zxQJCmPB", 
+                    "file-W1q9S9zFsJq4VVCpHPN65F"
+                ]
+            }
         )
-
-
     def response_validator(self, message: str) -> str:
         """
         Rapor oluşturma işleminin başarılı olup olmadığını kontrol eder.
@@ -36,4 +43,9 @@ class WebContentAgent(Agent):
                 return message
             return message
         except Exception as e:
-            raise ValueError(f"Rapor oluşturma işlemi sırasında bir hata oluştu: {str(e)}")
+            raise ValueError(f"Rapor oluşturma işlemi sırasında bir hata oluştu: {str(e)}")    
+    
+
+
+
+    

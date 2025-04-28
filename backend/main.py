@@ -595,130 +595,7 @@ async def upload_component_image(
 #             detail=f"Rapor oluşturulurken beklenmedik bir hata oluştu: {error_message}"
 #         )
 
-@app.post("/project/generate-report-by-agency")
-async def generate_report_by_agency(request: GenerateReportRequest):
-    """
-    Agency Swarm kullanarak asenkron olarak rapor oluşturur, kaydeder ve sonucu döndürür.
-    """
-    try:
-        logger.info(f"[AGENCY_REPORT_GEN] Rapor oluşturma başlatıldı. Proje={request.project_name}")
 
-        # --- 1. Veri Hazırlama --- 
-        messages = []
-        for comp_name, comp in request.components_data.items():
-            if "answers" in comp:
-                for question_id, answer in comp["answers"].items():
-                    try:
-                        # Cevap JSON formatında mı diye kontrol et (örn. PDF içeriği)
-                        data = json.loads(answer)
-                        if isinstance(data, dict):
-                            content = data.get('content', '')
-                            file_name = data.get('fileName', 'Unnamed')
-                            messages.append(f"{comp_name} - {file_name}:\n{content}")
-                        else:
-                            messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
-                    except json.JSONDecodeError:
-                        # If answer is not JSON, use it directly
-                        messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
-
-        components_data = str("\n\n".join(messages))
-
-        # Get project image paths
-        image_paths = get_project_image_paths(request.project_name)
-        image_attachments = get_image_attachments(image_paths)
-       
-        # Agency prompt'unu hazırla
-        prompt = f"""
-                Bu görev için ilgili proje adı: {request.project_name}.
-        Kullanıcı, bu görev için bazı görseller yükledi. Bu görseller, raporda uygun yerlerde kullanılmalıdır. 
-
-        Görseller arasında finansal tablolar, işletme fotoğrafları veya proje logoları olabilir. Aşağıdaki kurallara dikkat et:
-
-        1. Her görseli en uygun bölümde yerleştir.
-        2. Görselleri html formatında düzgün <img> etiketiyle kullan. MIME türünü belirtmeye gerek yok.
-        3. Görsel adı genellikle içeriği açıklar. Adlara dikkat et ve hangi bölümde kullanılabileceğini tahmin et.
-        4. Görsel açıklaması gerekiyorsa, uygun bir başlık veya altyazı kullan.
-
-        Raporu HTML formatında oluştur, stil ve düzen açısından şık bir yapı kullan. Gerekiyorsa <section> ve <figure> etiketlerinden faydalan.
-                """
-
-        # Get response from agency
-        result = agency.get_completion_parse(
-            message=f"Oluşturulacak raporun ait oudğu proje: project_name: {request.project_name}, bütün bileşen içerikleri daha fazla bilgi talep etme: {(components_data)}",
-            additional_instructions=prompt,
-            response_format=MyHTMLResponse,
-            attachments=image_attachments
-        )
-        logger.info(f"[AGENCY_REPORT_GEN] Agency response received. Proje={request.project_name}")
-
-        # Check if the agency returned an error message or HTML
-        # A simple check: valid HTML usually starts with <!DOCTYPE or <html>
-        if not isinstance(result, str) or not result.strip().lower().startswith(("<!doctype", "<html")):
-            logger.error(f"[AGENCY_REPORT_GEN] Agency returned an error or invalid content: {result}")
-            # Assuming the result string IS the error message based on updated CEO instructions
-            raise HTTPException(
-                status_code=500,
-                detail=f"Agency failed to generate HTML content: {result}"
-            )
-        
-        logger.info(f"[AGENCY_REPORT_GEN] Agency returned valid HTML content. Proceeding with PDF generation.")
-        # Generate PDF from agency response (HTML content is in 'result')
-        pdf_result = await generate_pdf_from_agency_response(request.project_name, result)
-        
-        if pdf_result.status == "error":
-            raise HTTPException(
-                status_code=500,
-                detail=pdf_result.message
-            )
-
-        return {
-            "status": "success",
-            "message": "Rapor başarıyla oluşturuldu",
-            "report_content": result,
-            "report_id": pdf_result.report_id,
-            "pdf_path": pdf_result.pdf_path
-        }
-
-    except Exception as e:
-        logger.error(f"[AGENCY_REPORT_GEN] Rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Agency ile rapor oluşturulurken bir hata oluştu: {str(e)}"
-        )
-
-
-def get_project_image_paths(project_name: str) -> list[str]:
-    # Convert project name like "V_Yeşilada" → "v_yeşilada"
-    slug = re.sub(r"[^\w]", "_", project_name.lower()).strip("_")
-    
-    image_dir = Path(f"uploads/active_report/{slug}/images")
-    if not image_dir.exists():
-        return []
-
-    image_paths = [str(img_path) for img_path in image_dir.glob("*") if img_path.is_file()]
-    return image_paths    
-def get_image_attachments(image_paths: list[str]) -> list[dict]:
-    attachments = []
-    for path in image_paths:
-        file_id = upload_file(path)
-        mime_type = get_mime_type(path)
-        attachments.append({
-            "file_id": file_id,
-            "name": Path(path).name,
-            "mime_type": mime_type
-        })
-    return attachments
-
-def get_mime_type(path: str) -> str:
-    ext = Path(path).suffix.lower()
-    return {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".gif": "image/gif",
-        ".svg": "image/xml",
-        ".webp": "image/webp"
-    }.get(ext, "application/octet-stream")
 
 @app.get("/download-report/{project_name}")
 def download_report(project_name: str):
@@ -1168,6 +1045,135 @@ def reset_active_report_endpoint(project_name: str):
         logger.error(f"[API] Reset failed for {project_name}: Unexpected error. Detail: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
 
+
+@app.post("/project/generate-report-by-agency")
+async def generate_report_by_agency(request: GenerateReportRequest):
+    """
+    Agency Swarm kullanarak asenkron olarak rapor oluşturur, kaydeder ve sonucu döndürür.
+    """
+    try:
+        logger.info(f"[AGENCY_REPORT_GEN] Rapor oluşturma başlatıldı. Proje={request.project_name}")
+
+        # --- 1. Veri Hazırlama --- 
+        messages = []
+        for comp_name, comp in request.components_data.items():
+            if "answers" in comp:
+                for question_id, answer in comp["answers"].items():
+                    try:
+                        # Cevap JSON formatında mı diye kontrol et (örn. PDF içeriği)
+                        data = json.loads(answer)
+                        if isinstance(data, dict):
+                            content = data.get('content', '')
+                            file_name = data.get('fileName', 'Unnamed')
+                            messages.append(f"{comp_name} - {file_name}:\n{content}")
+                        else:
+                            messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
+                    except json.JSONDecodeError:
+                        # If answer is not JSON, use it directly
+                        messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
+
+        components_data = str("\n\n".join(messages))
+
+        shared_files = load_project_shared_files(request.project_name)
+        # Get project image paths
+        image_paths = get_project_image_paths(request.project_name)
+        image_attachments = get_image_attachments(image_paths)
+       
+        # Agency prompt'unu hazırla
+        prompt = f"""
+                Bu görev için ilgili proje adı: {request.project_name}.
+        Kullanıcı, bu görev için bazı görseller yükledi. Bu görseller, raporda uygun yerlerde kullanılmalıdır. 
+
+        Görseller arasında finansal tablolar, işletme fotoğrafları veya proje logoları olabilir. Aşağıdaki kurallara dikkat et:
+
+        1. Her görseli en uygun bölümde yerleştir.
+        2. Görselleri html formatında düzgün <img> etiketiyle kullan. MIME türünü belirtmeye gerek yok.
+        3. Görsel adı genellikle içeriği açıklar. Adlara dikkat et ve hangi bölümde kullanılabileceğini tahmin et.
+        4. Görsel açıklaması gerekiyorsa, uygun bir başlık veya altyazı kullan.
+
+        Raporu HTML formatında oluştur, stil ve düzen açısından şık bir yapı kullan. Gerekiyorsa <section> ve <figure> etiketlerinden faydalan.
+                """
+
+        # Get response from agency
+        result = agency.get_completion_parse(
+            message=f"Oluşturulacak raporun ait oudğu proje: project_name: {request.project_name}, bütün bileşen içerikleri daha fazla bilgi talep etme: {(components_data)}",
+            additional_instructions=prompt,
+            response_format=MyHTMLResponse,
+            attachments=image_attachments
+        )
+        logger.info(f"[AGENCY_REPORT_GEN] Agency response received. Proje={request.project_name}")
+
+        # Check if the agency returned an error message or HTML
+        # A simple check: valid HTML usually starts with <!DOCTYPE or <html>
+        if not isinstance(result, str) or not result.strip().lower().startswith(("<!doctype", "<html")):
+            logger.error(f"[AGENCY_REPORT_GEN] Agency returned an error or invalid content: {result}")
+            # Assuming the result string IS the error message based on updated CEO instructions
+            raise HTTPException(
+                status_code=500,
+                detail=f"Agency failed to generate HTML content: {result}"
+            )
+        
+        logger.info(f"[AGENCY_REPORT_GEN] Agency returned valid HTML content. Proceeding with PDF generation.")
+        # Generate PDF from agency response (HTML content is in 'result')
+
+        result = fix_openai_file_links(result, request.project_name)
+        pdf_result = await generate_pdf_from_agency_response(request.project_name, result)
+        
+        if pdf_result.status == "error":
+            raise HTTPException(
+                status_code=500,
+                detail=pdf_result.message
+            )
+
+        return {
+            "status": "success",
+            "message": "Rapor başarıyla oluşturuldu",
+            "report_content": result,
+            "report_id": pdf_result.report_id,
+            "pdf_path": pdf_result.pdf_path
+        }
+
+    except Exception as e:
+        logger.error(f"[AGENCY_REPORT_GEN] Rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Agency ile rapor oluşturulurken bir hata oluştu: {str(e)}"
+        )
+
+def get_project_image_paths(project_name: str) -> list[str]:
+    # Convert project name like "V_Yeşilada" → "v_yeşilada"
+    slug = re.sub(r"[^\w]", "_", project_name.lower()).strip("_")
+    
+    image_dir = Path(f"data/uploads/active_report/{slug}/images")
+    if not image_dir.exists():
+        return []
+
+    image_paths = [str(img_path) for img_path in image_dir.glob("*") if img_path.is_file()]
+    return image_paths    
+
+def get_image_attachments(image_paths: list[str]) -> list[dict]:
+    attachments = []
+    for path in image_paths:
+        file_id = upload_file(path)
+        mime_type = get_mime_type(path)
+        attachments.append({
+            "file_id": file_id,
+            "name": Path(path).name,
+            "mime_type": mime_type
+        })
+    return attachments
+
+def get_mime_type(path: str) -> str:
+    ext = Path(path).suffix.lower()
+    return {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".svg": "image/xml",
+        ".webp": "image/webp"
+    }.get(ext, "application/octet-stream")
+
 async def generate_pdf_from_agency_response(project_name: str, agency_response: str) -> AgencyFinalResponse:
     """
     Takes the agency's response and generates a PDF using WeasyPrint.
@@ -1227,6 +1233,52 @@ async def generate_pdf_from_agency_response(project_name: str, agency_response: 
             report_id=None,
             pdf_path=None
         )
+def fix_openai_file_links(html: str, project_name: str, config_path: str = "project_assets.json") -> str:
+    path = Path(config_path)
+    if not path.exists():
+        return html  # No changes if config missing
+    
+    with path.open("r") as f:
+        config = json.load(f)
+    
+    project_files = config.get(project_name, {})
+    if not project_files:
+        return html
+    
+    # Inverse map: file_id → filename
+    file_id_to_label = {v: k for k, v in project_files.items()}
 
+    # Replace OpenAI file IDs in HTML with local /assets path
+    for file_id, label in file_id_to_label.items():
+        new_path = f"/assets/constants/{project_name}/*.png"
+        html = re.sub(rf'src=["\']{file_id}["\']', f'src="{new_path}"', html)
+
+    return html
+
+def load_project_shared_files(project_name: str, config_path: str = "project_assets.json") -> list[str]:
+    """
+    Loads the shared asset file IDs for a given project from project_assets.json.
+
+    Args:
+        project_name (str): Name of the project (e.g., "V_Metroway")
+        config_path (str): Path to the JSON config file mapping project names to asset OpenAI file IDs.
+
+    Returns:
+        List of OpenAI file IDs for shared_files.
+    """
+    path = Path(config_path)
+    if not path.exists():
+        print(f"⚠️ Warning: {config_path} does not exist.")
+        return []
+    
+    with path.open("r") as f:
+        config = json.load(f)
+
+    project_assets = config.get(project_name)
+    if not project_assets:
+        print(f"⚠️ Warning: No assets found for project {project_name} in {config_path}.")
+        return []
+
+    return list(project_assets.values())
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
