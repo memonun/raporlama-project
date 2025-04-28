@@ -23,12 +23,7 @@ class WebContentAgent(Agent):
             files_folder=["../assets/images",],
             parallel_tool_calls=False,
             file_search={'max_num_results': 25},
-            tool_resources={
-                "file_search": [
-                    "file-Dnup26R7LssPs2zxQJCmPB", 
-                    "file-W1q9S9zFsJq4VVCpHPN65F"
-                ]
-            }
+            
         )
     def response_validator(self, message: str) -> str:
         """
