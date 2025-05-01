@@ -32,7 +32,7 @@ def get_active_report_id(project_name: str) -> str:
     """
     try:
         # Proje dosyasının yolunu oluştur
-        project_file = Path(f"backend/data/projects/{project_name}.json")
+        project_file = Path(f"data/projects/{project_name}.json")
         
         # Proje dosyasını oku
         if not project_file.exists():

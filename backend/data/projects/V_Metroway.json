@@ -1,8 +1,44 @@
 {
   "project_name": "V Metroway",
   "created_at": "2025-03-26T10:35:24.132672",
-  "last_updated": "2025-04-18T16:21:45.218002",
-  "active_report": null,
+  "last_updated": "2025-04-28T17:31:30.899433",
+  "active_report": {
+    "report_id": "V_Metroway_4860eb97-2bfd-4bdb-826d-df066aac13fc",
+    "report_date": "2025-04-28",
+    "created_at": "2025-04-28T17:13:18.538869",
+    "last_updated": "2025-04-28T17:31:30.899433",
+    "components": {
+      "İşletme": {
+        "answers": {
+          "business_report": "{\"fileName\":\"İşletme_Raporu.pdf\",\"content\":\"İşletme Raporu - ECE Türkiye\\nProje Adı: V Metroway\\nKiralanabilir Alan: 25.000 m²\\nMağaza Sayısı: 81\\nYönetim: ECE Türkiye tarafından devralınacak\\nBeklenen Açılış Tarihi: 20 Haziran 2025\",\"questionId\":\"business_report\"}"
+        },
+        "last_updated": "2025-04-28T17:14:05.153261"
+      },
+      "Finans": {
+        "answers": {
+          "finance_report": "{\"fileName\":\"Finans_Raporu.pdf\",\"content\":\"Finans Raporu - Mutaz Bey\\nProje: İsra Holding Yatırım Portföyü\\n2024 Yılı Kar: 12.500.000 TL\\n2025 Projeksiyonu: 18.000.000 TL\\nGelir Kaynakları: AVM Kiralamaları, Tatil Köyü Gelirleri, Ticari İşletmeler\",\"questionId\":\"finance_report\"}"
+        },
+        "last_updated": "2025-04-28T17:14:05.163538"
+      },
+      "İnşaat": {
+        "answers": {
+          "construction_images": "{\"fileName\":\"İnşaat_Raporu.pdf\",\"content\":\"İnşaat Raporu - ImperiumSoft\\nProje Adı: V Mall İstanbul\\nİnşaat Durumu: %75 Tamamlandı\\nYapı Alanı: 126.000 m²\\nKiralanabilir Alan: 45.000 m²\\nTamamlanma Tarihi: 15 Mayıs 2025\",\"questionId\":\"construction_images\"}"
+        },
+        "last_updated": "2025-04-28T17:14:05.168222"
+      },
+      "Kurumsal İletişim": {
+        "answers": {
+          "corporate_report": "{\"fileName\":\"Kurumsal_İletişim_Raporu.pdf\",\"content\":\"Kurumsal İletişim Raporu - Pazarlama\\nProje: V Orman Resort\\nTanıtım Kampanyaları: Sosyal Medya, Basılı Medya, Etkinlikler\\nHedef Kitle: Doğa Turizmi Meraklıları\\nVizyon: Bolu’nun doğal güzellikleri ile konforu bir araya getirmek\",\"questionId\":\"corporate_report\"}"
+        },
+        "last_updated": "2025-04-28T17:14:05.173095"
+      }
+    },
+    "status": "completed",
+    "report_generated": false,
+    "report_content": "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <title>V Metroway Investor Report</title>\n  <style>\n    body { font-family: Arial, sans-serif; background-color: #F5F7FA; color: #333333; }\n    h1, h2, h3 { color: #3366CC; }\n    h1 { border-bottom: 2px solid #FF9900; padding-bottom: 10px; }\n    section { margin: 20px 0; padding: 15px; background-color: #ebf5fb; border-radius: 5px; }\n    ul { list-style-type: none; padding: 0; }\n    li { margin: 5px 0; }\n  </style>\n</head>\n<body>\n  <header>\n    <h1>V Metroway Investor Report</h1>\n  </header>\n  <main>\n    <section>\n      <h2>İşletme Raporu</h2>\n      <p>Proje Adı: V Metroway</p>\n      <ul>\n        <li>Kiralanabilir Alan: 25,000 m²</li>\n        <li>Mağaza Sayısı: 81</li>\n        <li>Yönetim: ECE Türkiye tarafından devralınacak</li>\n        <li>Beklenen Açılış Tarihi: 20 Haziran 2025</li>\n      </ul>\n    </section>\n    <section>\n      <h2>Finans Raporu</h2>\n      <p>Proje: İsra Holding Yatırım Portföyü</p>\n      <ul>\n        <li>2024 Yılı Kar: 12,500,000 TL</li>\n        <li>2025 Projeksiyonu: 18,000,000 TL</li>\n        <li>Gelir Kaynakları: AVM Kiralamaları, Tatil Köyü Gelirleri, Ticari İşletmeler</li>\n      </ul>\n    </section>\n    <section>\n      <h2>İnşaat Raporu</h2>\n      <p>Proje Adı: V Mall İstanbul</p>\n      <ul>\n        <li>İnşaat Durumu: %75 Tamamlandı</li>\n        <li>Yapı Alanı: 126,000 m²</li>\n        <li>Kiralanabilir Alan: 45,000 m²</li>\n        <li>Tamamlanma Tarihi: 15 Mayıs 2025</li>\n      </ul>\n    </section>\n    <section>\n      <h2>Kurumsal İletişim Raporu</h2>\n      <p>Proje: V Orman Resort</p>\n      <ul>\n        <li>Tanıtım Kampanyaları: Sosyal Medya, Basılı Medya, Etkinlikler</li>\n        <li>Hedef Kitle: Doğa Turizmi Meraklıları</li>\n        <li>Vizyon: Bolu’nun doğal güzellikleri ile konforu bir araya getirmek</li>\n      </ul>\n    </section>\n  </main>\n  <footer>\n    <p>© 2023 V Metroway. All rights reserved.</p>\n  </footer>\n</body>\n</html>",
+    "pdf_path": null,
+    "pdfFileName": null
+  },
   "finalized_reports": [],
   "reports": [
     {

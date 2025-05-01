@@ -42,26 +42,6 @@ from utils.pdf_utils import (
     get_active_report_id,
 )
 import sys
-from agency import agency
-
-def upload_file(file_path: str, purpose: str = "assistants") -> str:
-    """
-    Uploads a local file to OpenAI and returns the file ID for assistant usage.
-    
-    Parameters:
-    - file_path: str — the full path to the image or document
-    - purpose: str — must be 'assistants' for assistant agents
-    
-    Returns:
-    - str: The OpenAI file ID
-    """
-    file_path = Path(file_path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"{file_path} not found.")
-
-    with file_path.open("rb") as f:
-        response = OpenAI.files.create(file=f, purpose=purpose)
-    return response.id
 
 project_root = Path(__file__).resolve().parent.parent
 
@@ -70,6 +50,7 @@ project_root_str = str(project_root)
 if project_root_str not in sys.path:
     sys.path.insert(0, project_root_str)
 
+from agency import agency
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
@@ -1105,7 +1086,7 @@ async def generate_report_by_agency(request: GenerateReportRequest):
 
         # Check if the agency returned an error message or HTML
         # A simple check: valid HTML usually starts with <!DOCTYPE or <html>
-        if not isinstance(result, str) or not result.strip().lower().startswith(("<!doctype", "<html")):
+        if not isinstance(result.content, str) or not result.content.strip().lower().startswith(("<!doctype", "<html")):
             logger.error(f"[AGENCY_REPORT_GEN] Agency returned an error or invalid content: {result}")
             # Assuming the result string IS the error message based on updated CEO instructions
             raise HTTPException(
@@ -1117,7 +1098,7 @@ async def generate_report_by_agency(request: GenerateReportRequest):
         # Generate PDF from agency response (HTML content is in 'result')
 
         result = fix_openai_file_links(result, request.project_name)
-        pdf_result = await generate_pdf_from_agency_response(request.project_name, result)
+        pdf_result = await generate_pdf_from_agency_response(request.project_name, result.content)
         
         if pdf_result.status == "error":
             raise HTTPException(
@@ -1188,7 +1169,7 @@ async def generate_pdf_from_agency_response(project_name: str, agency_response: 
     try:
         logger.info(f"[PDF_GEN] Starting PDF generation for project: {project_name}")
         
-        # Get report ID
+        # Get report ID 
         report_id = get_active_report_id(project_name)
         logger.info(f"[PDF_GEN] Generated report ID: {report_id}")
         
@@ -1255,7 +1236,7 @@ def fix_openai_file_links(html: str, project_name: str, config_path: str = "proj
 
     return html
 
-def load_project_shared_files(project_name: str, config_path: str = "project_assets.json") -> list[str]:
+def load_project_shared_files(project_name: str, config_path: str = "Raporlama_otomasyonu/project_assets.json") -> list[str]:
     """
     Loads the shared asset file IDs for a given project from project_assets.json.
 
@@ -1280,5 +1261,25 @@ def load_project_shared_files(project_name: str, config_path: str = "project_ass
         return []
 
     return list(project_assets.values())
+
+def upload_file(file_path: str, purpose: str = "assistants") -> str:
+    """
+    Uploads a local file to OpenAI and returns the file ID for assistant usage.
+    
+    Parameters:
+    - file_path: str — the full path to the image or document
+    - purpose: str — must be 'assistants' for assistant agents
+    
+    Returns:
+    - str: The OpenAI file ID
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"{file_path} not found.")
+
+    with file_path.open("rb") as f:
+        response = OpenAI.files.create(file=f, purpose=purpose)
+    return response.id
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

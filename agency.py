@@ -26,7 +26,7 @@ agency = Agency(
     ],
     shared_instructions='agency_manifesto.md',  # Tüm acenteler için paylaşılan talimatlar
     temperature=0.7,  # Tüm acenteler için varsayılan sıcaklık
-    max_prompt_tokens=20000,  # Konuşma geçmişindeki maksimum token sayısı
+    max_prompt_tokens=60000,  # Konuşma geçmişindeki maksimum token sayısı
    
 )
 
