@@ -309,7 +309,8 @@ export const componentService = {
     projectName,
     componentName,
     imageFile,
-    imageIndex = 0
+    imageIndex = 0,
+    questionId = null
   ) => {
     if (!projectName) {
       console.error(
@@ -332,6 +333,13 @@ export const componentService = {
       throw new Error("Geçerli bir görsel dosyası belirtilmedi");
     }
 
+    if (!questionId) {
+      console.error(
+        "componentService.uploadComponentImage: Soru ID belirtilmedi"
+      );
+      throw new Error("Soru ID belirtilmedi");
+    }
+
     try {
       console.log(
         `componentService.uploadComponentImage: ${projectName} projesi ${componentName} bileşeni için görsel yükleniyor`
@@ -342,6 +350,7 @@ export const componentService = {
       formData.append("component_name", componentName);
       formData.append("image_index", imageIndex);
       formData.append("image", imageFile);
+      formData.append("question_id", questionId);
 
       // API isteğini gönder
       const response = await axiosInstance.post(

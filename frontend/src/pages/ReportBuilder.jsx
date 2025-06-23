@@ -489,8 +489,24 @@ const ReportBuilder = () => {
       // FormData oluştur
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('component', component);
+      formData.append('questionId', questionId);
       
-      console.log(`${component} - FormData oluşturuldu, PDF içeriğini çıkarmak için API isteği gönderiliyor`);
+      console.log(`${component} - FormData oluşturuldu, PDF'i yüklemek için API isteği gönderiliyor`);
+      
+      // PDF dosyasını yükle
+      const uploadResponse = await fetch(`/api/projects/${projectName}/upload-pdf`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const uploadResult = await uploadResponse.json();
+      
+      if (!uploadResult.success) {
+        throw new Error('PDF yükleme başarısız: ' + (uploadResult.message || 'Bilinmeyen hata'));
+      }
+      
+      console.log(`${component} - PDF yükleme başarılı:`, uploadResult);
       
       // PDF içeriğini çıkarmak için API'ya istek gönder
       const response = await reportService.extractPdf(formData, {
@@ -512,30 +528,28 @@ const ReportBuilder = () => {
         throw new Error('PDF içeriği boş olarak çıkarıldı. Lütfen farklı bir PDF dosyası deneyin.');
       }
 
-      // Yeni PDF obje formatını oluştur
-      const pdfObject = {
-        fileName: file.name,
-        content: extractedContent,
-        questionId: questionId
-      };
-
-      // Obje'yi JSON string'ine çevir
-      const pdfJsonString = JSON.stringify(pdfObject);
-
-      // State'i güncelle ve backend'e kaydet
-      dispatch({ 
-        type: 'UPDATE_ANSWER', 
-        payload: { component, questionId, value: pdfJsonString } 
-      });
-
-      await componentService.saveComponentData(
-        projectName,
-        component,
-        { [questionId]: pdfJsonString }
-      );
+      // Yüklenen dosya bilgisini ve diğer dosyaları state'e kaydet
+      if (uploadResult.files && Array.isArray(uploadResult.files)) {
+        // State'i güncelle
+        dispatch({ 
+          type: 'UPDATE_ANSWER', 
+          payload: { component, questionId, value: JSON.stringify(uploadResult.files) } 
+        });
+      } else {
+        // Eski davranış ile uyumluluk için
+        const fileInfo = {
+          filename: file.name,
+          path: uploadResult.filePath,
+          type: "pdf"
+        };
+        dispatch({ 
+          type: 'UPDATE_ANSWER', 
+          payload: { component, questionId, value: JSON.stringify([fileInfo]) } 
+        });
+      }
       
       // Başarı mesajı
-      toast.success(`${file.name} başarıyla yüklendi ve içeriği ${component} bileşenine kaydedildi.`);
+      toast.success(`${file.name} başarıyla yüklendi ve ${component} bileşenine kaydedildi.`);
     } catch (error) {
       console.error(`${component} - PDF işleme hatası:`, error);
       toast.error(`PDF yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
@@ -594,7 +608,8 @@ const ReportBuilder = () => {
         projectName,
         component,
         file,
-        imageIndex
+        imageIndex,
+        questionId // Soru ID'sini ekledik
       );
       
       console.log(`${component} - Görsel yükleme sonucu:`, result);
@@ -606,18 +621,33 @@ const ReportBuilder = () => {
       // Başarı mesajı
       toast.success(`${file.name} başarıyla yüklendi`);
       
-      // Görsel yükleme başarılı - bu bilgiyi state'e ekle
-      // Görsel adını componentData içine kaydet
-      const imageName = result.file_name || file.name;
-      
-      dispatch({ 
-        type: 'UPDATE_ANSWER', 
-        payload: { 
-          component, 
-          questionId: `${questionId}_image_${imageIndex}`, 
-          value: imageName 
-        } 
-      });
+      // Yeni dosya dizisini componentData içine kaydet
+      if (result.files && Array.isArray(result.files)) {
+        dispatch({ 
+          type: 'UPDATE_ANSWER', 
+          payload: { 
+            component, 
+            questionId, 
+            value: JSON.stringify(result.files)
+          } 
+        });
+      } else {
+        // Eski davranış ile uyumluluk için
+        const imageName = result.file_name || file.name;
+        
+        dispatch({ 
+          type: 'UPDATE_ANSWER', 
+          payload: { 
+            component, 
+            questionId, 
+            value: JSON.stringify([{
+              filename: imageName,
+              path: result.filePath || "",
+              type: "image"
+            }])
+          } 
+        });
+      }
       
     } catch (error) {
       console.error(`${component} - Görsel yükleme hatası:`, error);

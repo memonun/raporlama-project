@@ -2,8 +2,10 @@ import os
 import json
 import shutil
 import logging
-from pathlib import Path
+import time
 from typing import Dict, List, Tuple, Any, Optional
+import uuid
+from pathlib import Path
 from fastapi import UploadFile
 
 # Logger setup 
@@ -35,9 +37,9 @@ def ensure_directory_structure(project_name: str) -> None:
             logger.info(f"[FILE] Dizin oluşturuldu: {dir_path}")
 
 async def save_uploaded_image(project_name: str, component_name: str, 
-                             image: UploadFile, image_index: int = 0) -> Tuple[bool, str, str]:
+                             image: UploadFile, image_index: int = 0, question_id: str = None) -> Tuple[bool, str, str]:
     """
-    Bir bileşene ait görsel dosyasını kaydeder.
+    Bir bileşene ait görsel dosyasını kaydeder ve proje JSON'ında referansı günceller.
     
     Parameters:
     -----------
@@ -49,6 +51,8 @@ async def save_uploaded_image(project_name: str, component_name: str,
         Yüklenen görsel dosyası
     image_index : int, optional
         Görsel indeksi (birden fazla görsel olabilir), default 0
+    question_id : str, optional
+        Soru ID'si (belirtilirse, JSON'da bu alana dosya referansı eklenir)
     
     Returns:
     --------
@@ -66,11 +70,13 @@ async def save_uploaded_image(project_name: str, component_name: str,
         file_ext = os.path.splitext(image.filename)[1].lower()
         
         # Yeni dosya adı: component_name-index.ext
-        new_filename = f"{component_name_cleaned}-{image_index}{file_ext}"
+        timestamp = int(time.time())
+        new_filename = f"{component_name_cleaned}-{timestamp}{file_ext}"
         
         # Tam dosya yolu
         image_dir = ACTIVE_REPORT_DIR / project_name.lower() / "images"
         file_path = image_dir / new_filename
+        relative_path = f"active_report/images/{project_name.lower()}/{new_filename}"
         
         # Dosyayı kaydet
         contents = await image.read()
@@ -79,6 +85,16 @@ async def save_uploaded_image(project_name: str, component_name: str,
             f.write(contents)
         
         logger.info(f"[FILE] Görsel kaydedildi: {file_path}")
+        
+        # Eğer question_id belirtildiyse, proje JSON'ında referansı güncelle
+        if question_id:
+            file_info = {
+                "filename": image.filename,
+                "path": relative_path,
+                "type": "image"
+            }
+            
+            add_file_entry_to_array(project_name, component_name, question_id, file_info)
         
         return True, new_filename, ""
     
@@ -189,4 +205,70 @@ def clean_active_report(project_name: str) -> bool:
     
     except Exception as e:
         logger.error(f"[FILE] Aktif rapor dizini temizlenirken hata: {str(e)}", exc_info=True)
+        return False
+
+def add_file_entry_to_array(project_name: str, component_name: str, question_id: str, file_info: Dict[str, Any]) -> bool:
+    """
+    Proje JSON dosyasındaki belirli bir alana dosya girişini bir diziye ekler.
+    Eğer alan zaten bir dizi ise, dosyayı bu diziye ekler.
+    Eğer alan tanımlı değilse veya dizi değilse, yeni bir dizi oluşturur ve dosyayı ekler.
+
+    Parameters:
+    -----------
+    project_name : str
+        Proje adı
+    component_name : str
+        Bileşen adı (JSON'daki üst seviye anahtar)
+    question_id : str
+        Soru ID'si (answers içindeki anahtar)
+    file_info : Dict[str, Any]
+        Dosya bilgisi (filename, path, type)
+
+    Returns:
+    --------
+    bool
+        İşlem başarılı ise True, değilse False
+    """
+    try:
+        # Proje JSON dosyasını oku
+        project_file_path = BASE_DIR / "data" / "projects" / f"{project_name}.json"
+        
+        # Dosya yoksa hata döndür
+        if not project_file_path.exists():
+            logger.error(f"[FILE] Proje dosyası bulunamadı: {project_file_path}")
+            return False
+            
+        # JSON dosyasını oku
+        with open(project_file_path, "r", encoding="utf-8") as f:
+            project_data = json.load(f)
+        
+        # Bileşen yoksa oluştur
+        if component_name not in project_data:
+            project_data[component_name] = {}
+            
+        # Answers yoksa oluştur
+        if "answers" not in project_data[component_name]:
+            project_data[component_name]["answers"] = {}
+            
+        # Soru ID'si yoksa veya dizi değilse, dizi oluştur
+        if question_id not in project_data[component_name]["answers"] or not isinstance(project_data[component_name]["answers"][question_id], list):
+            # Eğer mevcut bir değer varsa, onu dizinin ilk elemanı yap
+            if question_id in project_data[component_name]["answers"] and project_data[component_name]["answers"][question_id]:
+                existing_value = project_data[component_name]["answers"][question_id]
+                project_data[component_name]["answers"][question_id] = [existing_value]
+            else:
+                project_data[component_name]["answers"][question_id] = []
+                
+        # Dosyayı diziye ekle
+        project_data[component_name]["answers"][question_id].append(file_info)
+        
+        # JSON dosyasını güncelle
+        with open(project_file_path, "w", encoding="utf-8") as f:
+            json.dump(project_data, f, ensure_ascii=False, indent=2)
+            
+        logger.info(f"[FILE] Dosya referansı diziye eklendi: {file_info['filename']} -> {component_name}.answers.{question_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"[FILE] Dosya referansı eklenirken hata: {str(e)}", exc_info=True)
         return False
