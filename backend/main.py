@@ -1,8 +1,8 @@
-# from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-# from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, List, Optional, Any
-# import uvicorn
-# from fastapi.responses import FileResponse
+import uvicorn
+from fastapi.responses import FileResponse
 import os
 from pathlib import Path
 import smtplib
@@ -16,7 +16,7 @@ from api.data_storage import (
     reset_active_report_generation
 )
 
-from api.file_handler import save_uploaded_image, clean_active_report, add_file_entry_to_array
+from api.file_handler import save_uploaded_image, save_uploaded_pdf, clean_active_report, add_file_entry_to_array, remove_file_entry_from_array
 from fastapi.staticfiles import StaticFiles
 import json
 import datetime
@@ -30,44 +30,27 @@ import logging
 import sys
 import time
 from werkzeug.utils import secure_filename
-from flask import jsonify, request, send_file
+from flask import jsonify, request, send_file  # <-- Add this import
+
 from utils.pdf_utils import (
     extract_text_from_pdf,
     get_pdf_info,
     
 )
-from utils.style_utils import get_style_config
-from utils.report_generation_utils import (
-    fix_openai_file_links,
-    load_project_shared_files,
-    get_project_image_paths,
-    get_image_attachments,
+
+from utils.pdf_utils import (
     get_report_path,
     create_report_id,
     get_active_report_id,
     save_pdf_content,
-    get_pdf_attachments,
 )
 
-
-from models.Basemodels import (
-    ProjectRequest,
-    ComponentDataRequest,
-    GenerateReportRequest,
-    DeleteFinalizedReportRequest,
-    DeleteProjectRequest,
-    ArchiveProjectRequest,
-    EmailRequest,
-    ShareReportRequest,
-    AgencyFinalResponse,
-    MyHTMLResponse,
-    ProjectRequest,
-    ComponentDataRequest,
-    GenerateReportRequest,
-    DeleteFinalizedReportRequest,
+from models.basemodels import (
+    ProjectRequest, ComponentDataRequest, EmailRequest,
+   DeleteProjectRequest,ArchiveProjectRequest, 
+   GenerateReportRequest, ShareReportRequest, DeleteFinalizedReportRequest
 )
 
-from utils.oai import encode_image
 project_root = Path(__file__).resolve().parent.parent
 
 template_dir = Path(__file__).parent / 'templates'
@@ -82,7 +65,7 @@ project_root_str = str(project_root)
 if project_root_str not in sys.path:
     sys.path.insert(0, project_root_str)
 
-from agency import agency
+
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
@@ -317,14 +300,18 @@ async def upload_component_image(
         logger.info(f"[IMAGE] Görsel başarıyla kaydedildi: {filename}")
         
         # Güncel dosya dizisini al
-        project_file_path = os.path.join('/Users/memico/Documents/ISRA/Raporlama_otomasyonu/backend/data/projects', f"{project_name}.json")
+        project_file_path = get_project_path(project_name)
         with open(project_file_path, 'r', encoding='utf-8') as f:
             project_data = json.load(f)
             
-        # Güncel dosya dizisini al
+        # Güncel dosya dizisini al (Doğru yoldan)
         file_array = []
-        if component_name in project_data and "answers" in project_data[component_name] and question_id in project_data[component_name]["answers"]:
-            file_array = project_data[component_name]["answers"][question_id]
+        active_report = project_data.get("active_report", {})
+        if active_report:
+            components = active_report.get("components", {})
+            component_data = components.get(component_name, {})
+            answers = component_data.get("answers", {})
+            file_array = answers.get(question_id, [])
         
         # Başarı durumunda bilgi döndür
         return {
@@ -768,326 +755,276 @@ def reset_active_report_endpoint(project_name: str):
         raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
 
 
-@app.post("/project/generate-report-by-agency")
-async def generate_report_by_agency(request: GenerateReportRequest):
-    """
-    Agency Swarm kullanarak asenkron olarak rapor oluşturur, kaydeder ve sonucu döndürür.
-    """
-    try:
-        logger.info(f"[AGENCY_REPORT_GEN] Rapor oluşturma başlatıldı. Proje={request.project_name}")
+# @app.post("/project/generate-report-by-agency")
+# async def generate_report_by_agency(request: GenerateReportRequest):
+#     """
+#     Agency Swarm kullanarak asenkron olarak rapor oluşturur, kaydeder ve sonucu döndürür.
+#     """
+#     try:
+#         logger.info(f"[AGENCY_REPORT_GEN] Rapor oluşturma başlatıldı. Proje={request.project_name}")
 
-        # --- 1. Veri Hazırlama --- 
-        messages = []
-        for comp_name, comp in request.components_data.items():
-            if "answers" in comp:
-                for question_id, answer in comp["answers"].items():
-                    try:
-                        # Cevap JSON formatında mı diye kontrol et (örn. PDF içeriği)
-                        data = json.loads(answer)
-                        if isinstance(data, dict):
-                            content = data.get('content', '')
-                            file_name = data.get('fileName', 'Unnamed')
-                            messages.append(f"{comp_name} - {file_name}:\n{content}")
-                        else:
-                            messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
-                    except json.JSONDecodeError:
-                        # If answer is not JSON, use it directly
-                        messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
+#         # --- 1. Veri Hazırlama --- 
+#         messages = []
+#         for comp_name, comp in request.components_data.items():
+#             if "answers" in comp:
+#                 for question_id, answer in comp["answers"].items():
+#                     try:
+#                         # Cevap JSON formatında mı diye kontrol et (örn. PDF içeriği)
+#                         data = json.loads(answer)
+#                         if isinstance(data, dict):
+#                             content = data.get('content', '')
+#                             file_name = data.get('fileName', 'Unnamed')
+#                             messages.append(f"{comp_name} - {file_name}:\n{content}")
+#                         else:
+#                             messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
+#                     except json.JSONDecodeError:
+#                         # If answer is not JSON, use it directly
+#                         messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
 
-        components_data = str("\n\n".join(messages))
+#         components_data = str("\n\n".join(messages))
 
-        # Combine project assets and image attachments
-        project_assets = load_project_shared_files(request.project_name)
+#         # Combine project assets and image attachments
+#         project_assets = load_project_shared_files(request.project_name)
 
-        # pdf_paths = get_project_pdf_paths(request.project_name)
-        # pdf_attachments = get_pdf_attachments(pdf_paths)
+#         # pdf_paths = get_project_pdf_paths(request.project_name)
+#         # pdf_attachments = get_pdf_attachments(pdf_paths)
 
-        image_paths = get_project_image_paths(request.project_name)
-        image_attachments = get_image_attachments(image_paths)
+#         image_paths = get_project_image_paths(request.project_name)
+#         image_attachments = get_image_attachments(image_paths)
 
-        # combined_attachments = image_attachments + pdf_attachments
+#         # combined_attachments = image_attachments + pdf_attachments
        
-        # Agency prompt'unu hazırla
-        prompt = f"""
-                Bu görev için ilgili proje adı: {request.project_name}.
-        Kullanıcı, bu görev için bazı görseller yükledi. Bu görseller, raporda uygun yerlerde kullanılmalıdır. 
+#         # Agency prompt'unu hazırla
+#         prompt = f"""
+#                 Bu görev için ilgili proje adı: {request.project_name}.
+#         Kullanıcı, bu görev için bazı görseller yükledi. Bu görseller, raporda uygun yerlerde kullanılmalıdır. 
 
-        Görseller arasında finansal tablolar, işletme fotoğrafları veya proje logoları olabilir. Aşağıdaki kurallara dikkat et:
+#         Görseller arasında finansal tablolar, işletme fotoğrafları veya proje logoları olabilir. Aşağıdaki kurallara dikkat et:
 
-        1. Her görseli en uygun bölümde yerleştir.
-        2. Görselleri codeinterpreter kullanarakbase64 formatında ve tam olarak <img src="data:image/png;base64,..."> şeklinde oluştur.
-        3. Her base64 görsel verisi geçerli ve tamamen yüklenmiş olmalıdır.
-        4. MIME türü doğru eşleşmelidir (örneğin: image/png veya image/jpeg).
-        5. Yarım veya kesik base64 verisi göndermemelisin. WeasyPrint ile hatasız işlenebilir olmalıdır.
-        6. Görsel adı genellikle içeriği açıklar. Adlara dikkat et ve hangi bölümde kullanılabileceğini tahmin et.
-        7. Görsel açıklaması gerekiyorsa, uygun bir başlık veya altyazı kullan.
+#         1. Her görseli en uygun bölümde yerleştir.
+#         2. Görselleri codeinterpreter kullanarakbase64 formatında ve tam olarak <img src="data:image/png;base64,..."> şeklinde oluştur.
+#         3. Her base64 görsel verisi geçerli ve tamamen yüklenmiş olmalıdır.
+#         4. MIME türü doğru eşleşmelidir (örneğin: image/png veya image/jpeg).
+#         5. Yarım veya kesik base64 verisi göndermemelisin. WeasyPrint ile hatasız işlenebilir olmalıdır.
+#         6. Görsel adı genellikle içeriği açıklar. Adlara dikkat et ve hangi bölümde kullanılabileceğini tahmin et.
+#         7. Görsel açıklaması gerekiyorsa, uygun bir başlık veya altyazı kullan.
 
-        Raporu HTML formatında oluştur, stil ve düzen açısından şık bir yapı kullan. Gerekiyorsa <section> ve <figure> etiketlerinden faydalan.
-                """
-        style_config = json.dumps(get_style_config(request.project_name))
-        # Get response from agency
-        # result = agency.get_completion_parse(
-        #     message=f"Oluşturulacak raporun ait oudğu proje: project_name: {request.project_name}, bütün bileşen içerikleri: {components_data}, stil yapılandırması: {style_config}",
-        #     additional_instructions=prompt,
-        #     response_format=MyHTMLResponse,
-        #     attachments=image_attachments
-        # )
+#         Raporu HTML formatında oluştur, stil ve düzen açısından şık bir yapı kullan. Gerekiyorsa <section> ve <figure> etiketlerinden faydalan.
+#                 """
+#         style_config = json.dumps(get_style_config(request.project_name))
+#         # Get response from agency
+#         # result = agency.get_completion_parse(
+#         #     message=f"Oluşturulacak raporun ait oudğu proje: project_name: {request.project_name}, bütün bileşen içerikleri: {components_data}, stil yapılandırması: {style_config}",
+#         #     additional_instructions=prompt,
+#         #     response_format=MyHTMLResponse,
+#         #     attachments=image_attachments
+#         # )
         
        
-        logger.info(f"[AGENCY_REPORT_GEN] HTML response received. Proje={request.project_name}")
+#         logger.info(f"[AGENCY_REPORT_GEN] HTML response received. Proje={request.project_name}")
 
-        # Check if the agency returned an error message or HTML
-        # A simple check: valid HTML usually starts with <!DOCTYPE or <html>
-        if not isinstance(result.content, str) or not result.content.strip().lower().startswith(("<!doctype", "<html")):
-            logger.error(f"[AGENCY_REPORT_GEN] Agency returned an error or invalid content: {result}")
-            # Assuming the result string IS the error message based on updated CEO instructions
-            raise HTTPException(
-                status_code=500,
-                detail=f"Agency failed to generate HTML content: {result}"
-            )
+#         # Check if the agency returned an error message or HTML
+#         # A simple check: valid HTML usually starts with <!DOCTYPE or <html>
+#         if not isinstance(result.content, str) or not result.content.strip().lower().startswith(("<!doctype", "<html")):
+#             logger.error(f"[AGENCY_REPORT_GEN] Agency returned an error or invalid content: {result}")
+#             # Assuming the result string IS the error message based on updated CEO instructions
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=f"Agency failed to generate HTML content: {result}"
+#             )
         
-        logger.info(f"[AGENCY_REPORT_GEN] Agency returned valid HTML content. Proceeding with PDF generation.")
-        # Generate PDF from agency response (HTML content is in 'result')
+#         logger.info(f"[AGENCY_REPORT_GEN] Agency returned valid HTML content. Proceeding with PDF generation.")
+#         # Generate PDF from agency response (HTML content is in 'result')
 
-        print(f"Agency response: {result.content}")
-        pdf_result = await generate_pdf_from_agency_response(request.project_name, result.content)
+#         print(f"Agency response: {result.content}")
+#         pdf_result = await generate_pdf_from_agency_response(request.project_name, result.content)
         
-        if pdf_result.status == "error":
-            raise HTTPException(
-                status_code=500,
-                detail=pdf_result.message
-            )
+#         if pdf_result.status == "error":
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail=pdf_result.message
+#             )
 
-        return {
-            "status": "success",
-            "message": "Rapor başarıyla oluşturuldu",
-            "report_content": result,
-            "report_id": pdf_result.report_id,
-            "pdf_path": pdf_result.pdf_path
-        }
+#         return {
+#             "status": "success",
+#             "message": "Rapor başarıyla oluşturuldu",
+#             "report_content": result,
+#             "report_id": pdf_result.report_id,
+#             "pdf_path": pdf_result.pdf_path
+#         }
 
-    except Exception as e:
-        logger.error(f"[AGENCY_REPORT_GEN] Rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Agency ile rapor oluşturulurken bir hata oluştu: {str(e)}"
-        )
-async def generate_pdf_from_agency_response(project_name: str, agency_response: str) -> AgencyFinalResponse:
-    """
-    Takes the agency's response and generates a PDF using WeasyPrint.
+#     except Exception as e:
+#         logger.error(f"[AGENCY_REPORT_GEN] Rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Agency ile rapor oluşturulurken bir hata oluştu: {str(e)}"
+#         )
+# async def generate_pdf_from_agency_response(project_name: str, agency_response: str) -> AgencyFinalResponse:
+#     """
+#     Takes the agency's response and generates a PDF using WeasyPrint.
     
-    Args:
-        project_name: Name of the project
-        agency_response: HTML/text content from the agency
+#     Args:
+#         project_name: Name of the project
+#         agency_response: HTML/text content from the agency
         
-    Returns:
-        AgencyFinalResponse object containing status and file details
-    """
-    try:
-        logger.info(f"[PDF_GEN] Starting PDF generation for project: {project_name}")
+#     Returns:
+#         AgencyFinalResponse object containing status and file details
+#     """
+#     try:
+#         logger.info(f"[PDF_GEN] Starting PDF generation for project: {project_name}")
         
-        # Get report ID 
-        report_id = get_active_report_id(project_name)
-        logger.info(f"[PDF_GEN] Generated report ID: {report_id}")
+#         # Get report ID 
+#         report_id = get_active_report_id(project_name)
+#         logger.info(f"[PDF_GEN] Generated report ID: {report_id}")
         
-        # Create basic HTML structure
-        html_content = agency_response
-        # Configure WeasyPrint
-        font_config = FontConfiguration()
-        css = CSS(string='', font_config=font_config)
+#         # Create basic HTML structure
+#         html_content = agency_response
+#         # Configure WeasyPrint
+#         font_config = FontConfiguration()
+#         css = CSS(string='', font_config=font_config)
         
-        # Generate PDF
-        html = HTML(string=html_content)
-        pdf_bytes = html.write_pdf(stylesheets=[css], font_config=font_config)
-        logger.info(f"[PDF_GEN] PDF generated successfully, size: {len(pdf_bytes)} bytes")
+#         # Generate PDF
+#         html = HTML(string=html_content)
+#         pdf_bytes = html.write_pdf(stylesheets=[css], font_config=font_config)
+#         logger.info(f"[PDF_GEN] PDF generated successfully, size: {len(pdf_bytes)} bytes")
         
-        # Save PDF
-        pdf_path, success = save_pdf_content(pdf_bytes, project_name, report_id)
-        if not success:
-            raise ValueError("Failed to save PDF file")
-        logger.info(f"[PDF_GEN] PDF saved successfully at: {pdf_path}")
+#         # Save PDF
+#         pdf_path, success = save_pdf_content(pdf_bytes, project_name, report_id)
+#         if not success:
+#             raise ValueError("Failed to save PDF file")
+#         logger.info(f"[PDF_GEN] PDF saved successfully at: {pdf_path}")
         
-        # Update project metadata
-        save_generated_report(
-            project_name,
-            report_id,
-            agency_response,  # Store the original content
-            str(pdf_path)
-        )
-        logger.info(f"[PDF_GEN] Project metadata updated successfully")
+#         # Update project metadata
+#         save_generated_report(
+#             project_name,
+#             report_id,
+#             agency_response,  # Store the original content
+#             str(pdf_path)
+#         )
+#         logger.info(f"[PDF_GEN] Project metadata updated successfully")
         
-        return AgencyFinalResponse(
-            status="success",
-            message="PDF report successfully generated and saved",
-            report_id=report_id,
-            pdf_path=str(pdf_path)
-        )
+#         return AgencyFinalResponse(
+#             status="success",
+#             message="PDF report successfully generated and saved",
+#             report_id=report_id,
+#             pdf_path=str(pdf_path)
+#         )
         
-    except Exception as e:
-        logger.error(f"[PDF_GEN] Error generating PDF: {str(e)}", exc_info=True)
-        return AgencyFinalResponse(
-            status="error",
-            message=f"Failed to generate PDF: {str(e)}",
-            report_id=None,
-            pdf_path=None
-        )
+#     except Exception as e:
+#         logger.error(f"[PDF_GEN] Error generating PDF: {str(e)}", exc_info=True)
+#         return AgencyFinalResponse(
+#             status="error",
+#             message=f"Failed to generate PDF: {str(e)}",
+#             report_id=None,
+#             pdf_path=None
+#         )
 
 # Backend route for PDF deletion
-@app.route('/api/projects/<project_name>/delete-pdf', methods=['POST'])
-def delete_pdf(project_name):
-    data = request.json
-    file_path = data.get('path')
-    
-    if not file_path:
-        return jsonify({'success': False, 'message': 'Path parameter is missing'}), 400
+@app.delete('/api/project/{project_name}/delete-pdf')
+async def delete_pdf(project_name: str, path: str):
+    """
+    Yüklenen PDF dosyasını siler ve JSON referansını kaldırır.
+    """
+    if not path:
+        raise HTTPException(status_code=400, detail="Dosya yolu belirtilmedi")
     
     # Construct the absolute path to the PDF file
     base_path = '/Users/memico/Documents/ISRA/Raporlama_otomasyonu/backend/data/uploads'
-    full_path = os.path.join(base_path, file_path)
+    full_path = os.path.join(base_path, path)
     
     # Security check to prevent path traversal attacks
     if not os.path.normpath(full_path).startswith(base_path):
-        return jsonify({'success': False, 'message': 'Invalid path'}), 403
+        raise HTTPException(status_code=403, detail="Geçersiz dosya yolu")
     
     try:
         # Delete the file if it exists
         if os.path.exists(full_path):
             os.remove(full_path)
             
-        # Update database reference to remove the PDF
-        remove_pdf_reference(project_name, file_path)
+        # Update database reference to remove the PDF (assuming this function exists)
+        # TODO: Update this to use proper array handling for multi-file support
+        # remove_pdf_reference(project_name, path)
         
-        return jsonify({'success': True, 'message': 'PDF deleted successfully'})
+        return {"success": True, "message": "PDF başarıyla silindi"}
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        logger.error(f"[PDF] PDF silme hatası: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"PDF silinirken beklenmeyen hata: {str(e)}")
 
 # Backend route for PDF upload
-@app.route('/api/projects/<project_name>/upload-pdf', methods=['POST'])
-def upload_pdf(project_name):
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'message': 'Dosya yok'}), 400
-        
-    file = request.files['file']
-    component = request.form.get('component')
-    question_id = request.form.get('questionId')
+@app.post('/project/{project_name}/upload-pdf')
+async def upload_pdf(project_name: str, file: UploadFile = File(...), component: str = Form(...), question_id: str = Form(...)):
+    """
+    Bir bileşene ait PDF dosyasını yükler.
+    PDF dosyası, proje klasörüne kaydedilir ve referansı JSON'a eklenir.
+    """
+    if not file:
+        raise HTTPException(status_code=400, detail="Dosya yok")
     
-    if not file or not file.filename or not component or not question_id:
-        return jsonify({'success': False, 'message': 'Eksik parametre'}), 400
-        
-    # Proje dizinini oluştur
-    project_dir = create_pdf_storage_path(project_name)
-    
-    # Benzersiz dosya adı oluştur
-    timestamp = int(time.time())
-    safe_filename = secure_filename(file.filename)
-    unique_filename = f"{component}_{question_id}_{timestamp}_{safe_filename}"
-    
-    # Dosya yolunu belirle
-    file_path = os.path.join(project_dir, unique_filename)
-    relative_path = f"active_report/pdfs/{project_name}/{unique_filename}"
+    if not file.filename or not component or not question_id:
+        raise HTTPException(status_code=400, detail="Eksik parametre")
     
     try:
-        # Dosyayı kaydet
-        file.save(file_path)
+        # Save uploaded PDF using the new helper function
+        success, filename, error_msg = await save_uploaded_pdf(project_name, component, file, question_id)
         
-        # Veritabanında referansı güncelle
-        update_pdf_reference(project_name, component, question_id, relative_path, safe_filename)
+        if not success:
+            logger.error(f"[PDF] PDF kaydedilirken hata: {error_msg}")
+            raise HTTPException(status_code=500, detail=f"PDF kaydedilemedi: {error_msg}")
         
-        # Güncellenen dosya listesini al
-        project_file_path = os.path.join('/Users/memico/Documents/ISRA/Raporlama_otomasyonu/backend/data/projects', f"{project_name}.json")
+        logger.info(f"[PDF] PDF başarıyla kaydedildi: {filename}")
+        
+        # Güncel dosya dizisini al
+        project_file_path = get_project_path(project_name)
         with open(project_file_path, 'r', encoding='utf-8') as f:
             project_data = json.load(f)
             
-        # Güncel dosya dizisini al
+        # Get the current file array from the project data (Doğru yoldan)
         file_array = []
-        if component in project_data and "answers" in project_data[component] and question_id in project_data[component]["answers"]:
-            file_array = project_data[component]["answers"][question_id]
+        active_report = project_data.get("active_report", {})
+        if active_report:
+            components = active_report.get("components", {})
+            component_data = components.get(component, {})
+            answers = component_data.get("answers", {})
+            file_array = answers.get(question_id, [])
         
-        return jsonify({
+        return {
             'success': True,
-            'fileName': safe_filename,
-            'filePath': relative_path,
-            'files': file_array  # Güncel dosya dizisini geri dön
-        })
+            'fileName': filename,  # Return the filename from save_uploaded_pdf
+            'filePath': f"active_report/{project_name.lower()}/pdfs/{filename}", # Path based on our convention
+            'files': file_array  # Return the updated file array
+        }
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        logger.error(f"[PDF] PDF yükleme hatası: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"PDF yükleme sırasında beklenmeyen hata: {str(e)}")
 
 # Backend route for PDF viewing
-@app.route('/api/projects/<project_name>/view-pdf', methods=['GET'])
-def view_pdf(project_name):
-    file_path = request.args.get('path')
-    if not file_path:
-        return jsonify({'success': False, 'message': 'Path parameter is missing'}), 400
+@app.get('/api/project/{project_name}/view-pdf')
+async def view_pdf(project_name: str, path: str):
+    """
+    PDF dosyasını görüntüler.
+    """
+    if not path:
+        raise HTTPException(status_code=400, detail="Dosya yolu belirtilmedi")
     
     # Construct the absolute path to the PDF file
     base_path = '/Users/memico/Documents/ISRA/Raporlama_otomasyonu/backend/data/uploads'
-    full_path = os.path.join(base_path, file_path)
+    full_path = os.path.join(base_path, path)
     
     # Security check to prevent path traversal attacks
     if not os.path.normpath(full_path).startswith(base_path):
-        return jsonify({'success': False, 'message': 'Invalid path'}), 403
+        raise HTTPException(status_code=403, detail="Geçersiz dosya yolu")
     
     try:
-        return send_file(full_path, mimetype='application/pdf')
+        if not os.path.exists(full_path):
+            raise HTTPException(status_code=404, detail="PDF dosyası bulunamadı")
+        return FileResponse(path=full_path, media_type="application/pdf")
+    except HTTPException:
+        raise
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 404
+        logger.error(f"[PDF] PDF görüntüleme hatası: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"PDF görüntülenirken beklenmeyen hata: {str(e)}")
 
-def create_pdf_storage_path(project_name: str) -> str:
-    """
-    PDF dosyaları için depolama dizini oluşturur.
-    
-    Parameters:
-    -----------
-    project_name : str
-        Proje adı
-    
-    Returns:
-    --------
-    str
-        Oluşturulan dizinin tam yolu
-    """
-    # Proje adını küçük harfe çevir
-    project_name = project_name.lower()
-    
-    # PDF dizini yolunu belirle
-    pdf_dir = os.path.join('/Users/memico/Documents/ISRA/Raporlama_otomasyonu/backend/data/uploads/active_report', project_name, 'pdfs')
-    
-    # Dizin yoksa oluştur
-    os.makedirs(pdf_dir, exist_ok=True)
-    
-    return pdf_dir
-
-def update_pdf_reference(project_name: str, component: str, question_id: str, file_path: str, filename: str) -> bool:
-    """
-    Proje JSON dosyasında PDF referansını günceller.
-    
-    Parameters:
-    -----------
-    project_name : str
-        Proje adı
-    component : str
-        Bileşen adı
-    question_id : str
-        Soru ID'si
-    file_path : str
-        Dosyanın göreli yolu
-    filename : str
-        Dosyanın orijinal adı
-    
-    Returns:
-    --------
-    bool
-        İşlem başarılı ise True, değilse False
-    """
-    # Dosya bilgisini oluştur
-    file_info = {
-        "filename": filename,
-        "path": file_path,
-        "type": "pdf"
-    }
-    
-    # Dosya bilgisini projeye ekle
-    return add_file_entry_to_array(project_name, component, question_id, file_info)
+# PDF storage functions are now handled by file_handler.py through save_uploaded_pdf and ensure_directory_structure
 
 def remove_pdf_reference(project_name: str, file_path: str) -> bool:
     """
@@ -1151,3 +1088,36 @@ def remove_pdf_reference(project_name: str, file_path: str) -> bool:
     except Exception as e:
         logger.error(f"[FILE] Dosya referansı silinirken hata: {str(e)}", exc_info=True)
         return False
+
+@app.post("/project/{project_name}/remove-file", response_model=dict)
+async def remove_file(
+ project_name: str,
+ component: str = Form(...),
+ question_id: str = Form(...),
+ filename: str = Form(...),
+ file_path: str = Form(...)
+):
+    """Remove a file object from project JSON array."""
+    component_name = component          # keep backward compatibility
+    path = file_path                   # alias for helper
+
+    success = remove_file_entry_from_array(project_name, component_name, question_id,
+                                         {"filename": filename, "path": path})
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Dosya silinemedi")
+        
+    # Güncel dosya listesi
+    project_path = get_project_path(project_name)
+    with open(project_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        
+    files = []
+    active_report = data.get("active_report", {})
+    if active_report:
+        components = active_report.get("components", {})
+        component_data = components.get(component, {})
+        answers = component_data.get("answers", {})
+        files = answers.get(question_id, [])
+        
+    return {"success": True, "files": files}

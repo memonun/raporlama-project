@@ -3,7 +3,7 @@ import mimetypes
 import re
 from pathlib import Path
 from openai import OpenAI
-from assets import load_manifest, get_project_assets
+from .assets import get_project_assets
 
 
 
