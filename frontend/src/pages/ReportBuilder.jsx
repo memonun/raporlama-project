@@ -565,22 +565,52 @@ const ReportBuilder = () => {
     dispatch({ type: 'SET_IMAGE_LOADING', payload: { key: loadingKey, isLoading: false } });
   }
 };
-  // Bileşen görseli kaldırma
-  const handleRemoveComponentImage = async (component, questionId, fileToRemove) => {
+  
+
+const handleRemoveComponentImage = async (component, questionId, fileToRemove) => {
   try {
-    // Get current files array
-    const currentFiles = ensureArray(componentData[component]?.answers?.[questionId]);
+    // Debug log to see what we're trying to remove
+    console.log('Removing file:', fileToRemove);
     
+    // Validate fileToRemove
+    if (!fileToRemove || typeof fileToRemove !== 'object') {
+      toast.error('Geçersiz dosya bilgisi');
+      return;
+    }
+    
+    // Ensure we have required fields
+    const filename = fileToRemove.filename || '';
+    const filepath = fileToRemove.path || '';
+    
+    if (!filename || !filepath) {
+      toast.error('Dosya bilgileri eksik');
+      console.error('Missing file info:', { filename, filepath, fileToRemove });
+      return;
+    }
+
     // Remove the file from backend
     const formData = new FormData();
     formData.append('component', component);
     formData.append('question_id', questionId);
-    formData.append('filename', fileToRemove.filename);
-    formData.append('file_path', fileToRemove.path);
+    formData.append('filename', filename);
+    formData.append('file_path', filepath);
+    
+    // Log what we're sending
+    console.log('Sending removal request:', {
+      component,
+      question_id: questionId,
+      filename,
+      file_path: filepath
+    });
     
     const response = await axios.post(
       `/project/${encodeURIComponent(projectName)}/remove-file`,
-      formData
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      }
     );
     
     if (response.data.success) {
@@ -595,36 +625,80 @@ const ReportBuilder = () => {
       });
       
       toast.info('Görsel kaldırıldı');
+    } else {
+      throw new Error(response.data.message || 'Dosya kaldırılamadı');
     }
   } catch (error) {
     console.error(`${component} - Görsel kaldırma hatası:`, error);
     toast.error(`Görsel kaldırılırken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
   }
 };
-
   const handleRemoveComponentPdf = async (component, questionId, fileToRemove) => {
-    try {
-      const form = new FormData();
-      form.append('component', component);
-      form.append('question_id', questionId);
-      form.append('filename', fileToRemove.filename);
-      form.append('path', fileToRemove.path);
+  try {
+    // Debug log to see what we're trying to remove
+    console.log('Removing PDF:', fileToRemove);
+    
+    // Validate fileToRemove
+    if (!fileToRemove || typeof fileToRemove !== 'object') {
+      toast.error('Geçersiz PDF dosya bilgisi');
+      return;
+    }
+    
+    // Ensure we have required fields
+    const filename = fileToRemove.filename || '';
+    const filepath = fileToRemove.path || '';
+    
+    if (!filename || !filepath) {
+      toast.error('PDF dosya bilgileri eksik');
+      console.error('Missing PDF info:', { filename, filepath, fileToRemove });
+      return;
+    }
 
-      // backend: remove from JSON
-      await axios.post(`/project/${encodeURIComponent(projectName)}/remove-file`, form);
-
-      // update local array
-      const updatedFiles = ensureArray(componentData[component].answers[questionId])
-        .filter(f => !(f.filename === fileToRemove.filename && f.path === fileToRemove.path));
-
+    // Remove the file from backend
+    const formData = new FormData();
+    formData.append('component', component);
+    formData.append('question_id', questionId);
+    formData.append('filename', filename);
+    formData.append('file_path', filepath);
+    
+    // Log what we're sending
+    console.log('Sending PDF removal request:', {
+      component,
+      question_id: questionId,
+      filename,
+      file_path: filepath
+    });
+    
+    const response = await axios.post(
+      `/project/${encodeURIComponent(projectName)}/remove-file`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      }
+    );
+    
+    if (response.data.success) {
+      // Update local state with the updated file list from backend
       dispatch({
         type: 'UPDATE_ANSWER',
-        payload: { component, questionId, value: updatedFiles }
+        payload: { 
+          component, 
+          questionId, 
+          value: response.data.files || []
+        }
       });
-    } catch (e) {
-      toast.error('PDF silinirken hata: ' + (e.message || 'bilinmeyen'));
+      
+      toast.info('PDF kaldırıldı');
+    } else {
+      throw new Error(response.data.message || 'PDF dosyası kaldırılamadı');
     }
-  };
+  } catch (error) {
+    console.error(`${component} - PDF kaldırma hatası:`, error);
+    toast.error(`PDF kaldırılırken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+  }
+};
   
   const validateRequiredFields = () => {
     let isValid = true;
@@ -1237,7 +1311,7 @@ const ReportBuilder = () => {
                                       </div>
                                       <button
                                         type="button"
-                                        onClick={() => handleRemoveComponentImage(component, imageQuestionId, index)}
+                                        onClick={() => handleRemoveComponentImage(component, imageQuestionId, file)}
                                         className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
                                         title="Görseli kaldır"
                                       >

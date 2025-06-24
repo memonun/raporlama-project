@@ -274,47 +274,75 @@ def remove_file_entry_from_array(
         with open(project_path, "r+", encoding="utf-8") as f:
             data = json.load(f)
 
-            if "active_report" not in data or "components" not in data["active_report"]:
-                logger.warning("Kaldırılacak dosya için aktif rapor veya bileşenler bulunamadı.")
+            # Navigate to the correct location in the JSON structure
+            if "active_report" not in data:
+                logger.warning("Aktif rapor bulunamadı.")
+                return False
+                
+            active_report = data["active_report"]
+            if "components" not in active_report:
+                logger.warning("Bileşenler bulunamadı.")
+                return False
+                
+            components = active_report["components"]
+            
+            if component_name not in components:
+                logger.warning(f"Bileşen bulunamadı: {component_name}")
+                return False
+                
+            if "answers" not in components[component_name]:
+                logger.warning(f"Bileşen cevapları bulunamadı: {component_name}")
+                return False
+                
+            answers = components[component_name]["answers"]
+            
+            if question_id not in answers:
+                logger.warning(f"Soru bulunamadı: {question_id}")
                 return False
 
-            components = data["active_report"]["components"]
+            file_list = answers[question_id]
 
-            if (component_name not in components or
-                    "answers" not in components[component_name] or
-                    question_id not in components[component_name]["answers"]):
-                logger.warning("Kaldırılacak dosya için bileşen veya soru bulunamadı.")
-                return False
-
-            file_list = components[component_name]["answers"][question_id]
-
+            # Ensure it's a list
             if not isinstance(file_list, list):
                 logger.warning(f"'{question_id}' için dosya listesi bir liste değil.")
                 return False
 
+            # Extract the path to remove
             path_to_remove = file_to_remove.get("path")
             if not path_to_remove:
                 logger.error("Kaldırılacak dosya için 'path' belirtilmedi.")
                 return False
 
+            # Find and remove the file
             initial_count = len(file_list)
-            new_file_list = [
-                file_entry for file_entry in file_list
-                if not (isinstance(file_entry, dict) and file_entry.get("path") == path_to_remove)
-            ]
+            new_file_list = []
+            removed = False
+            
+            for file_entry in file_list:
+                if isinstance(file_entry, dict) and file_entry.get("path") == path_to_remove:
+                    removed = True
+                    logger.info(f"Dosya bulundu ve kaldırılıyor: {path_to_remove}")
+                else:
+                    new_file_list.append(file_entry)
 
-            if len(new_file_list) == initial_count:
+            if not removed:
                 logger.warning(f"Dosya listede bulunamadı: {path_to_remove}")
                 return False
 
-            components[component_name]["answers"][question_id] = new_file_list
-            logger.info(f"Dosya kaldırıldı: {path_to_remove}")
+            # Update the answers
+            answers[question_id] = new_file_list
+            logger.info(f"Dosya kaldırıldı. Kalan dosya sayısı: {len(new_file_list)}")
 
+            # Write back to file
             f.seek(0)
             json.dump(data, f, ensure_ascii=False, indent=2)
             f.truncate()
 
         return True
+        
     except (IOError, json.JSONDecodeError, KeyError) as e:
         logger.error(f"Proje JSON güncellenirken hata: {e}", exc_info=True)
+        return False
+    except Exception as e:
+        logger.error(f"Beklenmeyen hata: {e}", exc_info=True)
         return False

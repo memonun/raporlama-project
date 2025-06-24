@@ -57,8 +57,8 @@ template_dir = Path(__file__).parent / 'templates'
 env = Environment(loader=FileSystemLoader(template_dir))
 
 # Statik dosya yolu (görseller için)
-STATIC_DIR = Path(__file__).parent / 'static'
-IMAGES_DIR = STATIC_DIR / 'images'
+
+BASE_DIR = Path(__file__).parent
 
 # Proje kök dizinini sys.path listesine ekle (eğer zaten yoksa)
 project_root_str = str(project_root)
@@ -669,41 +669,6 @@ async def extract_pdf_endpoint(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"PDF işlenirken hata oluştu: {str(e)}")
 
 
-
-
-# Renk paletini getir
-# def get_project_colors(project_name):
-#     return PROJECT_PALETTES.get(project_name.lower(), {})
-
-# Görsel yolunu veya base64 verisini getir
-def get_image_path_or_data(project_name: str, image_filename: Optional[str] = None) -> Optional[str]:
-    """Projeye ait görselin yolunu veya base64 kodlu verisini döndürür."""
-    if not image_filename:
-        # Varsayılan bir görsel veya logo döndürülebilir
-        default_logo_path = IMAGES_DIR / 'isra_logo.png' # Varsayılan logo yolu
-        if default_logo_path.is_file():
-            return default_logo_path.as_uri()
-        return None
-
-    # Projeye özel görsel
-    project_image_path = IMAGES_DIR / project_name.lower() / image_filename
-    if project_image_path.is_file():
-        # return project_image_path.as_uri() # Dosya yolu olarak döndür
-        # Alternatif: Base64 olarak döndür (HTML içine gömmek için)
-        try:
-            with open(project_image_path, "rb") as f:
-                image_data = base64.b64encode(f.read()).decode('utf-8')
-            # MIME türünü belirle (dosya uzantısına göre)
-            ext = project_image_path.suffix.lower()
-            mime_type = f'image/{ext[1:]}' if ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg'] else 'image/png'
-            return f'data:{mime_type};base64,{image_data}'
-        except Exception as e:
-            print(f"Hata: Görsel base64'e çevrilemedi ({project_image_path}): {e}")
-            return None # Hata durumunda None döndür
-            
-    print(f"Uyarı: Görsel bulunamadı: {project_image_path}")
-    return None
-
 @app.post("/project/{project_name}/report/{report_id}/send-email")
 async def send_report_email(project_name: str, report_id: str, email_request: ShareReportRequest):
     """Send a report to specified email addresses."""
@@ -1103,7 +1068,11 @@ async def remove_file(
     """
     try:
         # Log the request
-        logger.info(f"[REMOVE_FILE] Request to remove file: Project={project_name}, Component={component}, Question={question_id}, File={filename}")
+        logger.info(f"[REMOVE_FILE] Request to remove file: Project={project_name}, Component={component}, Question={question_id}, File={filename}, Path={file_path}")
+        
+        # Validate inputs
+        if not all([project_name, component, question_id, filename, file_path]):
+            raise HTTPException(status_code=400, detail="Eksik parametreler")
         
         # Remove from JSON
         success = remove_file_entry_from_array(
@@ -1119,7 +1088,12 @@ async def remove_file(
         
         # Try to remove the physical file (don't fail if it doesn't exist)
         try:
-            full_path = BASE_DIR / "data" / "uploads" / file_path
+            # Construct the full path - ensure it's relative to BASE_DIR
+            if file_path.startswith('active_report/'):
+                full_path = BASE_DIR / "data" / "uploads" / file_path
+            else:
+                full_path = BASE_DIR / "data" / "uploads" / "active_report" / file_path
+                
             if full_path.exists() and full_path.is_file():
                 os.remove(full_path)
                 logger.info(f"[REMOVE_FILE] Physical file removed: {full_path}")
