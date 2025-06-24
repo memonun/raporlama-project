@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useReducer } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { projectService, componentService, mailService, reportService } from '../services/api';
+import { projectService, componentService, mailService, reportService, axiosInstance as axios } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
@@ -99,6 +99,18 @@ const useDebounce = (callback, delay) => {
       callback(...args);
     }, delay);
   }, [callback, delay]);
+};
+
+// helper: always return an array for rendering
+const ensureArray = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try {
+    const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [val];
+  }
 };
 
 const ReportBuilder = () => {
@@ -294,7 +306,7 @@ const ReportBuilder = () => {
     const viewportHeight = window.innerHeight;
     const viewportMiddle = viewportHeight / 2;
     
-    // En yakın bileşeni bul (ekranın orta noktasına göre)
+    // En yakın bileşeni bul (ekranın ortasına göre)
     let closestComponent = null;
     let closestDistance = Infinity;
     
@@ -369,15 +381,17 @@ const ReportBuilder = () => {
   const [savingStates, setSavingStates] = useState({});
 
   // Input validasyon fonksiyonu
-  const validateInput = (value, question) => {
+  const validateInput = (value, question = {}) => {
+    // If question object is missing, treat as non-required, no length limits
+    if (!question || typeof question !== 'object') {
+      return { isValid: true, message: '' };
+    }
     if (question.required && !value) {
       return { isValid: false, message: 'Bu alan zorunludur' };
     }
-    
     if (question.type === 'text' && question.minLength && value.length < question.minLength) {
       return { isValid: false, message: `En az ${question.minLength} karakter girilmelidir` };
     }
-    
     return { isValid: true, message: '' };
   };
 
@@ -488,9 +502,19 @@ const ReportBuilder = () => {
       
       // FormData oluştur
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', file); // Backend expects the field name to be 'file'
+      formData.append('project_name', projectName);
+      formData.append('component_name', component);
+
+      // PDF dosyasını yükle
+      console.log(`${component} - PDF yüklemek için componentService.uploadPDF kullanılıyor`);
+      const uploadResult = await componentService.uploadPDF(projectName, component, file, questionId);
       
-      console.log(`${component} - FormData oluşturuldu, PDF içeriğini çıkarmak için API isteği gönderiliyor`);
+      if (!uploadResult.success) {
+        throw new Error('PDF yükleme başarısız: ' + (uploadResult.message || 'Bilinmeyen hata'));
+      }
+      
+      console.log(`${component} - PDF yükleme başarılı:`, uploadResult);
       
       // PDF içeriğini çıkarmak için API'ya istek gönder
       const response = await reportService.extractPdf(formData, {
@@ -512,30 +536,59 @@ const ReportBuilder = () => {
         throw new Error('PDF içeriği boş olarak çıkarıldı. Lütfen farklı bir PDF dosyası deneyin.');
       }
 
-      // Yeni PDF obje formatını oluştur
-      const pdfObject = {
-        fileName: file.name,
-        content: extractedContent,
-        questionId: questionId
-      };
-
-      // Obje'yi JSON string'ine çevir
-      const pdfJsonString = JSON.stringify(pdfObject);
-
-      // State'i güncelle ve backend'e kaydet
-      dispatch({ 
-        type: 'UPDATE_ANSWER', 
-        payload: { component, questionId, value: pdfJsonString } 
-      });
-
-      await componentService.saveComponentData(
-        projectName,
-        component,
-        { [questionId]: pdfJsonString }
-      );
+      // Mevcut dosya listesini al veya yeni liste oluştur
+      let currentFiles = [];
+      
+      // uploadResult.files varsa kullan, yoksa componentData'dan al
+      if (uploadResult.files && Array.isArray(uploadResult.files)) {
+        currentFiles = uploadResult.files;
+      } else {
+        // Mevcut dosyaları state'den al
+        const componentAnswers = componentData[component]?.answers || {};
+        const existingValue = componentAnswers[questionId];
+        
+        if (existingValue) {
+          // String ise JSON.parse et
+          if (typeof existingValue === 'string') {
+            try {
+              const parsed = JSON.parse(existingValue);
+              if (Array.isArray(parsed)) {
+                currentFiles = parsed;
+              } else if (typeof parsed === 'object') {
+                currentFiles = [parsed]; // Tek nesne ise diziye dönüştür
+              }
+            } catch (e) {
+              // JSON parse hatası, yeni dizi kullan
+              console.warn('JSON parse error for existing files:', e);
+            }
+          } else if (Array.isArray(existingValue)) {
+            currentFiles = existingValue;
+          } else if (typeof existingValue === 'object') {
+            currentFiles = [existingValue]; // Tek nesne ise diziye dönüştür
+          }
+        }
+        
+        // Yeni PDF bilgisini oluştur ve ekle
+        const newFileInfo = {
+          filename: file.name,
+          path: uploadResult.filePath || "",
+          type: "pdf",
+          uploaded_at: new Date().toISOString()
+        };
+        
+        currentFiles.push(newFileInfo);
+      }
       
       // Başarı mesajı
-      toast.success(`${file.name} başarıyla yüklendi ve içeriği ${component} bileşenine kaydedildi.`);
+      toast.success(`${file.name} başarıyla yüklendi ve ${component} bileşenine kaydedildi.`);
+
+      // --- update state with full PDF list ---
+      dispatch({
+        type: 'UPDATE_ANSWER',
+        payload: { component, questionId, value: currentFiles }
+      });
+      // -----------------------------------------
+      
     } catch (error) {
       console.error(`${component} - PDF işleme hatası:`, error);
       toast.error(`PDF yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
@@ -594,7 +647,8 @@ const ReportBuilder = () => {
         projectName,
         component,
         file,
-        imageIndex
+        imageIndex,
+        questionId // Soru ID'sini ekledik
       );
       
       console.log(`${component} - Görsel yükleme sonucu:`, result);
@@ -606,18 +660,33 @@ const ReportBuilder = () => {
       // Başarı mesajı
       toast.success(`${file.name} başarıyla yüklendi`);
       
-      // Görsel yükleme başarılı - bu bilgiyi state'e ekle
-      // Görsel adını componentData içine kaydet
-      const imageName = result.file_name || file.name;
-      
-      dispatch({ 
-        type: 'UPDATE_ANSWER', 
-        payload: { 
-          component, 
-          questionId: `${questionId}_image_${imageIndex}`, 
-          value: imageName 
-        } 
-      });
+      // Yeni dosya dizisini componentData içine kaydet
+      if (result.files && Array.isArray(result.files)) {
+        dispatch({ 
+          type: 'UPDATE_ANSWER', 
+          payload: { 
+            component, 
+            questionId, 
+            value: result.files            // store as array
+          } 
+        });
+      } else {
+        // Eski davranış ile uyumluluk için
+        const imageName = result.file_name || file.name;
+        
+        dispatch({ 
+          type: 'UPDATE_ANSWER', 
+          payload: { 
+            component, 
+            questionId, 
+            value: [{
+              filename: imageName,
+              path: result.filePath || "",
+              type: "image"
+            }]
+          } 
+        });
+      }
       
     } catch (error) {
       console.error(`${component} - Görsel yükleme hatası:`, error);
@@ -661,24 +730,27 @@ const ReportBuilder = () => {
     }
   };
 
-  // Bileşen PDF dosyasını kaldırma
-  const handleRemoveComponentPdf = async (component, questionId) => {
+  const handleRemoveComponentPdf = async (component, questionId, fileToRemove) => {
     try {
-      // Önce state'i güncelle
-      handleAnswerChange(component, questionId, ''); // Boş string ata
+      const form = new FormData();
+      form.append('component', component);
+      form.append('question_id', questionId);
+      form.append('filename', fileToRemove.filename);
+      form.append('path', fileToRemove.path);
 
-      // Backend'e boş değeri kaydet
-      await componentService.saveComponentData(
-        projectName,
-        component,
-        { [questionId]: '' } // Boş string göndererek temizle
-      );
-      
-      console.log(`${component} bileşeninden PDF dosyası kaldırıldı (${questionId})`);
-      toast.info('PDF dosyası kaldırıldı');
-    } catch (error) {
-      console.error(`${component} - PDF kaldırma hatası:`, error);
-      toast.error(`PDF kaldırılırken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+      // backend: remove from JSON
+      await axios.post(`/project/${encodeURIComponent(projectName)}/remove-file`, form);
+
+      // update local array
+      const updatedFiles = ensureArray(componentData[component].answers[questionId])
+        .filter(f => !(f.filename === fileToRemove.filename && f.path === fileToRemove.path));
+
+      dispatch({
+        type: 'UPDATE_ANSWER',
+        payload: { component, questionId, value: updatedFiles }
+      });
+    } catch (e) {
+      toast.error('PDF silinirken hata: ' + (e.message || 'bilinmeyen'));
     }
   };
   
@@ -687,12 +759,10 @@ const ReportBuilder = () => {
     let missingComponents = [];
 
     Object.keys(componentData).forEach(component => {
-      const { questions, answers } = componentData[component];
+      const { answers } = componentData[component];
       
-      // PDF alanı zorunlu, diğerleri opsiyonel
-      const pdfQuestion = questions.find(q => q.type === 'file' && q.required);
-      
-      if (pdfQuestion && (!answers[pdfQuestion.id] || answers[pdfQuestion.id] === null)) {
+      // PDF alanı zorunlu, görsel opsiyonel
+      if (!answers['pdf_upload'] || answers['pdf_upload'] === '') {
         isValid = false;
         missingComponents.push(component);
       }
@@ -1157,329 +1227,207 @@ const ReportBuilder = () => {
                   </button>
                 </div>
                 
-                {componentData[component] && componentData[component].questions.length > 0 ? (
-                  <div className="space-y-6">
-                    {componentData[component].questions.map((question, index) => {
-                      const isLoadingPdf = pdfLoadingStates[`${component}-${question.id}`] || false;
-                      return (
-                      <div key={question.id} className="space-y-2 border-b pb-6">
-                        <label className="block text-sm font-medium text-gray-700">
-                          {question.text}
-                          {question.required && <span className="text-red-500 ml-1">*</span>}
-                        </label>
-                        
-                          {/* Input render bölümü */}
-                        {question.type === 'text' && (
-                            <div className="relative">
-                          <input
-                            type="text"
-                            value={componentData[component].answers[question.id] || ''}
-                                onChange={(e) => handleAnswerChange(component, question.id, e.target.value, question)}
-                                onKeyDown={(e) => handleKeyDown(component, index, e)}
-                                data-question-id={question.id}
-                                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-                                  validationStates[`${component}-${question.id}`]?.isValid === false
-                                    ? 'border-red-300'
-                                    : validationStates[`${component}-${question.id}`]?.saved
-                                    ? 'border-green-300'
-                                    : 'border-gray-300'
-                                }`}
-                            placeholder={question.placeholder || ''}
-                            required={question.required}
-                                disabled={savingStates[`${component}-${question.id}`]}
-                              />
-                              
-                              {/* Validasyon ve kaydetme durumu göstergeleri */}
-                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
-                                {savingStates[`${component}-${question.id}`] && (
-                                  <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                )}
-                                
-                                {!savingStates[`${component}-${question.id}`] && validationStates[`${component}-${question.id}`]?.saved && (
-                                  <svg className="h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
-                              </div>
-                              
-                              {/* Hata mesajı */}
-                              {validationStates[`${component}-${question.id}`]?.isValid === false && (
-                                <p className="mt-1 text-sm text-red-600">
-                                  {validationStates[`${component}-${question.id}`].message}
-                                </p>
-                              )}
-                            </div>
-                        )}
-                        
-                        {question.type === 'textarea' && (
-                            <div className="relative">
-                          <textarea
-                            value={componentData[component].answers[question.id] || ''}
-                                onChange={(e) => handleAnswerChange(component, question.id, e.target.value, question)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    handleKeyDown(component, index, e);
-                                  }
-                                }}
-                                data-question-id={question.id}
-                            rows={4}
-                                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-                                  validationStates[`${component}-${question.id}`]?.isValid === false
-                                    ? 'border-red-300'
-                                    : validationStates[`${component}-${question.id}`]?.saved
-                                    ? 'border-green-300'
-                                    : 'border-gray-300'
-                                }`}
-                            placeholder={question.placeholder || ''}
-                            required={question.required}
-                                disabled={savingStates[`${component}-${question.id}`]}
-                              />
-                              
-                              {/* Validasyon ve kaydetme durumu göstergeleri */}
-                              <div className="absolute right-2 top-2 flex items-center">
-                                {savingStates[`${component}-${question.id}`] && (
-                                  <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                )}
-                                
-                                {!savingStates[`${component}-${question.id}`] && validationStates[`${component}-${question.id}`]?.saved && (
-                                  <svg className="h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
-                              </div>
-                              
-                              {/* Hata mesajı */}
-                              {validationStates[`${component}-${question.id}`]?.isValid === false && (
-                                <p className="mt-1 text-sm text-red-600">
-                                  {validationStates[`${component}-${question.id}`].message}
-                                </p>
-                              )}
-                            </div>
-                        )}
-                        
-                        {question.type === 'select' && (
-                            <div className="relative">
-                          <select
-                            value={componentData[component].answers[question.id] || ''}
-                                onChange={(e) => handleAnswerChange(component, question.id, e.target.value, question)}
-                                onKeyDown={(e) => handleKeyDown(component, index, e)}
-                                data-question-id={question.id}
-                                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-                                  validationStates[`${component}-${question.id}`]?.isValid === false
-                                    ? 'border-red-300'
-                                    : validationStates[`${component}-${question.id}`]?.saved
-                                    ? 'border-green-300'
-                                    : 'border-gray-300'
-                                }`}
-                            required={question.required}
-                                disabled={savingStates[`${component}-${question.id}`]}
-                          >
-                            <option value="">Seçiniz</option>
-                            {Array.isArray(question.options) && question.options.map(option => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                              
-                              {/* Validasyon ve kaydetme durumu göstergeleri */}
-                              <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none">
-                                {savingStates[`${component}-${question.id}`] && (
-                                  <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                )}
-                                
-                                {!savingStates[`${component}-${question.id}`] && validationStates[`${component}-${question.id}`]?.saved && (
-                                  <svg className="h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
-                              </div>
-                              
-                              {/* Hata mesajı */}
-                              {validationStates[`${component}-${question.id}`]?.isValid === false && (
-                                <p className="mt-1 text-sm text-red-600">
-                                  {validationStates[`${component}-${question.id}`].message}
-                                </p>
-                              )}
-                            </div>
-                        )}
-                        
-                        {question.type === 'file' && (
-                          <div className="mt-1">
-                              <div className="flex flex-col space-y-3">
-                                {/* PDF Yükleme/Görüntüleme Alanı */}
-                                <div className="space-y-2">
-                                  <p className="text-xs font-medium text-gray-700">PDF Rapor</p>
-                                  {(() => {
-                                    const answerString = componentData[component]?.answers[question.id];
-                                    let pdfData = null;
+                {/* Simplified component rendering with just PDF and image upload fields */}
+                <div className="space-y-6">
+                  {/* PDF Upload Section */}
+                  <div className="space-y-2 border-b pb-6">
+                    <label className="block text-sm font-medium text-gray-700">
+                      PDF Rapor
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="mt-1">
+                      <div className="flex flex-col space-y-3">
+                        <div className="space-y-2">
+                          {(() => {
+                            const pdfQuestionId = "pdf_upload";
+                            const isLoadingPdf = pdfLoadingStates[`${component}-${pdfQuestionId}`] || false;
+                            const pdfData = ensureArray(componentData[component]?.answers[pdfQuestionId]);
 
-                                    if (answerString && typeof answerString === 'string') {
-                                      try {
-                                        pdfData = JSON.parse(answerString);
-                                      } catch (e) {
-                                        console.error('PDF JSON parse hatası:', e);
-                                      }
-                                    }
-
-                                    // Yükleme durumunda loading spinner göster
-                                    if (isLoadingPdf) {
-                                      return (
-                                        <div className="flex items-center text-sm text-blue-600">
-                                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                          </svg>
-                                          PDF işleniyor...
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    // PDF yüklenmişse dosya bilgilerini göster
-                                    if (pdfData && pdfData.fileName) {
-                                      return (
-                                        <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
-                                          <div className="flex items-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            <span className="text-sm font-medium text-gray-700">
-                                              {pdfData.fileName}
-                                            </span>
-                                          </div>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleRemoveComponentPdf(component, question.id)}
-                                            className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
-                                            title="Dosyayı kaldır"
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                            </svg>
-                                          </button>
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    // Hiçbir durum yoksa dosya yükleme alanını göster
-                                    return (
-                            <input
-                              type="file"
-                                        accept="application/pdf"
-                                        onChange={(e) => handleComponentPdfUpload(component, question.id, e)}
-                              className="block w-full text-sm text-gray-500
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-md file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-blue-50 file:text-blue-700
-                                hover:file:bg-blue-100"
-                              required={question.required}
-                                        disabled={isLoadingPdf}
-                                      />
-                                    );
-                                  })()}
+                            // Yükleme durumunda loading spinner göster
+                            if (isLoadingPdf) {
+                              return (
+                                <div className="flex items-center text-sm text-blue-600">
+                                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  PDF işleniyor...
                                 </div>
-                                
-                                {/* Görsel Yükleme/Görüntüleme Alanı */}
-                                <div className="space-y-2 pt-2 border-t border-gray-100">
-                                  <p className="text-xs font-medium text-gray-700">Görseller</p>
+                              );
+                            }
+
+                            // PDF yüklenmişse dosya bilgilerini göster
+                            if (pdfData && Array.isArray(pdfData)) {
+                              return (
+                                <div className="space-y-2">
+                                  {pdfData.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
+                                      <div className="flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span className="text-sm font-medium text-gray-700">
+                                          {file.filename}
+                                        </span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveComponentPdf(component, pdfQuestionId, file)}
+                                        className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
+                                        title="Dosyayı kaldır"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  ))}
                                   
-                                  {/* Yüklenen görseller listesi */}
-                                  <div className="flex flex-wrap gap-2">
-                                    {(() => {
-                                      // İlk görsel için kontrol - ileride istenirse dinamik hale getirilebilir
-                                      const imageKey = `${question.id}_image_0`;
-                                      const imageName = componentData[component]?.answers[imageKey];
-                                      const isLoadingImage = imageLoadingStates[`${component}-${question.id}-image`] || false;
-                                      
-                                      if (isLoadingImage) {
-                                        return (
-                                          <div className="flex items-center text-sm text-blue-600">
-                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Görsel yükleniyor...
-                                          </div>
-                                        );
-                                      }
-                                      
-                                      // Eğer görsel yüklenmişse göster
-                                      if (imageName) {
-                                        return (
-                                          <div className="relative group">
-                                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
-                                              <div className="flex items-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <span className="text-sm font-medium text-gray-700">
-                                                  {imageName.length > 20 ? imageName.substring(0, 17) + '...' : imageName}
-                                                </span>
-                                              </div>
-                                <button
-                                                type="button"
-                                                onClick={() => handleRemoveComponentImage(component, question.id, 0)}
-                                                className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
-                                                title="Görseli kaldır"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                  {/* Always show upload button even when files exist to allow multiple uploads */}
+                                  <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    onChange={(e) => handleComponentPdfUpload(component, pdfQuestionId, e)}
+                                    className="block w-full text-sm text-gray-500
+                                      file:mr-4 file:py-2 file:px-4
+                                      file:rounded-md file:border-0
+                                      file:text-sm file:font-semibold
+                                      file:bg-blue-50 file:text-blue-700
+                                      hover:file:bg-blue-100"
+                                    required={true}
+                                    disabled={isLoadingPdf}
+                                  />
+                                </div>
+                              );
+                            }
+
+                            // Hiçbir dosya yoksa sadece yükleme alanını göster
+                            return (
+                              <input
+                                type="file"
+                                accept="application/pdf"
+                                onChange={(e) => handleComponentPdfUpload(component, pdfQuestionId, e)}
+                                className="block w-full text-sm text-gray-500
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-md file:border-0
+                                  file:text-sm file:font-semibold
+                                  file:bg-blue-50 file:text-blue-700
+                                  hover:file:bg-blue-100"
+                                required={true}
+                                disabled={isLoadingPdf}
+                              />
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Image Upload Section */}
+                  <div className="space-y-2 border-b pb-6">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Görseller
+                    </label>
+                    <div className="mt-1">
+                      <div className="flex flex-col space-y-3">
+                        <div className="space-y-2">
+                          {(() => {
+                            const imageQuestionId = "image_upload";
+                            const isLoadingImage = imageLoadingStates[`${component}-${imageQuestionId}-image`] || false;
+                            const imageData = ensureArray(componentData[component]?.answers[imageQuestionId]);
+
+                            // Yükleme durumunda loading spinner göster
+                            if (isLoadingImage) {
+                              return (
+                                <div className="flex items-center text-sm text-blue-600">
+                                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                   </svg>
-                                </button>
-                              </div>
-                                          </div>
-                                        );
-                                      }
-                                      
-                                      // Eğer görsel yüklenmemişse yükleme alanı göster
-                                      return (
-                                        <div>
-                                          <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => handleComponentImageUpload(component, question.id, e)}
-                                            id={`image-upload-${component}-${question.id}`}
-                                            className="hidden"
-                                            disabled={isLoadingImage}
-                                          />
-                                          <label
-                                            htmlFor={`image-upload-${component}-${question.id}`}
-                                            className="inline-flex items-center px-3 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 cursor-pointer"
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            Görsel Yükle
-                                          </label>
-                                        </div>
-                                      );
-                                    })()}
+                                  Görsel yükleniyor...
+                                </div>
+                              );
+                            }
+
+                            // Görsel yüklenmişse dosya bilgilerini göster
+                            if (imageData && Array.isArray(imageData)) {
+                              return (
+                                <div className="space-y-2">
+                                  {imageData.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
+                                      <div className="flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span className="text-sm font-medium text-gray-700">
+                                          {file.filename.length > 20 ? file.filename.substring(0, 17) + '...' : file.filename}
+                                        </span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveComponentImage(component, imageQuestionId, index)}
+                                        className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700"
+                                        title="Görseli kaldır"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                      </svg>
+                                      </button>
+                                    </div>
+                                  ))}
+                                  
+                                  {/* Always show upload button to allow multiple uploads */}
+                                  <div>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => handleComponentImageUpload(component, imageQuestionId, e)}
+                                      id={`image-upload-${component}-${imageQuestionId}`}
+                                      className="hidden"
+                                      disabled={isLoadingImage}
+                                    />
+                                    <label
+                                      htmlFor={`image-upload-${component}-${imageQuestionId}`}
+                                      className="inline-flex items-center px-3 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 cursor-pointer"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                      Görsel Yükle
+                                    </label>
                                   </div>
                                 </div>
+                              );
+                            }
+
+                            // Hiçbir görsel yoksa sadece yükleme alanını göster
+                            return (
+                              <div>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleComponentImageUpload(component, imageQuestionId, e)}
+                                  id={`image-upload-${component}-${imageQuestionId}`}
+                                  className="hidden"
+                                  disabled={isLoadingImage}
+                                />
+                                <label
+                                  htmlFor={`image-upload-${component}-${imageQuestionId}`}
+                                  className="inline-flex items-center px-3 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 cursor-pointer"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  Görsel Yükle
+                                </label>
                               </div>
-                          </div>
-                        )}
-                        
-                        {question.description && (
-                          <p className="mt-1 text-sm text-gray-500">{question.description}</p>
-                        )}
+                            );
+                          })()}
+                        </div>
                       </div>
-                      );
-                    })}
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-gray-500">Bu bileşen için soru bulunamadı.</p>
-                )}
+                </div>
               </div>
             ))}
           </div>
@@ -1616,4 +1564,4 @@ const ReportBuilder = () => {
   );
 };
 
-export default ReportBuilder; 
+export default ReportBuilder;

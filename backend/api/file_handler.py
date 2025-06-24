@@ -2,8 +2,11 @@ import os
 import json
 import shutil
 import logging
-from pathlib import Path
+import time
+import datetime
 from typing import Dict, List, Tuple, Any, Optional
+import uuid
+from pathlib import Path
 from fastapi import UploadFile
 
 # Logger setup 
@@ -26,18 +29,18 @@ def ensure_directory_structure(project_name: str) -> None:
     """
     project_dir = ACTIVE_REPORT_DIR / project_name.lower()
     images_dir = project_dir / "images"
-    text_dir = project_dir / "text"
+    pdf_dir = project_dir / "pdfs"
     
     # Ana dizinleri oluştur
-    for dir_path in [project_dir, images_dir, text_dir]:
+    for dir_path in [project_dir, images_dir,pdf_dir]:
         if not dir_path.exists():
             dir_path.mkdir(parents=True, exist_ok=True)
             logger.info(f"[FILE] Dizin oluşturuldu: {dir_path}")
 
 async def save_uploaded_image(project_name: str, component_name: str, 
-                             image: UploadFile, image_index: int = 0) -> Tuple[bool, str, str]:
+                             image: UploadFile, image_index: int = 0, question_id: str = None) -> Tuple[bool, str, str]:
     """
-    Bir bileşene ait görsel dosyasını kaydeder.
+    Bir bileşene ait görsel dosyasını kaydeder ve proje JSON'ında referansı günceller.
     
     Parameters:
     -----------
@@ -49,6 +52,8 @@ async def save_uploaded_image(project_name: str, component_name: str,
         Yüklenen görsel dosyası
     image_index : int, optional
         Görsel indeksi (birden fazla görsel olabilir), default 0
+    question_id : str, optional
+        Soru ID'si (belirtilirse, JSON'da bu alana dosya referansı eklenir)
     
     Returns:
     --------
@@ -66,11 +71,13 @@ async def save_uploaded_image(project_name: str, component_name: str,
         file_ext = os.path.splitext(image.filename)[1].lower()
         
         # Yeni dosya adı: component_name-index.ext
-        new_filename = f"{component_name_cleaned}-{image_index}{file_ext}"
+        timestamp = int(time.time())
+        new_filename = f"{component_name_cleaned}-{timestamp}{file_ext}"
         
         # Tam dosya yolu
         image_dir = ACTIVE_REPORT_DIR / project_name.lower() / "images"
         file_path = image_dir / new_filename
+        relative_path = f"active_report/{project_name.lower()}/images/{new_filename}"
         
         # Dosyayı kaydet
         contents = await image.read()
@@ -80,53 +87,53 @@ async def save_uploaded_image(project_name: str, component_name: str,
         
         logger.info(f"[FILE] Görsel kaydedildi: {file_path}")
         
+        # Eğer question_id belirtildiyse, proje JSON'ında referansı güncelle
+        if question_id:
+            file_info = {
+                "filename": image.filename,
+                "path": relative_path,
+                "type": "image"
+            }
+            
+            add_file_entry_to_array(project_name, component_name, question_id, file_info)
+        
         return True, new_filename, ""
     
     except Exception as e:
         logger.error(f"[FILE] Görsel kaydedilirken hata: {str(e)}", exc_info=True)
         return False, "", str(e)
 
-def save_component_text(project_name: str, component_name: str, text_content: str) -> Tuple[bool, str]:
-    """
-    Bir bileşenin metin içeriğini kaydeder.
-    
-    Parameters:
-    -----------
-    project_name : str
-        Proje adı
-    component_name : str
-        Bileşen adı
-    text_content : str
-        Kaydedilecek metin içeriği
-    
-    Returns:
-    --------
-    Tuple[bool, str]
-        (başarı durumu, hata mesajı)
-    """
+async def save_uploaded_pdf(project_name: str, component_name: str, file: UploadFile, question_id: str) -> Tuple[bool, str, str]:
+    """Save a PDF under active_report/<project>/pdfs and update project JSON via add_file_entry_to_array."""
     try:
-        # Proje için dizin yapısını kontrol et
-        ensure_directory_structure(project_name)
-        
-        # Bileşenler dosyası
-        components_file = ACTIVE_REPORT_DIR / project_name.lower() / "text" / "components.json"
-        
-        # Dosya mevcut ise oku, değilse boş dict oluştur
-        components_data = {}
-        if components_file.exists():
-            with open(components_file, "r", encoding="utf-8") as f:
-                components_data = json.load(f)
-        
-        # Bileşen verisini ekle/güncelle
-        components_data[component_name] = text_content
-        
-        # Dosyaya kaydet
-        with open(components_file, "w", encoding="utf-8") as f:
-            json.dump(components_data, f, ensure_ascii=False, indent=2)
-        
-        logger.info(f"[FILE] Bileşen metni kaydedildi: {component_name} - {project_name}")
-        
-        return True, ""
+        ensure_directory_structure(project_name)  # creates .../pdfs as part of ensure_directory_structure
+
+        # Sanitize and build filename
+        file_ext = os.path.splitext(file.filename)[1].lower() or '.pdf'
+        timestamp = int(time.time())
+        safe_component = component_name.lower().replace(' ', '_')
+        new_filename = f"{safe_component}-{timestamp}{file_ext}"
+
+        pdf_dir = ACTIVE_REPORT_DIR / project_name.lower() / 'pdfs'
+        pdf_dir.mkdir(parents=True, exist_ok=True)
+        file_path = pdf_dir / new_filename
+        relative_path = f"active_report/{project_name.lower()}/pdfs/{new_filename}"
+
+        contents = await file.read()
+        with open(file_path, 'wb') as f:
+            f.write(contents)
+
+        file_info = {
+            'filename': file.filename,
+            'path': relative_path,
+            'type': 'pdf'
+        }
+        add_file_entry_to_array(project_name, component_name, question_id, file_info)
+        return True, new_filename, ''
+    except Exception as e:
+        logger.error(f'[FILE] PDF save error: {str(e)}', exc_info=True)
+        return False, '', str(e)
+
     
     except Exception as e:
         logger.error(f"[FILE] Bileşen metni kaydedilirken hata: {str(e)}", exc_info=True)
@@ -189,4 +196,130 @@ def clean_active_report(project_name: str) -> bool:
     
     except Exception as e:
         logger.error(f"[FILE] Aktif rapor dizini temizlenirken hata: {str(e)}", exc_info=True)
+        return False
+
+def add_file_entry_to_array(
+    project_name: str,
+    component_name: str,
+    question_id: str,
+    file_info: Dict[str, str]
+) -> bool:
+    """Proje JSON'undaki bir soruya dosya referansı ekler."""
+    try:
+        from api.data_storage import get_project_path
+        project_path = get_project_path(project_name)
+
+        if not project_path.exists():
+            logger.error(f"[FILE] Proje dosyası bulunamadı: {project_path}")
+            return False
+
+        with open(project_path, "r+", encoding="utf-8") as f:
+            data = json.load(f)
+
+            if "active_report" not in data or data["active_report"] is None:
+                logger.error(f"[FILE] Projede aktif rapor bulunamadı: {project_name}")
+                return False
+            
+            if "components" not in data["active_report"]:
+                data["active_report"]["components"] = {}
+
+            components = data["active_report"]["components"]
+
+            if component_name not in components:
+                components[component_name] = {"answers": {}}
+            elif "answers" not in components[component_name]:
+                components[component_name]["answers"] = {}
+
+            answers = components[component_name]["answers"]
+
+            if question_id not in answers:
+                answers[question_id] = []
+            elif not isinstance(answers[question_id], list):
+                logger.warning(f"'{question_id}' için mevcut değer liste değil, listeye dönüştürülüyor.")
+                answers[question_id] = [answers[question_id]]
+
+            file_exists = any(
+                entry.get("path") == file_info.get("path")
+                for entry in answers[question_id]
+                if isinstance(entry, dict)
+            )
+
+            if file_exists:
+                logger.info(f"Dosya zaten mevcut: {file_info.get('path')}")
+                return True
+
+            answers[question_id].append(file_info)
+            logger.info(f"Dosya eklendi: {file_info.get('path')}")
+
+            f.seek(0)
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.truncate()
+
+        return True
+    except (IOError, json.JSONDecodeError, KeyError) as e:
+        logger.error(f"Proje JSON güncellenirken hata: {e}", exc_info=True)
+        return False
+
+
+def remove_file_entry_from_array(
+    project_name: str,
+    component_name: str,
+    question_id: str,
+    file_to_remove: Dict[str, str]
+) -> bool:
+    """Proje JSON'undaki bir sorudan dosya referansını kaldırır."""
+    try:
+        from api.data_storage import get_project_path
+        project_path = get_project_path(project_name)
+
+        if not project_path.exists():
+            logger.error(f"[FILE] Proje dosyası bulunamadı: {project_path}")
+            return False
+
+        with open(project_path, "r+", encoding="utf-8") as f:
+            data = json.load(f)
+
+            if "active_report" not in data or "components" not in data["active_report"]:
+                logger.warning("Kaldırılacak dosya için aktif rapor veya bileşenler bulunamadı.")
+                return False
+
+            components = data["active_report"]["components"]
+
+            if (component_name not in components or
+                    "answers" not in components[component_name] or
+                    question_id not in components[component_name]["answers"]):
+                logger.warning("Kaldırılacak dosya için bileşen veya soru bulunamadı.")
+                return False
+
+            file_list = components[component_name]["answers"][question_id]
+
+            if not isinstance(file_list, list):
+                logger.warning(f"'{question_id}' için dosya listesi bir liste değil.")
+                return False
+
+            path_to_remove = file_to_remove.get("path")
+            if not path_to_remove:
+                logger.error("Kaldırılacak dosya için 'path' belirtilmedi.")
+                return False
+
+            initial_count = len(file_list)
+            new_file_list = [
+                file_entry for file_entry in file_list
+                if not (isinstance(file_entry, dict) and file_entry.get("path") == path_to_remove)
+            ]
+
+            if len(new_file_list) == initial_count:
+                logger.warning(f"Dosya listede bulunamadı: {path_to_remove}")
+                return False
+
+            components[component_name]["answers"][question_id] = new_file_list
+            logger.info(f"Dosya kaldırıldı: {path_to_remove}")
+
+            f.seek(0)
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.truncate()
+
+        return True
+    except (IOError, json.JSONDecodeError, KeyError) as e:
+        logger.error(f"Proje JSON güncellenirken hata: {e}", exc_info=True)
         return False

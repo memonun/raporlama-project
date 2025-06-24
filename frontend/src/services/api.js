@@ -309,7 +309,8 @@ export const componentService = {
     projectName,
     componentName,
     imageFile,
-    imageIndex = 0
+    imageIndex = 0,
+    questionId = null
   ) => {
     if (!projectName) {
       console.error(
@@ -332,6 +333,13 @@ export const componentService = {
       throw new Error("Geçerli bir görsel dosyası belirtilmedi");
     }
 
+    if (!questionId) {
+      console.error(
+        "componentService.uploadComponentImage: Soru ID belirtilmedi"
+      );
+      throw new Error("Soru ID belirtilmedi");
+    }
+
     try {
       console.log(
         `componentService.uploadComponentImage: ${projectName} projesi ${componentName} bileşeni için görsel yükleniyor`
@@ -342,6 +350,7 @@ export const componentService = {
       formData.append("component_name", componentName);
       formData.append("image_index", imageIndex);
       formData.append("image", imageFile);
+      formData.append("question_id", questionId);
 
       // API isteğini gönder
       const response = await axiosInstance.post(
@@ -376,6 +385,68 @@ export const componentService = {
       throw new Error(
         `${componentName} bileşeni için görsel yüklenirken bir hata oluştu`
       );
+    }
+  },
+
+  // PDF dosyası yükle
+  uploadPDF: async (projectName, componentName, pdfFile, questionId = null) => {
+    if (!projectName) {
+      console.error("componentService.uploadPDF: Proje adı belirtilmedi");
+      throw new Error("Proje adı belirtilmedi");
+    }
+
+    if (!componentName) {
+      console.error("componentService.uploadPDF: Bileşen adı belirtilmedi");
+      throw new Error("Bileşen adı belirtilmedi");
+    }
+
+    if (!pdfFile || !(pdfFile instanceof File)) {
+      console.error("componentService.uploadPDF: Geçerli bir PDF dosyası belirtilmedi");
+      throw new Error("Geçerli bir PDF dosyası belirtilmedi");
+    }
+
+    if (!questionId) {
+      console.error("componentService.uploadPDF: Soru ID belirtilmedi");
+      throw new Error("Soru ID belirtilmedi");
+    }
+
+    try {
+      console.log(`componentService.uploadPDF: ${projectName} projesi ${componentName} bileşeni için PDF yükleniyor`);
+
+      // FormData oluştur
+      const formData = new FormData();
+      formData.append("component", componentName);
+      formData.append("question_id", questionId);
+      formData.append("file", pdfFile);
+
+      // API isteğini gönder
+      const response = await axiosInstance.post(
+        `/project/${encodeURIComponent(projectName)}/upload-pdf`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      console.log(`${componentName} bileşeni için PDF başarıyla yüklendi:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`${componentName} bileşeni PDF yükleme hatası:`, error);
+
+      // API yanıtından daha detaylı hata mesajını al
+      if (error.response) {
+        console.error("API Yanıt Detayı:", error.response.data);
+
+        // Eğer backend'den gelen özel bir hata mesajı varsa kullan
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+      }
+
+      // Genel hata
+      throw new Error(`${componentName} bileşeni için PDF yüklenirken bir hata oluştu`);
     }
   },
 };
@@ -418,6 +489,41 @@ export const mailService = {
 
 // Rapor servisi
 export const reportService = {
+  // PDF İçeriğini Çıkarma
+  extractPdf: async (formData, axiosOptions = {}) => {
+    try {
+      console.log("reportService.extractPdf: PDF içeriği çıkarılıyor");
+      
+      const response = await axiosInstance.post(
+        "/extract-pdf",
+        formData,
+        {
+          ...axiosOptions,
+          headers: {
+            ...axiosOptions.headers,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      
+      console.log("PDF içeriği başarıyla çıkarıldı:", response.data);
+      return response;
+    } catch (error) {
+      console.error("PDF içeriği çıkarma hatası:", error);
+      
+      if (error.response) {
+        console.error("API Yanıt Detayı:", error.response.data);
+        console.error("Durum Kodu:", error.response.status);
+        
+        if (error.response.data && error.response.data.detail) {
+          throw new Error(error.response.data.detail);
+        }
+      }
+      
+      throw new Error("PDF içeriği çıkarılırken bir hata oluştu");
+    }
+  },
+
   // Rapor oluştur
   generateReport: async (
     projectName,
@@ -673,49 +779,7 @@ export const reportService = {
     }
   },
 
-  // PDF içeriğini çıkarma servisi (backend'deki /extract-pdf endpoint'ine istek atar)
-  extractPdf: async (formData, config = {}) => {
-    if (!formData || !(formData instanceof FormData)) {
-      console.error("reportService.extractPdf: Geçersiz FormData");
-      throw new Error(
-        "PDF içeriği çıkarmak için geçerli bir dosya verisi gereklidir"
-      );
-    }
 
-    console.log(
-      "reportService.extractPdf: PDF içeriği çıkarma isteği gönderiliyor..."
-    );
-
-    try {
-      const response = await axiosInstance.post("/extract-pdf", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        ...config, // Timeout gibi ek ayarlar için
-      });
-
-      console.log("PDF içeriği çıkarma başarılı:", response.data);
-      return response; // response.data yerine tüm yanıtı döndür
-    } catch (error) {
-      console.error("PDF içeriği çıkarma hatası:", error);
-
-      if (error.response) {
-        console.error("API Yanıt Detayı:", error.response.data);
-        console.error("Durum Kodu:", error.response.status);
-
-        if (error.response.data && error.response.data.detail) {
-          throw new Error(
-            `PDF içeriği çıkarılamadı: ${error.response.data.detail}`
-          );
-        }
-      }
-
-      throw new Error(
-        "PDF içeriği çıkarılırken bir hata oluştu: " +
-          (error.message || "Bilinmeyen hata")
-      );
-    }
-  },
 
   // Rapor sil (Aktif Raporu)
   deleteReport: async (projectName) => {
