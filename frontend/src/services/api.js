@@ -781,58 +781,56 @@ export const reportService = {
 
 
 
-  // Rapor sil (Aktif Raporu)
-  deleteReport: async (projectName) => {
+  
+ // Update the deleteReport function to handle both active and finalized reports
+  deleteReport: async (projectName, reportId = null) => {
     if (!projectName) {
       console.error("reportService.deleteReport: Proje adı belirtilmedi");
       throw new Error("Proje adı belirtilmedi");
     }
 
     try {
-      console.log(
-        `reportService.deleteReport: ${projectName} projesi için aktif rapor siliniyor`
-      );
-
-      // DELETE method kullan ve projectName'i yola dahil et
-      const response = await axiosInstance.delete(
-        `/project/${encodeURIComponent(projectName)}/delete-report`
-      );
-
-      console.log("Aktif rapor silme başarılı:", response.data);
-      return response.data;
+      let endpoint;
+      
+      // If reportId is provided, it's a specific report (finalized)
+      // Otherwise, it's the active report
+      if (reportId) {
+        console.log(`reportService.deleteReport: ${projectName} projesi için ${reportId} ID'li rapor siliniyor`);
+        // For finalized reports, you might need a different endpoint
+        // For now, using the delete-finalized-report endpoint
+        const response = await axiosInstance.post("/project/delete-finalized-report", {
+          project_name: projectName,
+          file_name: reportId // Using report_id as file_name
+        });
+        console.log("Rapor silme başarılı:", response.data);
+        return response.data;
+      } else {
+        console.log(`reportService.deleteReport: ${projectName} projesi için aktif rapor siliniyor`);
+        endpoint = `/project/${encodeURIComponent(projectName)}/delete-report`;
+        const response = await axiosInstance.delete(endpoint);
+        console.log("Aktif rapor silme başarılı:", response.data);
+        return response.data;
+      }
     } catch (error) {
-      // Detaylı hata nesnesini logla
       console.error("reportService.deleteReport - Detaylı Hata:", error);
-      let errorMessage = "Rapor silinirken bir hata oluştu"; // Default mesaj
+      let errorMessage = "Rapor silinirken bir hata oluştu";
 
       if (error.response) {
-        console.error(
-          "reportService.deleteReport - API Yanıt Detayı:",
-          error.response.data
-        );
-        console.error(
-          "reportService.deleteReport - Durum Kodu:",
-          error.response.status
-        );
+        console.error("reportService.deleteReport - API Yanıt Detayı:", error.response.data);
+        console.error("reportService.deleteReport - Durum Kodu:", error.response.status);
 
-        // Backend'den özel mesajı almaya çalış
         if (error.response.data && error.response.data.detail) {
           errorMessage = error.response.data.detail;
         } else if (error.response.status === 404) {
-          // 404 için daha spesifik bir mesaj
           errorMessage = "Silinecek rapor veya proje bulunamadı.";
         }
-        // Gerekirse buraya daha fazla durum kodu kontrolü eklenebilir
       } else if (error.message) {
-        // Axios hatası değil ancak standart message özelliği varsa
         errorMessage = error.message;
       }
 
-      // Her zaman için standart bir Error nesnesi fırlat
       throw new Error(errorMessage);
     }
   },
-
   // Reset active report generation status and delete PDF
   resetActiveReport: async (projectName) => {
     if (!projectName) {
