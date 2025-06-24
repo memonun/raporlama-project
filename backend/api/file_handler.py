@@ -1,4 +1,5 @@
 import os
+from api.data_storage import get_project_path
 import json
 import shutil
 import logging
@@ -204,62 +205,56 @@ def add_file_entry_to_array(
     question_id: str,
     file_info: Dict[str, str]
 ) -> bool:
-    """Proje JSON'undaki bir soruya dosya referansı ekler."""
+    """Always maintains files as arrays and adds an upload timestamp."""
     try:
-        from api.data_storage import get_project_path
         project_path = get_project_path(project_name)
 
         if not project_path.exists():
-            logger.error(f"[FILE] Proje dosyası bulunamadı: {project_path}")
+            logger.error(f"[FILE] Project file not found: {project_path}")
             return False
 
         with open(project_path, "r+", encoding="utf-8") as f:
             data = json.load(f)
 
-            if "active_report" not in data or data["active_report"] is None:
-                logger.error(f"[FILE] Projede aktif rapor bulunamadı: {project_name}")
-                return False
-            
-            if "components" not in data["active_report"]:
-                data["active_report"]["components"] = {}
+            # Ensure active_report and components structure exists
+            report = data.setdefault("active_report", {})
+            components = report.setdefault("components", {})
+            component = components.setdefault(component_name, {"answers": {}})
+            answers = component.setdefault("answers", {})
 
-            components = data["active_report"]["components"]
-
-            if component_name not in components:
-                components[component_name] = {"answers": {}}
-            elif "answers" not in components[component_name]:
-                components[component_name]["answers"] = {}
-
-            answers = components[component_name]["answers"]
-
-            if question_id not in answers:
+            # Always keep the answer under question_id as a list
+            existing = answers.get(question_id)
+            if existing is None:
                 answers[question_id] = []
-            elif not isinstance(answers[question_id], list):
-                logger.warning(f"'{question_id}' için mevcut değer liste değil, listeye dönüştürülüyor.")
-                answers[question_id] = [answers[question_id]]
+            elif not isinstance(existing, list):
+                # Wrap single entry into a list, or reset if it's falsy
+                answers[question_id] = [existing] if existing else []
 
-            file_exists = any(
-                entry.get("path") == file_info.get("path")
+            # Add timestamp
+            file_info = dict(file_info)  # copy to avoid mutating input
+            file_info["uploaded_at"] = datetime.datetime.now().isoformat()
+
+            # Check for duplicates by path
+            if any(
+                isinstance(entry, dict) and entry.get("path") == file_info.get("path")
                 for entry in answers[question_id]
-                if isinstance(entry, dict)
-            )
-
-            if file_exists:
-                logger.info(f"Dosya zaten mevcut: {file_info.get('path')}")
+            ):
+                logger.info(f"File already present: {file_info.get('path')}")
                 return True
 
+            # Append and write back
             answers[question_id].append(file_info)
-            logger.info(f"Dosya eklendi: {file_info.get('path')}")
+            logger.info(f"File added: {file_info.get('path')}")
 
             f.seek(0)
             json.dump(data, f, ensure_ascii=False, indent=2)
             f.truncate()
 
         return True
-    except (IOError, json.JSONDecodeError, KeyError) as e:
-        logger.error(f"Proje JSON güncellenirken hata: {e}", exc_info=True)
-        return False
 
+    except (IOError, json.JSONDecodeError, KeyError) as e:
+        logger.error(f"Error updating project JSON: {e}", exc_info=True)
+        return False
 
 def remove_file_entry_from_array(
     project_name: str,

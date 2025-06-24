@@ -468,267 +468,139 @@ const ReportBuilder = () => {
 
   // Bileşen için PDF dosyası yükleme
   const handleComponentPdfUpload = async (component, questionId, event) => {
-    // Tarayıcı konsoluna test mesajı
-    console.log(`%c ${component} - PDF YÜKLEME BAŞLATILDI! (${questionId})`, 'background: red; color: white; font-size: 16px;');
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // Validation
+  if (file.type !== 'application/pdf') {
+    toast.error('Lütfen sadece PDF dosyası yükleyin.');
+    return;
+  }
+  
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  if (file.size > MAX_FILE_SIZE) {
+    toast.error('Dosya boyutu 10MB\'dan küçük olmalıdır.');
+    return;
+  }
+  
+  const loadingKey = `${component}-${questionId}`;
+  dispatch({ type: 'SET_PDF_LOADING', payload: { key: loadingKey, isLoading: true } });
+  
+  try {
+    // Upload PDF
+    const uploadResult = await componentService.uploadPDF(projectName, component, file, questionId);
     
-    const file = event.target.files[0];
-    if (!file) {
-      console.log(`${component} - Dosya seçilmedi`);
-      return;
+    if (!uploadResult.success) {
+      throw new Error('PDF yükleme başarısız: ' + (uploadResult.message || 'Bilinmeyen hata'));
     }
     
-    console.log(`${component} - Seçilen dosya: ${file.name}, ${file.type}, ${file.size} bytes`);
-    
-    // PDF dosya türünü kontrol et
-    if (file.type !== 'application/pdf') {
-      console.error(`${component} - Geçersiz dosya türü: ${file.type}`);
-      toast.error('Lütfen sadece PDF dosyası yükleyin.');
-      return;
-    }
-    
-    // Dosya boyutunu kontrol et (10MB limit)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-    if (file.size > MAX_FILE_SIZE) {
-      console.error(`${component} - Dosya boyutu çok büyük: ${file.size} bytes`);
-      toast.error('Dosya boyutu 10MB\'dan küçük olmalıdır.');
-      return;
-    }
-    
-    const loadingKey = `${component}-${questionId}`;
-    dispatch({ type: 'SET_PDF_LOADING', payload: { key: loadingKey, isLoading: true } });
-    
-    try {
-      console.log(`${component} - PDF içeriği çıkarma işlemi başlatılıyor...`);
-      
-      // FormData oluştur
-      const formData = new FormData();
-      formData.append('file', file); // Backend expects the field name to be 'file'
-      formData.append('project_name', projectName);
-      formData.append('component_name', component);
-
-      // PDF dosyasını yükle
-      console.log(`${component} - PDF yüklemek için componentService.uploadPDF kullanılıyor`);
-      const uploadResult = await componentService.uploadPDF(projectName, component, file, questionId);
-      
-      if (!uploadResult.success) {
-        throw new Error('PDF yükleme başarısız: ' + (uploadResult.message || 'Bilinmeyen hata'));
-      }
-      
-      console.log(`${component} - PDF yükleme başarılı:`, uploadResult);
-      
-      // PDF içeriğini çıkarmak için API'ya istek gönder
-      const response = await reportService.extractPdf(formData, {
-        timeout: 60000 // 60 saniye timeout
-      });
-      
-      console.log(`${component} - API yanıtı alındı:`, response.data);
-      
-      if (!response.data || !response.data.content) {
-        throw new Error('PDF içeriği boş döndü veya hatalı format');
-      }
-      
-      // PDF içeriğini component answers içine kaydet (özel bir alan olarak)
-      const extractedContent = response.data.content;
-      console.log(`${component} - PDF içeriği çıkarıldı (${extractedContent.length} karakter)`);
-      
-      // İçeriği kontrol et
-      if (extractedContent.trim() === '') {
-        throw new Error('PDF içeriği boş olarak çıkarıldı. Lütfen farklı bir PDF dosyası deneyin.');
-      }
-
-      // Mevcut dosya listesini al veya yeni liste oluştur
-      let currentFiles = [];
-      
-      // uploadResult.files varsa kullan, yoksa componentData'dan al
-      if (uploadResult.files && Array.isArray(uploadResult.files)) {
-        currentFiles = uploadResult.files;
-      } else {
-        // Mevcut dosyaları state'den al
-        const componentAnswers = componentData[component]?.answers || {};
-        const existingValue = componentAnswers[questionId];
-        
-        if (existingValue) {
-          // String ise JSON.parse et
-          if (typeof existingValue === 'string') {
-            try {
-              const parsed = JSON.parse(existingValue);
-              if (Array.isArray(parsed)) {
-                currentFiles = parsed;
-              } else if (typeof parsed === 'object') {
-                currentFiles = [parsed]; // Tek nesne ise diziye dönüştür
-              }
-            } catch (e) {
-              // JSON parse hatası, yeni dizi kullan
-              console.warn('JSON parse error for existing files:', e);
-            }
-          } else if (Array.isArray(existingValue)) {
-            currentFiles = existingValue;
-          } else if (typeof existingValue === 'object') {
-            currentFiles = [existingValue]; // Tek nesne ise diziye dönüştür
-          }
-        }
-        
-        // Yeni PDF bilgisini oluştur ve ekle
-        const newFileInfo = {
-          filename: file.name,
-          path: uploadResult.filePath || "",
-          type: "pdf",
-          uploaded_at: new Date().toISOString()
-        };
-        
-        currentFiles.push(newFileInfo);
-      }
-      
-      // Başarı mesajı
-      toast.success(`${file.name} başarıyla yüklendi ve ${component} bileşenine kaydedildi.`);
-
-      // --- update state with full PDF list ---
+    // Update state with the complete file array from backend
+    if (uploadResult.files && Array.isArray(uploadResult.files)) {
       dispatch({
         type: 'UPDATE_ANSWER',
-        payload: { component, questionId, value: currentFiles }
+        payload: { component, questionId, value: uploadResult.files }
       });
-      // -----------------------------------------
-      
-    } catch (error) {
-      console.error(`${component} - PDF işleme hatası:`, error);
-      toast.error(`PDF yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
-      
-      // Hata durumunda cevabı temizle
-      dispatch({ 
-        type: 'UPDATE_ANSWER', 
-        payload: { component, questionId, value: '' } 
-      });
-      
-      // Hata detaylarını loglama
-      if (error.response) {
-        console.error(`${component} - API yanıt detayı:`, error.response.data);
-        console.error(`${component} - Status kodu:`, error.response.status);
-      }
-    } finally {
-      dispatch({ type: 'SET_PDF_LOADING', payload: { key: loadingKey, isLoading: false } });
     }
-  };
+    
+    toast.success(`${file.name} başarıyla yüklendi`);
+    
+  } catch (error) {
+    console.error(`${component} - PDF işleme hatası:`, error);
+    toast.error(`PDF yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+  } finally {
+    dispatch({ type: 'SET_PDF_LOADING', payload: { key: loadingKey, isLoading: false } });
+  }
+};
+
   
   // Bileşen görseli yükleme
   const handleComponentImageUpload = async (component, questionId, event) => {
-    const file = event.target.files[0];
-    if (!file) {
-      console.log(`${component} - Görsel seçilmedi`);
-      return;
-    }
-    
-    console.log(`${component} - Seçilen görsel: ${file.name}, ${file.type}, ${file.size} bytes`);
-    
-    // Görsel dosya tipini kontrol et
-    if (!file.type.match('image.*')) {
-      console.error(`${component} - Geçersiz dosya türü: ${file.type}`);
-      toast.error('Lütfen sadece resim dosyaları yükleyin.');
-      return;
-    }
-    
-    // Dosya boyutunu kontrol et (5MB limit)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    if (file.size > MAX_FILE_SIZE) {
-      console.error(`${component} - Dosya boyutu çok büyük: ${file.size} bytes`);
-      toast.error('Görsel boyutu 5MB\'dan küçük olmalıdır.');
-      return;
-    }
-    
-    const loadingKey = `${component}-${questionId}-image`;
-    dispatch({ type: 'SET_IMAGE_LOADING', payload: { key: loadingKey, isLoading: true } });
-    
-    try {
-      console.log(`${component} - Görsel yükleme işlemi başlatılıyor...`);
-      
-      // Görsel indeksi tespit et (bu örnekte ilk görsel yüklendiğini varsayıyoruz)
-      const imageIndex = 0;
-      
-      const result = await componentService.uploadComponentImage(
-        projectName,
-        component,
-        file,
-        imageIndex,
-        questionId // Soru ID'sini ekledik
-      );
-      
-      console.log(`${component} - Görsel yükleme sonucu:`, result);
-      
-      if (!result || !result.success) {
-        throw new Error('Görsel yükleme başarısız oldu');
-      }
-      
-      // Başarı mesajı
-      toast.success(`${file.name} başarıyla yüklendi`);
-      
-      // Yeni dosya dizisini componentData içine kaydet
-      if (result.files && Array.isArray(result.files)) {
-        dispatch({ 
-          type: 'UPDATE_ANSWER', 
-          payload: { 
-            component, 
-            questionId, 
-            value: result.files            // store as array
-          } 
-        });
-      } else {
-        // Eski davranış ile uyumluluk için
-        const imageName = result.file_name || file.name;
-        
-        dispatch({ 
-          type: 'UPDATE_ANSWER', 
-          payload: { 
-            component, 
-            questionId, 
-            value: [{
-              filename: imageName,
-              path: result.filePath || "",
-              type: "image"
-            }]
-          } 
-        });
-      }
-      
-    } catch (error) {
-      console.error(`${component} - Görsel yükleme hatası:`, error);
-      toast.error(`Görsel yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
-      
-      // Hata detaylarını loglama
-      if (error.response) {
-        console.error(`${component} - API yanıt detayı:`, error.response.data);
-        console.error(`${component} - Status kodu:`, error.response.status);
-      }
-    } finally {
-      dispatch({ type: 'SET_IMAGE_LOADING', payload: { key: loadingKey, isLoading: false } });
-    }
-  };
+  const file = event.target.files[0];
+  if (!file) return;
   
+  // Validation
+  if (!file.type.match('image.*')) {
+    toast.error('Lütfen sadece resim dosyaları yükleyin.');
+    return;
+  }
+  
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  if (file.size > MAX_FILE_SIZE) {
+    toast.error('Görsel boyutu 5MB\'dan küçük olmalıdır.');
+    return;
+  }
+  
+  const loadingKey = `${component}-${questionId}-image`;
+  dispatch({ type: 'SET_IMAGE_LOADING', payload: { key: loadingKey, isLoading: true } });
+  
+  try {
+    const imageIndex = 0; // For now, we're not using index
+    
+    const result = await componentService.uploadComponentImage(
+      projectName,
+      component,
+      file,
+      imageIndex,
+      questionId
+    );
+    
+    if (!result || !result.success) {
+      throw new Error('Görsel yükleme başarısız oldu');
+    }
+    
+    // Update state with the complete file array from backend
+    if (result.files && Array.isArray(result.files)) {
+      dispatch({
+        type: 'UPDATE_ANSWER',
+        payload: { component, questionId, value: result.files }
+      });
+    }
+    
+    toast.success(`${file.name} başarıyla yüklendi`);
+    
+  } catch (error) {
+    console.error(`${component} - Görsel yükleme hatası:`, error);
+    toast.error(`Görsel yüklenirken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+  } finally {
+    dispatch({ type: 'SET_IMAGE_LOADING', payload: { key: loadingKey, isLoading: false } });
+  }
+};
   // Bileşen görseli kaldırma
-  const handleRemoveComponentImage = async (component, questionId, imageIndex = 0) => {
-    try {
-      // Görsel referansını temizle
-      dispatch({ 
-        type: 'UPDATE_ANSWER', 
+  const handleRemoveComponentImage = async (component, questionId, fileToRemove) => {
+  try {
+    // Get current files array
+    const currentFiles = ensureArray(componentData[component]?.answers?.[questionId]);
+    
+    // Remove the file from backend
+    const formData = new FormData();
+    formData.append('component', component);
+    formData.append('question_id', questionId);
+    formData.append('filename', fileToRemove.filename);
+    formData.append('file_path', fileToRemove.path);
+    
+    const response = await axios.post(
+      `/project/${encodeURIComponent(projectName)}/remove-file`,
+      formData
+    );
+    
+    if (response.data.success) {
+      // Update local state with the updated file list from backend
+      dispatch({
+        type: 'UPDATE_ANSWER',
         payload: { 
           component, 
-          questionId: `${questionId}_image_${imageIndex}`, 
-          value: '' 
-        } 
+          questionId, 
+          value: response.data.files || []
+        }
       });
       
-      // Backend'e boş değeri kaydet
-      await componentService.saveComponentData(
-        projectName,
-        component,
-        { [`${questionId}_image_${imageIndex}`]: '' } // Boş string göndererek temizle
-      );
-      
-      console.log(`${component} bileşeninden görsel kaldırıldı (${questionId})`);
       toast.info('Görsel kaldırıldı');
-    } catch (error) {
-      console.error(`${component} - Görsel kaldırma hatası:`, error);
-      toast.error(`Görsel kaldırılırken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
     }
-  };
+  } catch (error) {
+    console.error(`${component} - Görsel kaldırma hatası:`, error);
+    toast.error(`Görsel kaldırılırken hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+  }
+};
 
   const handleRemoveComponentPdf = async (component, questionId, fileToRemove) => {
     try {
