@@ -238,12 +238,23 @@ export const componentService = {
         `componentService.saveComponentData: ${projectName} projesi ${componentName} bileşeni cevapları kaydediliyor`
       );
       console.log("Gönderilen cevaplar:", answers);
-
-      const response = await axiosInstance.post("/component/save-data", {
-        project_name: projectName,
-        component_name: componentName,
-        answers,
+      const formData = new FormData();
+      formData.append('project_name', projectName);
+      formData.append('component_name', componentName);
+      // for each answer key/value pair:
+      Object.entries(answers).forEach(([questionId, value]) => {
+        // if it’s a file array, send each file’s metadata as JSON
+        if (Array.isArray(value)) {
+          formData.append(`${questionId}`, JSON.stringify(value));
+        } else {
+          formData.append(questionId, value);
+        }
       });
+      const response = await axios.post(
+        '/component/save-data',
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
 
       console.log(
         `${componentName} bileşeni verileri başarıyla kaydedildi:`,

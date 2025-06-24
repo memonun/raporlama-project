@@ -32,6 +32,7 @@ import time
 from werkzeug.utils import secure_filename
 from flask import jsonify, request, send_file  # <-- Add this import
 
+from utils.oai import generate_full_html
 from utils.pdf_utils import (
     extract_text_from_pdf,
     get_pdf_info,
@@ -720,169 +721,11 @@ def reset_active_report_endpoint(project_name: str):
         raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
 
 
-# @app.post("/project/generate-report-by-agency")
-# async def generate_report_by_agency(request: GenerateReportRequest):
-#     """
-#     Agency Swarm kullanarak asenkron olarak rapor oluşturur, kaydeder ve sonucu döndürür.
-#     """
-#     try:
-#         logger.info(f"[AGENCY_REPORT_GEN] Rapor oluşturma başlatıldı. Proje={request.project_name}")
-
-#         # --- 1. Veri Hazırlama --- 
-#         messages = []
-#         for comp_name, comp in request.components_data.items():
-#             if "answers" in comp:
-#                 for question_id, answer in comp["answers"].items():
-#                     try:
-#                         # Cevap JSON formatında mı diye kontrol et (örn. PDF içeriği)
-#                         data = json.loads(answer)
-#                         if isinstance(data, dict):
-#                             content = data.get('content', '')
-#                             file_name = data.get('fileName', 'Unnamed')
-#                             messages.append(f"{comp_name} - {file_name}:\n{content}")
-#                         else:
-#                             messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
-#                     except json.JSONDecodeError:
-#                         # If answer is not JSON, use it directly
-#                         messages.append(f"{comp_name} - Question {question_id}:\n{answer}")
-
-#         components_data = str("\n\n".join(messages))
-
-#         # Combine project assets and image attachments
-#         project_assets = load_project_shared_files(request.project_name)
-
-#         # pdf_paths = get_project_pdf_paths(request.project_name)
-#         # pdf_attachments = get_pdf_attachments(pdf_paths)
-
-#         image_paths = get_project_image_paths(request.project_name)
-#         image_attachments = get_image_attachments(image_paths)
-
-#         # combined_attachments = image_attachments + pdf_attachments
-       
-#         # Agency prompt'unu hazırla
-#         prompt = f"""
-#                 Bu görev için ilgili proje adı: {request.project_name}.
-#         Kullanıcı, bu görev için bazı görseller yükledi. Bu görseller, raporda uygun yerlerde kullanılmalıdır. 
-
-#         Görseller arasında finansal tablolar, işletme fotoğrafları veya proje logoları olabilir. Aşağıdaki kurallara dikkat et:
-
-#         1. Her görseli en uygun bölümde yerleştir.
-#         2. Görselleri codeinterpreter kullanarakbase64 formatında ve tam olarak <img src="data:image/png;base64,..."> şeklinde oluştur.
-#         3. Her base64 görsel verisi geçerli ve tamamen yüklenmiş olmalıdır.
-#         4. MIME türü doğru eşleşmelidir (örneğin: image/png veya image/jpeg).
-#         5. Yarım veya kesik base64 verisi göndermemelisin. WeasyPrint ile hatasız işlenebilir olmalıdır.
-#         6. Görsel adı genellikle içeriği açıklar. Adlara dikkat et ve hangi bölümde kullanılabileceğini tahmin et.
-#         7. Görsel açıklaması gerekiyorsa, uygun bir başlık veya altyazı kullan.
-
-#         Raporu HTML formatında oluştur, stil ve düzen açısından şık bir yapı kullan. Gerekiyorsa <section> ve <figure> etiketlerinden faydalan.
-#                 """
-#         style_config = json.dumps(get_style_config(request.project_name))
-#         # Get response from agency
-#         # result = agency.get_completion_parse(
-#         #     message=f"Oluşturulacak raporun ait oudğu proje: project_name: {request.project_name}, bütün bileşen içerikleri: {components_data}, stil yapılandırması: {style_config}",
-#         #     additional_instructions=prompt,
-#         #     response_format=MyHTMLResponse,
-#         #     attachments=image_attachments
-#         # )
-        
-       
-#         logger.info(f"[AGENCY_REPORT_GEN] HTML response received. Proje={request.project_name}")
-
-#         # Check if the agency returned an error message or HTML
-#         # A simple check: valid HTML usually starts with <!DOCTYPE or <html>
-#         if not isinstance(result.content, str) or not result.content.strip().lower().startswith(("<!doctype", "<html")):
-#             logger.error(f"[AGENCY_REPORT_GEN] Agency returned an error or invalid content: {result}")
-#             # Assuming the result string IS the error message based on updated CEO instructions
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail=f"Agency failed to generate HTML content: {result}"
-#             )
-        
-#         logger.info(f"[AGENCY_REPORT_GEN] Agency returned valid HTML content. Proceeding with PDF generation.")
-#         # Generate PDF from agency response (HTML content is in 'result')
-
-#         print(f"Agency response: {result.content}")
-#         pdf_result = await generate_pdf_from_agency_response(request.project_name, result.content)
-        
-#         if pdf_result.status == "error":
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail=pdf_result.message
-#             )
-
-#         return {
-#             "status": "success",
-#             "message": "Rapor başarıyla oluşturuldu",
-#             "report_content": result,
-#             "report_id": pdf_result.report_id,
-#             "pdf_path": pdf_result.pdf_path
-#         }
-
-#     except Exception as e:
-#         logger.error(f"[AGENCY_REPORT_GEN] Rapor oluşturma hatası: Proje={request.project_name}, Hata: {e}", exc_info=True)
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Agency ile rapor oluşturulurken bir hata oluştu: {str(e)}"
-#         )
-# async def generate_pdf_from_agency_response(project_name: str, agency_response: str) -> AgencyFinalResponse:
-#     """
-#     Takes the agency's response and generates a PDF using WeasyPrint.
-    
-#     Args:
-#         project_name: Name of the project
-#         agency_response: HTML/text content from the agency
-        
-#     Returns:
-#         AgencyFinalResponse object containing status and file details
-#     """
-#     try:
-#         logger.info(f"[PDF_GEN] Starting PDF generation for project: {project_name}")
-        
-#         # Get report ID 
-#         report_id = get_active_report_id(project_name)
-#         logger.info(f"[PDF_GEN] Generated report ID: {report_id}")
-        
-#         # Create basic HTML structure
-#         html_content = agency_response
-#         # Configure WeasyPrint
-#         font_config = FontConfiguration()
-#         css = CSS(string='', font_config=font_config)
-        
-#         # Generate PDF
-#         html = HTML(string=html_content)
-#         pdf_bytes = html.write_pdf(stylesheets=[css], font_config=font_config)
-#         logger.info(f"[PDF_GEN] PDF generated successfully, size: {len(pdf_bytes)} bytes")
-        
-#         # Save PDF
-#         pdf_path, success = save_pdf_content(pdf_bytes, project_name, report_id)
-#         if not success:
-#             raise ValueError("Failed to save PDF file")
-#         logger.info(f"[PDF_GEN] PDF saved successfully at: {pdf_path}")
-        
-#         # Update project metadata
-#         save_generated_report(
-#             project_name,
-#             report_id,
-#             agency_response,  # Store the original content
-#             str(pdf_path)
-#         )
-#         logger.info(f"[PDF_GEN] Project metadata updated successfully")
-        
-#         return AgencyFinalResponse(
-#             status="success",
-#             message="PDF report successfully generated and saved",
-#             report_id=report_id,
-#             pdf_path=str(pdf_path)
-#         )
-        
-#     except Exception as e:
-#         logger.error(f"[PDF_GEN] Error generating PDF: {str(e)}", exc_info=True)
-#         return AgencyFinalResponse(
-#             status="error",
-#             message=f"Failed to generate PDF: {str(e)}",
-#             report_id=None,
-#             pdf_path=None
-#         )
+@app.post("/project/generate-report-by-agency")
+async def generate_report_by_agency(request: GenerateReportRequest):
+   response = generate_full_html(request.project_name)
+   return response
+   
 
 # Backend route for PDF deletion
 @app.delete('/api/project/{project_name}/delete-pdf')

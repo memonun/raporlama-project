@@ -1,13 +1,78 @@
 {
-  "project_name": "V Metroway",
-  "created_at": "2025-03-26T10:35:24.132672",
-  "last_updated": "2025-06-24T13:53:47.310299",
+  "project_name": "V Mertroway",
+  "created_at": "2025-03-24T15:16:27.646702",
+  "last_updated": "2025-06-24T15:56:32.344787",
   "active_report": {
-    "report_id": "V_Metroway_bb376f5a-7e3a-4eb9-85fd-8f49706099cd",
+    "report_id": "V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c",
     "report_date": "2025-06-24",
-    "created_at": "2025-06-24T13:53:47.310299",
-    "last_updated": "2025-06-24T13:53:47.310299",
-    "components": {},
+    "created_at": "2025-06-24T15:56:32.344787",
+    "last_updated": "2025-06-24T15:56:32.344787",
+    "components": {
+      "İşletme": {
+        "answers": {
+          "image_upload": [
+            {
+              "filename": "image001.jpg",
+              "path": "active_report/v_metroway/images/i̇sletme-1750769805.jpg",
+              "type": "image",
+              "uploaded_at": "2025-06-24T15:56:45.849036"
+            }
+          ],
+          "pdf_upload": [
+            {
+              "filename": "İşletme_Raporu.pdf",
+              "path": "active_report/v_metroway/pdfs/i̇şletme-1750769819.pdf",
+              "type": "pdf",
+              "uploaded_at": "2025-06-24T15:56:59.775532"
+            }
+          ]
+        }
+      },
+      "Finans": {
+        "answers": {
+          "image_upload": [
+            {
+              "filename": "financial-security-au.webp",
+              "path": "active_report/v_metroway/images/finans-1750769809.webp",
+              "type": "image",
+              "uploaded_at": "2025-06-24T15:56:49.841668"
+            }
+          ],
+          "pdf_upload": [
+            {
+              "filename": "Finans_Raporu.pdf",
+              "path": "active_report/v_metroway/pdfs/finans-1750769825.pdf",
+              "type": "pdf",
+              "uploaded_at": "2025-06-24T15:57:05.811072"
+            }
+          ]
+        }
+      },
+      "İnşaat": {
+        "answers": {
+          "pdf_upload": [
+            {
+              "filename": "İnşaat_Raporu.pdf",
+              "path": "active_report/v_metroway/pdfs/i̇nşaat-1750769829.pdf",
+              "type": "pdf",
+              "uploaded_at": "2025-06-24T15:57:09.911515"
+            }
+          ]
+        }
+      },
+      "Kurumsal İletişim": {
+        "answers": {
+          "pdf_upload": [
+            {
+              "filename": "Kurumsal_İletişim_Raporu.pdf",
+              "path": "active_report/v_metroway/pdfs/kurumsal_i̇letişim-1750769833.pdf",
+              "type": "pdf",
+              "uploaded_at": "2025-06-24T15:57:13.505503"
+            }
+          ]
+        }
+      }
+    },
     "status": "in_progress",
     "report_generated": false
   },

@@ -775,8 +775,6 @@ const handleRemoveComponentImage = async (component, questionId, fileToRemove) =
         const result = await reportService.generateReport(
           projectName, 
           componentsDataForBackend, // Eski formatta veri
-          null, 
-          null  
         );
         
         // PDF dosya adını al

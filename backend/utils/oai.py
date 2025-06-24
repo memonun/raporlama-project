@@ -103,8 +103,6 @@ def generate_full_html(project_name: str) -> str:
         user_text="Please analyze each image and give a one-sentence description. Start each with the given filename exactly. Example: image_1.png - A child holding an umbrella"
     )
 
-   
-
     # Create a new vector store for this project
     vector_store = client.vector_stores.create(
         name=f"{project_name} PDFs"
@@ -135,13 +133,8 @@ def generate_full_html(project_name: str) -> str:
         previous_response_id=previous_response_id
     )
 
-    return response.id
+    return response
   
-
-  
-   
-    
-
 
 if __name__ == "__main__":
     result = generate_image_analysis_response(
