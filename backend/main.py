@@ -1091,33 +1091,71 @@ def remove_pdf_reference(project_name: str, file_path: str) -> bool:
 
 @app.post("/project/{project_name}/remove-file", response_model=dict)
 async def remove_file(
- project_name: str,
- component: str = Form(...),
- question_id: str = Form(...),
- filename: str = Form(...),
- file_path: str = Form(...)
+    project_name: str,
+    component: str = Form(...),
+    question_id: str = Form(...),
+    filename: str = Form(...),
+    file_path: str = Form(...)
 ):
-    """Remove a file object from project JSON array."""
-    component_name = component          # keep backward compatibility
-    path = file_path                   # alias for helper
-
-    success = remove_file_entry_from_array(project_name, component_name, question_id,
-                                         {"filename": filename, "path": path})
-    
-    if not success:
-        raise HTTPException(status_code=500, detail="Dosya silinemedi")
+    """
+    Remove a file from the project JSON and optionally from the filesystem.
+    Always returns the updated file array for the question.
+    """
+    try:
+        # Log the request
+        logger.info(f"[REMOVE_FILE] Request to remove file: Project={project_name}, Component={component}, Question={question_id}, File={filename}")
         
-    # Güncel dosya listesi
-    project_path = get_project_path(project_name)
-    with open(project_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+        # Remove from JSON
+        success = remove_file_entry_from_array(
+            project_name, 
+            component, 
+            question_id,
+            {"filename": filename, "path": file_path}
+        )
         
-    files = []
-    active_report = data.get("active_report", {})
-    if active_report:
-        components = active_report.get("components", {})
-        component_data = components.get(component, {})
-        answers = component_data.get("answers", {})
-        files = answers.get(question_id, [])
+        if not success:
+            logger.error(f"[REMOVE_FILE] Failed to remove file entry from JSON")
+            raise HTTPException(status_code=500, detail="Dosya JSON'dan kaldırılamadı")
         
-    return {"success": True, "files": files}
+        # Try to remove the physical file (don't fail if it doesn't exist)
+        try:
+            full_path = BASE_DIR / "data" / "uploads" / file_path
+            if full_path.exists() and full_path.is_file():
+                os.remove(full_path)
+                logger.info(f"[REMOVE_FILE] Physical file removed: {full_path}")
+            else:
+                logger.warning(f"[REMOVE_FILE] Physical file not found: {full_path}")
+        except Exception as e:
+            logger.error(f"[REMOVE_FILE] Error removing physical file: {e}")
+            # Don't fail the request if physical file can't be removed
+        
+        # Get updated file list
+        project_path = get_project_path(project_name)
+        with open(project_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        files = []
+        active_report = data.get("active_report", {})
+        if active_report:
+            components = active_report.get("components", {})
+            component_data = components.get(component, {})
+            answers = component_data.get("answers", {})
+            files = answers.get(question_id, [])
+            
+            # Ensure it's always an array
+            if not isinstance(files, list):
+                files = []
+        
+        logger.info(f"[REMOVE_FILE] Successfully removed file. Remaining files: {len(files)}")
+        
+        return {
+            "success": True, 
+            "files": files,
+            "message": "Dosya başarıyla kaldırıldı"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[REMOVE_FILE] Unexpected error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Dosya kaldırılırken beklenmeyen hata: {str(e)}")

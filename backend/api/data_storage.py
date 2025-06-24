@@ -180,17 +180,7 @@ def get_active_report(project_name: str) -> Optional[Dict[str, Any]]:
 def save_component_data(project_name: str, component_name: str, answers: Dict[str, Any]) -> Dict[str, Any]:
     """
     Bir bileşen için verilen cevapları kaydeder.
-    
-    Args:
-        project_name: Proje adı
-        component_name: Bileşen adı
-        answers: Cevaplar
-        
-    Returns:
-        Güncellenmiş rapor verisi
-        
-    Raises:
-        FileNotFoundError: Proje bulunamazsa
+    Files are always stored as arrays for consistency.
     """
     try:
         if not project_name:
@@ -203,16 +193,11 @@ def save_component_data(project_name: str, component_name: str, answers: Dict[st
         if not project_path.exists():
             raise FileNotFoundError(f"Proje bulunamadı: {project_name}")
         
-        try:
-            with open(project_path, 'r', encoding='utf-8') as f:
-                project_data = json.load(f)
-        except json.JSONDecodeError as e:
-            print(f"JSON çözümleme hatası ({project_path}): {e}")
-            raise ValueError(f"Proje dosyası bozulmuş olabilir: {str(e)}")
+        with open(project_path, 'r', encoding='utf-8') as f:
+            project_data = json.load(f)
         
         active_report = project_data.get("active_report")
         if not active_report:
-            # Aktif rapor bulunamadıysa, yeni bir rapor oluştur
             print(f"Proje {project_name} için aktif rapor bulunamadı, yeni rapor oluşturuluyor...")
             report_id = create_report_id(project_name)
             active_report = {
@@ -225,73 +210,57 @@ def save_component_data(project_name: str, component_name: str, answers: Dict[st
                 "report_generated": False
             }
             project_data["active_report"] = active_report
-            print(f"Yeni rapor oluşturuldu: {report_id}")
         
-        # Son güncelleme zamanını güncelle
         current_time = datetime.datetime.now().isoformat()
         project_data["last_updated"] = current_time
         active_report["last_updated"] = current_time
         
-        # Bileşen verilerini güncelle
         if "components" not in active_report:
             active_report["components"] = {}
-            
-        # Cevapları güncellemeden önce mevcut veriyi logla
-        existing_data = active_report["components"].get(component_name, {})
-        print(f"Mevcut {component_name} verileri: {existing_data}")
-        print(f"Yeni {component_name} cevapları: {answers}")
         
-        # PDF içeriği için özel kontrol (RESTORED)
-        if component_name == "pdf_content" and "content" in answers:
-            # PDF içeriğini doğrudan active_report'a kaydet
-            print("PDF içeriği algılandı, rapor verisine kaydediliyor...")
-            content_length = len(answers["content"]) if answers["content"] else 0
-            print(f"Kaydedilecek PDF içeriği uzunluğu: {content_length} karakter")
-            active_report["pdf_content"] = answers["content"]
-            
-            # PDF dosya adını da kaydet
-            if "filename" in answers:
-                active_report["pdf_filename"] = answers["filename"]
-                print(f"PDF dosya adı kaydedildi: '{answers['filename']}'")
-                print(f"Aktif raporda pdf_filename anahtarı var mı: {'pdf_filename' in active_report}")
-            else:
-                print("PDF dosya adı bulunamadı, sadece içerik kaydedildi")
-        else:
-            # Normal bileşen cevaplarını kaydet
+        # Initialize component if it doesn't exist
+        if component_name not in active_report["components"]:
             active_report["components"][component_name] = {
-                "answers": answers,
+                "answers": {},
                 "last_updated": current_time
             }
         
-        # Verileri kaydet
-        try:
-            with open(project_path, 'w', encoding='utf-8') as f:
-                json.dump(project_data, f, ensure_ascii=False, indent=2)
-            print(f"{project_name} projesi {component_name} bileşeni verileri başarıyla kaydedildi.")
-        except Exception as file_error:
-            print(f"Dosya yazma hatası: {file_error}")
-            raise IOError(f"Proje verisi kaydedilemedi: {str(file_error)}")
+        # Process answers - ensure file arrays are preserved
+        processed_answers = {}
+        for question_id, value in answers.items():
+            # Get existing value
+            existing_value = active_report["components"][component_name].get("answers", {}).get(question_id)
+            
+            # If this is a file field (contains file objects with path/filename)
+            if isinstance(value, list) and any(isinstance(item, dict) and 'path' in item for item in value):
+                # It's already a file array, use as is
+                processed_answers[question_id] = value
+            elif isinstance(value, dict) and 'path' in value:
+                # Single file object, convert to array
+                processed_answers[question_id] = [value]
+            elif existing_value and isinstance(existing_value, list):
+                # If existing value is a file array and new value is not a file operation,
+                # preserve the existing file array (this handles non-file updates)
+                if not (isinstance(value, list) or (isinstance(value, dict) and 'path' in value)):
+                    processed_answers[question_id] = existing_value
+                else:
+                    processed_answers[question_id] = value
+            else:
+                # Regular value, use as is
+                processed_answers[question_id] = value
+        
+        # Update answers
+        active_report["components"][component_name]["answers"].update(processed_answers)
+        active_report["components"][component_name]["last_updated"] = current_time
+        
+        # Save data
+        with open(project_path, 'w', encoding='utf-8') as f:
+            json.dump(project_data, f, ensure_ascii=False, indent=2)
         
         return active_report
-    except FileNotFoundError as e:
-        # Proje bulunamadı hatası - bu hatayı üst katmana ilet
-        print(f"Dosya bulunamadı hatası: {e}")
-        raise e
-    except json.JSONDecodeError as e:
-        # JSON çözümleme hatası
-        print(f"Proje dosyası JSON çözümleme hatası: {e}")
-        raise ValueError(f"Proje dosyası bozulmuş olabilir: {str(e)}")
-    except ValueError as e:
-        # Değer hatası
-        print(f"Değer hatası: {e}")
-        raise e
-    except IOError as e:
-        # Dosya işlemi hatası
-        print(f"Dosya işlemi hatası: {e}")
-        raise e
+        
     except Exception as e:
-        # Genel hata
-        print(f"Bileşen verileri kaydedilirken beklenmeyen hata: {e}")
+        print(f"Bileşen verileri kaydedilirken hata: {e}")
         raise e
 
 def delete_report(project_name: str) -> bool:
