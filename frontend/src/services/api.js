@@ -238,23 +238,28 @@ export const componentService = {
         `componentService.saveComponentData: ${projectName} projesi ${componentName} bileşeni cevapları kaydediliyor`
       );
       console.log("Gönderilen cevaplar:", answers);
-      const formData = new FormData();
-      formData.append('project_name', projectName);
-      formData.append('component_name', componentName);
-      // for each answer key/value pair:
-      Object.entries(answers).forEach(([questionId, value]) => {
-        // if it’s a file array, send each file’s metadata as JSON
+      
+      // Convert array values to JSON strings for backend compatibility
+      const processedAnswers = {};
+      Object.entries(answers).forEach(([key, value]) => {
         if (Array.isArray(value)) {
-          formData.append(`${questionId}`, JSON.stringify(value));
+          // Convert arrays to JSON strings
+          processedAnswers[key] = JSON.stringify(value);
+        } else if (typeof value === 'object' && value !== null) {
+          // Convert objects to JSON strings
+          processedAnswers[key] = JSON.stringify(value);
         } else {
-          formData.append(questionId, value);
+          // Keep strings and primitives as-is
+          processedAnswers[key] = value;
         }
       });
-      const response = await axios.post(
-        '/component/save-data',
-        formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
-      );
+      
+      // Send as JSON, not FormData
+      const response = await axiosInstance.post("/component/save-data", {
+        project_name: projectName,
+        component_name: componentName,
+        answers: processedAnswers
+      });
 
       console.log(
         `${componentName} bileşeni verileri başarıyla kaydedildi:`,
@@ -535,135 +540,48 @@ export const reportService = {
     }
   },
 
-  // Rapor oluştur
-  generateReport: async (
-    projectName,
-    componentsData,
-    userInput = null,
-    pdfContent = null,
-    useDynamicHtml = true
-  ) => {
-    if (!projectName) {
-      console.error("reportService.generateReport: Proje adı belirtilmedi");
-      throw new Error("Proje adı belirtilmedi");
+  // Add this simplified function to reportService in api.js
+
+// Simplified report generation - only needs project name
+generateReportSimplified: async (projectName) => {
+  if (!projectName) {
+    console.error("reportService.generateReportSimplified: Project name not provided");
+    throw new Error("Project name is required");
+  }
+
+  try {
+    console.log(`reportService.generateReportSimplified: Generating report for ${projectName}`);
+    
+    // Simple POST request with just the project name in the URL
+    const response = await axiosInstance.post(
+      `/project/${encodeURIComponent(projectName)}/generate-report`
+    );
+
+    console.log("Report generation response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Report generation error:", error);
+
+    if (error.response) {
+      console.error("API Response:", error.response.data);
+      console.error("Status Code:", error.response.status);
+
+      if (error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail);
+      }
+      
+      if (error.response.status === 404) {
+        throw new Error("Project not found or PDFs missing");
+      }
+      
+      if (error.response.status === 400) {
+        throw new Error("No active report found for this project");
+      }
     }
 
-    try {
-      console.log(
-        `reportService.generateReport: ${projectName} projesi için rapor oluşturuluyor`
-      );
-      console.log(
-        "Gönderilen bileşen verileri (özet):",
-        Object.keys(componentsData)
-      );
-      console.log(
-        `Dinamik HTML modu ${useDynamicHtml ? "aktif" : "devre dışı"}`
-      );
-
-      // Debug için PDF içeriklerini kontrol edelim
-      const pdfContentKeys = Object.keys(componentsData).filter((k) =>
-        k.endsWith("_pdf_contents")
-      );
-      if (pdfContentKeys.length > 0) {
-        console.log("PDF içerikleri mevcut:", pdfContentKeys);
-        pdfContentKeys.forEach((key) => {
-          const pdfs = componentsData[key];
-          console.log(`${key} içinde ${pdfs.length} adet PDF mevcut`);
-          console.log("İlk PDF örneği:", JSON.stringify(pdfs[0], null, 2));
-        });
-      } else {
-        console.warn("Hiç PDF içeriği bulunamadı!");
-      }
-
-      // Görsel içeriklerini kontrol et
-      const imageKeys = Object.keys(componentsData).filter(
-        (k) =>
-          k.includes("_image_0") ||
-          k.endsWith(".jpg") ||
-          k.endsWith(".png") ||
-          k.endsWith(".svg")
-      );
-
-      if (imageKeys.length > 0) {
-        console.log("Görsel referansları mevcut:", imageKeys);
-        console.log("Görsel sayısı:", imageKeys.length);
-      } else {
-        console.log("Hiç görsel referansı bulunamadı!");
-      }
-
-      // Veri formatı dönüşümü yapmadan doğrudan API'ye gönder
-      const requestPayload = {
-        project_name: projectName,
-        components_data: componentsData,
-        user_input: userInput,
-        pdf_content: pdfContent,
-        use_dynamic_html: useDynamicHtml,
-      };
-      // const requestPayloadJSON = JSON.stringify(requestPayload, null, 2);
-      // result = agency.get_completion(
-      //   requestPayloadJSON,
-      //   "generate_report",
-      //   "report"
-      // );
-
-      console.log(
-        "API isteği hazırlandı:",
-        JSON.stringify(requestPayload, null, 2).substring(0, 1000) + "..."
-      );
-
-      const response = await axiosInstance.post(
-        `/project/generate-report-by-agency`,
-        requestPayload
-      );
-
-      console.log("Rapor oluşturma yanıtı:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error("Rapor oluşturma hatası:", error);
-
-      if (error.response) {
-        console.error("API Yanıt Detayı:", error.response.data);
-        console.error("Durum Kodu:", error.response.status);
-
-        if (error.response.data && error.response.data.detail) {
-          throw new Error(error.response.data.detail);
-        }
-        if (error.response.status === 404) {
-          throw new Error(
-            "Rapor oluşturma uç noktası bulunamadı veya proje verisi eksik."
-          );
-        }
-        if (error.response.status === 422) {
-          throw new Error(
-            "İstek formatı hatalı: API validasyon hatası. Geliştirici ile iletişime geçin."
-          );
-        }
-        if (error.response.status === 500) {
-          throw new Error(
-            "Rapor oluşturulurken sunucu hatası oluştu. Geliştirici ile iletişime geçin."
-          );
-        }
-      } else if (error.request) {
-        // İstek yapıldı ama yanıt alınamadı
-        console.error("Yanıt alınamadı:", error.request);
-        throw new Error(
-          "Sunucudan yanıt alınamadı. Lütfen internet bağlantınızı kontrol edin."
-        );
-      } else if (error.message) {
-        // İstek ayarlarında sorun var
-        console.error("İstek hatası:", error.message);
-        throw new Error(`İstek hatası: ${error.message}`);
-      } else {
-        // Beklenmeyen hata
-        console.error("Beklenmeyen hata:", error);
-        throw new Error(
-          "Beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin."
-        );
-      }
-
-      throw new Error("Rapor oluşturulurken bir sunucu hatası oluştu.");
-    }
-  },
+    throw new Error("Failed to generate report. Please try again.");
+  }
+},
 
   // Tamamlanmamış raporları getir
   getUnfinalizedReports: async (projectName) => {

@@ -3,13 +3,15 @@ import mimetypes
 import re
 from pathlib import Path
 from openai import OpenAI
-from .assets import get_project_assets
+from assets import get_project_assets
+import os
+from vector_store import create_vector_store, upload_pdf_files_to_vector_store
 
 
 
 
 # Initialize OpenAI client
-client = OpenAI()
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 
 # Path definitions
@@ -90,13 +92,19 @@ def generate_image_analysis_response(project_name: str, user_text: str) -> str:
 def generate_full_html(project_name: str) -> str:
     """Generates a full HTML response for the given project."""
     slug = slugify(project_name)
-    assets = get_project_assets(slug)
+    
+    # Try to get assets but don't fail if they're not available
+    try:
+        assets = get_project_assets(slug)
+    except Exception as e:
+        print(f"Warning: Could not load assets: {e}")
+        assets = {}  # Use empty dict as fallback
 
     pdf_folder = ACTIVE_UPLOADS_PATH / slug / "pdfs"
     if not pdf_folder.exists():
         raise FileNotFoundError(f"No PDFs found for project {project_name}")
    
-
+    # Rest of the function remains the same...
     # Optionally, get the previous response ID from image analysis
     previous_response_id = generate_image_analysis_response(
         project_name=project_name,
@@ -104,17 +112,12 @@ def generate_full_html(project_name: str) -> str:
     )
 
     # Create a new vector store for this project
-    vector_store = client.vector_stores.create(
-        name=f"{project_name} PDFs"
-    )
+    vector_store = create_vector_store(project_name, client=client)
 
     # Upload all PDF files to the vector store
-    for pdf_path in sorted(pdf_folder.glob("*.pdf")):
-        with open(pdf_path, "rb") as pdf_file:
-            client.vector_stores.files.upload_and_poll(
-                vector_store_id=vector_store.id,
-                file=pdf_file
-            )
+    upload_stats = upload_pdf_files_to_vector_store(vector_store["id"], dir_pdfs=pdf_folder, client=client)
+    print(upload_stats)
+    
     # Prepare the prompt for the response
     def read_prompt_from_md() -> str:
         """Placeholder: Reads prompt text from a markdown file."""
@@ -128,17 +131,15 @@ def generate_full_html(project_name: str) -> str:
         input=prompt,
         tools=[{
             "type": "file_search",
-            "vector_store_ids": [vector_store.id]
+            "vector_store_ids": [vector_store['id']],
         }],
         previous_response_id=previous_response_id
     )
 
-    return response
-  
+    return response.output_text
 
 if __name__ == "__main__":
-    result = generate_image_analysis_response(
-        project_name="V_Mall",
-        user_text="Please analyze each image and give a one-sentence description. Start each with the given filename exactly. Example: image_1.png - A child holding an umbrella"
+    result = generate_full_html(
+        project_name="V_Metroway",
     )
     print(result)

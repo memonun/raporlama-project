@@ -720,12 +720,121 @@ def reset_active_report_endpoint(project_name: str):
         logger.error(f"[API] Reset failed for {project_name}: Unexpected error. Detail: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
 
+@app.post("/project/{project_name}/generate-report")
+async def generate_report(project_name: str):
+    """
+    Report generation endpoint that:
+    1. Calls OpenAI to generate HTML content
+    2. Generates PDF from the HTML
+    3. Updates the project data
+    """
+    try:
+        logger.info(f"[REPORT] Starting report generation for project: {project_name}")
+        
+        # Validate project exists
+        project_data = get_project_data(project_name)
+        if not project_data:
+            raise HTTPException(status_code=404, detail=f"Project not found: {project_name}")
+        
+        # Check for active report
+        active_report = project_data.get("active_report")
+        if not active_report:
+            raise HTTPException(status_code=400, detail="No active report found for this project")
+        
+        # Get report ID
+        report_id = active_report.get("report_id")
+        if not report_id:
+            raise HTTPException(status_code=400, detail="Active report missing report_id")
+        
+        # Validate that required files exist
+        from utils.oai import slugify, ACTIVE_UPLOADS_PATH
+        slug = slugify(project_name)
+        pdf_folder = ACTIVE_UPLOADS_PATH / slug / "pdfs"
+        
+        if not pdf_folder.exists() or not any(pdf_folder.glob("*.pdf")):
+            logger.error(f"[REPORT] No PDFs found for project: {project_name}")
+            raise HTTPException(status_code=400, detail="No PDF files found. Please upload PDFs before generating report.")
+        
+        # STEP 1: Generate HTML content using OpenAI
+        logger.info(f"[REPORT] Step 1: Calling OpenAI to generate HTML for project: {project_name}")
+        
+        try:
+            from utils.oai import generate_full_html
+            
+            # This returns HTML content as a string
+            html_content = generate_full_html(project_name)
+            
+            logger.info(f"[REPORT] OpenAI response received, Response: {html_content} characters")
+            
+        except FileNotFoundError as e:
+            logger.error(f"[REPORT] File not found error: {str(e)}")
+            raise HTTPException(status_code=404, detail=str(e))
+        except Exception as e:
+            logger.error(f"[REPORT] OpenAI generation error: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to generate HTML content: {str(e)}")
+        
+        # STEP 2: Generate PDF from HTML
+        logger.info(f"[REPORT] Step 2: Converting HTML to PDF for project: {project_name}")
+        
+        try:
+            # Import the PDF generation function
+            from utils.pdf_utils import generate_pdf_from_html
+            
+            # Generate the PDF
+            pdf_path = generate_pdf_from_html(html_content, project_name, report_id)
+            pdf_filename = pdf_path.name
+            
+            logger.info(f"[REPORT] PDF created successfully: {pdf_filename}")
+            
+        except Exception as e:
+            logger.error(f"[REPORT] PDF generation error: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+        
+        # STEP 3: Update project data
+        logger.info(f"[REPORT] Step 3: Updating project data for: {project_name}")
+        
+        try:
+            # Update report status using save_generated_report
+            updated_report = save_generated_report(
+                project_name=project_name,
+                report_id=report_id,
+                report_content=html_content,
+                pdf_path=str(pdf_path)
+            )
+            
+            # Add the PDF filename to the report data
+            updated_report["pdfFileName"] = pdf_filename
+            
+            # Save the updated project data with the filename
+            project_data["active_report"] = updated_report
+            project_data["last_updated"] = datetime.datetime.now().isoformat()
+            
+            project_file_path = get_project_path(project_name)
+            with open(project_file_path, 'w', encoding='utf-8') as f:
+                json.dump(project_data, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"[REPORT] Report generation completed successfully for project: {project_name}")
+            
+            return {
+                "success": True,
+                "message": "Report generated successfully",
+                "project_name": project_name,
+                "report_id": report_id,
+                "pdf_path": str(pdf_path),
+                "pdf_filename": pdf_filename,
+                "report_data": updated_report
+            }
+            
+        except Exception as e:
+            logger.error(f"[REPORT] Error updating project data: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to update project data: {str(e)}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[REPORT] Unexpected error during report generation: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error during report generation: {str(e)}")
 
-@app.post("/project/generate-report-by-agency")
-async def generate_report_by_agency(request: GenerateReportRequest):
-   response = generate_full_html(request.project_name)
-   return response
-   
 
 # Backend route for PDF deletion
 @app.delete('/api/project/{project_name}/delete-pdf')

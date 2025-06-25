@@ -12,8 +12,8 @@ from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 # Constants
-BASE_REPORTS_DIR = Path("backend/data/reports")
-BASE_ACTIVE_REPORT_DIR = Path("backend/data/uploads/active_report")
+BASE_REPORTS_DIR = Path("data/reports")
+BASE_ACTIVE_REPORT_DIR = Path("data/uploads/active_report")
 def get_active_report_id(project_name: str) -> str:
     """
     Proje adına göre aktif rapor ID'sini döndürür.
@@ -352,3 +352,122 @@ def get_pdf_info(pdf_path: Path) -> Optional[dict]:
     except Exception as e:
         logger.error(f"PDF bilgileri alınırken hata: {str(e)}")
         return None 
+    # Add this function to your existing pdf_utils.py file
+
+def generate_pdf_from_html(html_content: str, project_name: str, report_id: str) -> Path:
+    """
+    Generate a PDF file from HTML content using WeasyPrint.
+    
+    Args:
+        html_content: The HTML content to convert to PDF
+        project_name: The name of the project
+        report_id: The unique report ID
+        
+    Returns:
+        Path: The path to the generated PDF file
+    """
+    from weasyprint import HTML, CSS
+    from weasyprint.text.fonts import FontConfiguration
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    # Wrap the HTML content in a complete document with styling
+    full_html = f"""
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{project_name} - Yatırımcı Raporu</title>
+        <style>
+            @page {{
+                size: A4;
+                margin: 2cm;
+            }}
+            body {{
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+            }}
+            h1, h2, h3 {{
+                color: #2c3e50;
+                margin-top: 1.5em;
+            }}
+            h1 {{
+                text-align: center;
+                border-bottom: 3px solid #3498db;
+                padding-bottom: 0.5em;
+            }}
+            section {{
+                margin-bottom: 2em;
+                page-break-inside: avoid;
+            }}
+            figure {{
+                margin: 1em 0;
+                text-align: center;
+            }}
+            img {{
+                max-width: 100%;
+                height: auto;
+            }}
+            figcaption {{
+                font-style: italic;
+                color: #666;
+                margin-top: 0.5em;
+            }}
+            .logo {{
+                height: 42px;
+            }}
+            .banner {{
+                height: 80px;
+                background-color: #f0f0f0;
+                margin-bottom: 2em;
+            }}
+            table {{
+                border-collapse: collapse;
+                width: 100%;
+                margin: 1em 0;
+            }}
+            th, td {{
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }}
+            th {{
+                background-color: #f2f2f2;
+            }}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+    
+    # Get the PDF output path
+    pdf_path = get_report_path(project_name, report_id)
+    
+    # Ensure the directory exists
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    logger.info(f"[PDF] Generating PDF at: {pdf_path}")
+    
+    try:
+        # Configure fonts
+        font_config = FontConfiguration()
+        
+        # Create PDF from HTML
+        HTML(string=full_html).write_pdf(
+            str(pdf_path),
+            font_config=font_config
+        )
+        
+        logger.info(f"[PDF] PDF generated successfully: {pdf_path}")
+        return pdf_path
+        
+    except Exception as e:
+        logger.error(f"[PDF] Error generating PDF: {str(e)}")
+        raise Exception(f"Failed to generate PDF: {str(e)}")

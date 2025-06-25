@@ -722,110 +722,83 @@ const handleRemoveComponentImage = async (component, questionId, fileToRemove) =
   };
 
   // Rapor oluşturma fonksiyonunu
-  const handleGenerateReport = async () => {
-    if (!validateRequiredFields()) {
-      return;
+
+
+const handleGenerateReport = async () => {
+  // Simple validation - just check if PDFs and images are uploaded
+  let hasRequiredFiles = true;
+  let missingComponents = [];
+
+  Object.keys(componentData).forEach(component => {
+    const { answers } = componentData[component];
+    
+    // Check if PDF is uploaded (required)
+    const pdfData = ensureArray(answers['pdf_upload']);
+    if (!pdfData || pdfData.length === 0) {
+      hasRequiredFiles = false;
+      missingComponents.push(component);
+    }
+  });
+
+  if (!hasRequiredFiles) {
+    toast.error(`Please upload PDF files for: ${missingComponents.join(', ')}`);
+    return;
+  }
+
+  setSavingReport(true);
+  
+  try {
+    // Show info message
+    toast.info('Report generation started. This process runs in the background.');
+    
+    // First, save all component data to ensure files are properly recorded
+    const savedComponents = [];
+    for (const component of components) {
+      try {
+        console.log(`Saving ${component} component data...`);
+        await componentService.saveComponentData(
+          projectName,
+          component,
+          componentData[component].answers
+        );
+        console.log(`${component} component saved successfully.`);
+        savedComponents.push(component);
+      } catch (error) {
+        console.error(`Error saving ${component} component:`, error);
+        toast.error(`Failed to save ${component} data: ${error.message}`);
+      }
     }
     
-    setSavingReport(true);
+    if (savedComponents.length === 0) {
+      throw new Error("No component data could be saved. Please try again.");
+    }
+    
+    // Now call the simplified report generation
+    console.log('Calling simplified report generation...');
     
     try {
-      // Arka planda işlem başlatıldı bildirimi
-      toast.info('Rapor oluşturma işlemi başlatıldı. Bu işlem arka planda gerçekleşecektir.');
+      const result = await reportService.generateReportSimplified(projectName);
       
-      // Tüm bileşenlerin güncel verilerini kaydet (her ihtimale karşı)
-      const savedComponents = [];
-      for (const component of components) {
-        try {
-          console.log(`${component} bileşen verileri kaydediliyor...`);
-          await componentService.saveComponentData(
-            projectName,
-            component,
-            componentData[component].answers // Tüm cevapları gönder
-          );
-          console.log(`${component} bileşeni başarıyla kaydedildi.`);
-          savedComponents.push(component);
-        } catch (error) {
-          console.error(`${component} bileşeni verileri kaydedilirken hata:`, error);
-          toast.error(`${component} bileşeni verileri kaydedilemedi: ${error.message}`);
-          // İşleme devam et, diğer bileşenleri de kaydetmeye çalış
-        }
-      }
+      // Update the active report state
+      const updatedReport = await projectService.getActiveReport(projectName);
+      dispatch({ type: 'SET_ACTIVE_REPORT', payload: updatedReport });
       
-      if (savedComponents.length === 0) {
-        throw new Error("Hiçbir bileşen verisi kaydedilemedi. Lütfen tekrar deneyin.");
-      }
-      
-      // Bileşen verilerini backend'e gönderilecek formata getir
-      const componentsDataForBackend = {};
-      savedComponents.forEach(component => {
-        // Sadece "answers" objesini al, içindeki PDF objeleriyle birlikte
-        componentsDataForBackend[component] = {
-            answers: componentData[component].answers
-        }; 
-      });
-      
-      console.log("Rapor oluşturmak için backend'e gönderilecek veriler:", componentsDataForBackend);
-      
-      // Raporu oluştur
-      try {
-        console.log('Rapor oluşturma isteği gönderiliyor:', { projectName });
-        
-        // generateReport fonksiyonunu çağır (artık user_input ve pdf_content null)
-        const result = await reportService.generateReport(
-          projectName, 
-          componentsDataForBackend, // Eski formatta veri
-        );
-        
-        // PDF dosya adını al
-        const pdfPath = result.pdf_path;
-        const pdfFileName = pdfPath ? pdfPath.split('/').pop() : null;
-        
-        // Rapor başarıyla oluşturulduğunda aktif raporu güncelle
-        const updatedReport = await projectService.getActiveReport(projectName);
-        dispatch({ type: 'SET_ACTIVE_REPORT', payload: { ...updatedReport, pdfFileName: pdfFileName } });
-        
-        console.log('Rapor başarıyla oluşturuldu:', updatedReport);
-        toast.success('Rapor başarıyla oluşturuldu ve vitrine eklendi.');
-        
-      } catch (error) {
-        console.error('Rapor oluşturma hatası:', error);
-        let errorMessage = 'Bilinmeyen bir hata';
-        
-        if (error.message) {
-          errorMessage = error.message;
-        } else if (Array.isArray(error)) {
-          errorMessage = error.map(e => e?.message || e).join(', ');
-        } else if (typeof error === 'object') {
-          errorMessage = JSON.stringify(error);
-        } else {
-          errorMessage = String(error);
-        }
-        
-        toast.error(`Rapor oluşturulamadı: ${errorMessage}`);
-        throw error; // Hatayı yukarı taşı
-      }
+      console.log('Report generated successfully:', result);
+      toast.success('Report generated successfully and added to showcase.');
       
     } catch (error) {
-      console.error('Rapor oluşturma işlemi başarısız:', error);
-      
-      let errorMessage = 'Bilinmeyen bir hata';
-      
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (Array.isArray(error)) {
-        errorMessage = error.map(e => e?.message || e).join(', ');
-      } else if (typeof error === 'object') {
-        errorMessage = JSON.stringify(error);
-      } else {
-        errorMessage = String(error);
-      }
-      
-      toast.error(`Rapor oluşturulamadı: ${errorMessage}`);
-    } finally {
-      setSavingReport(false);
+      console.error('Report generation error:', error);
+      toast.error(`Failed to generate report: ${error.message}`);
+      throw error;
     }
-  };
+    
+  } catch (error) {
+    console.error('Report generation process failed:', error);
+    toast.error(`Report could not be generated: ${error.message}`);
+  } finally {
+    setSavingReport(false);
+  }
+};
 
   // E-posta gönderme işlemi
   const handleSendEmail = async (componentName) => {
