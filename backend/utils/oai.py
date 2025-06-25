@@ -3,9 +3,9 @@ import mimetypes
 import re
 from pathlib import Path
 from openai import OpenAI
-from assets import get_project_assets
+from .assets import get_project_assets
 import os
-from vector_store import create_vector_store, upload_pdf_files_to_vector_store
+from .vector_store import create_vector_store, upload_pdf_files_to_vector_store
 
 
 
@@ -133,7 +133,9 @@ def generate_full_html(project_name: str) -> str:
             "type": "file_search",
             "vector_store_ids": [vector_store['id']],
         }],
-        previous_response_id=previous_response_id
+        previous_response_id=previous_response_id,
+        temperature=0.2,
+        top_p=0.9,
     )
 
     return response.output_text

@@ -1,12 +1,12 @@
 {
   "project_name": "V Mertroway",
   "created_at": "2025-03-24T15:16:27.646702",
-  "last_updated": "2025-06-25T14:15:13.621213",
+  "last_updated": "2025-06-25T17:25:07.383823",
   "active_report": {
     "report_id": "V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c",
     "report_date": "2025-06-24",
     "created_at": "2025-06-24T15:56:32.344787",
-    "last_updated": "2025-06-25T14:15:13.621213",
+    "last_updated": "2025-06-25T17:25:07.383410",
     "components": {
       "İşletme": {
         "answers": {
@@ -27,7 +27,7 @@
             }
           ]
         },
-        "last_updated": "2025-06-25T14:14:13.370601"
+        "last_updated": "2025-06-25T17:24:01.954180"
       },
       "Finans": {
         "answers": {
@@ -48,7 +48,7 @@
             }
           ]
         },
-        "last_updated": "2025-06-25T14:14:13.382085"
+        "last_updated": "2025-06-25T17:24:01.969226"
       },
       "İnşaat": {
         "answers": {
@@ -61,7 +61,7 @@
             }
           ]
         },
-        "last_updated": "2025-06-25T14:14:13.389287"
+        "last_updated": "2025-06-25T17:24:01.974362"
       },
       "Kurumsal İletişim": {
         "answers": {
@@ -74,13 +74,13 @@
             }
           ]
         },
-        "last_updated": "2025-06-25T14:14:13.397965"
+        "last_updated": "2025-06-25T17:24:01.979142"
       }
     },
-    "report_content": "```html\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Investor Report</title>\n  <link rel=\"stylesheet\" href=\"assets/styles.css\">\n</head>\n<body>\n  <header class=\"banner\"></header>\n  <img src=\"project_assets/{{project_slug}}/logo.svg\" class=\"logo\" alt=\"Project Logo\">\n  <main>\n    <figure>\n      <img src=\"finans-1750769809.webp\" alt=\"An elderly couple kissing under an umbrella.\">\n      <figcaption>finans-1750769809.webp - An elderly couple lovingly kisses while standing under a black umbrella.</figcaption>\n    </figure>\n    <figure>\n      <img src=\"i̇sletme-1750769805.jpg\" alt=\"Adult and child hands touching through a glass, with BlackRock report.\">\n      <figcaption>i̇sletme-1750769805.jpg - An adult and a child touch hands through a glass pane, with a BlackRock annual report cover partially overlaying the image.</figcaption>\n    </figure>\n\n    <section>\n      <h2>Financials</h2>\n      <!-- Data will be collected from PDFs if available, otherwise, a file search will be performed. -->\n    </section>\n\n    <section>\n      <h2>Construction States</h2>\n      <!-- Data will be collected from PDFs if available, otherwise, a file search will be performed. -->\n    </section>\n\n    <section>\n      <h2>Any Alerts</h2>\n      <!-- Data will be collected from PDFs if available, otherwise, a file search will be performed. -->\n    </section>\n  </main>\n</body>\n</html>\n```\n```html\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Investor Report</title>\n  <link rel=\"stylesheet\" href=\"assets/styles.css\">\n</head>\n<body>\n  <header class=\"banner\"></header>\n  <img src=\"project_assets/{{project_slug}}/logo.svg\" class=\"logo\" alt=\"Project Logo\">\n  <main>\n    <figure>\n      <img src=\"finans-1750769809.webp\" alt=\"An elderly couple kissing under an umbrella.\">\n      <figcaption>finans-1750769809.webp - An elderly couple lovingly kisses while standing under a black umbrella.</figcaption>\n    </figure>\n    <figure>\n      <img src=\"i̇sletme-1750769805.jpg\" alt=\"Adult and child hands touching through a glass, with BlackRock report.\">\n      <figcaption>i̇sletme-1750769805.jpg - An adult and a child touch hands through a glass pane, with a BlackRock annual report cover partially overlaying the image.</figcaption>\n    </figure>\n\n    <section>\n      <h2>Financials</h2>\n      <p>The 2024 net profit for the İsra Holding Investment Portfolio reached 12,500,000 TL, with revenue streams deriving from shopping mall leases, resort village income, and commercial enterprises; the 2025 projection anticipates an increase to 18,000,000 TL.</p>\n    </section>\n\n    <section>\n      <h2>Construction States</h2>\n      <p>The V Mall İstanbul project has reached 75% completion, encompassing a construction area of 126,000 m² and a rentable area of 45,000 m², with the planned completion date set for May 15, 2025.</p>\n      <p>For the V Metroway project, the rentable area will be 25,000 m², offering 81 stores, and operations are expected to commence from June 20, 2025, under ECE Türkiye management.</p>\n    </section>\n\n    <section>\n      <h2>Any Alerts</h2>\n      <p>No operational or financial alerts were identified in the current reporting period.</p>\n    </section>\n  </main>\n</body>\n</html>\n```",
-    "pdf_path": null,
-    "report_generated": false,
+    "report_content": "<!DOCTYPE html>\n<html lang=\"tr\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>2024 Yılı Yatırımcı Raporu – İsra Holding</title>\n  <link href=\"https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Montserrat:wght@300;500;700&display=swap\" rel=\"stylesheet\">\n  <link rel=\"stylesheet\" href=\"assets/styles.css\">\n  <style>\n    body {\n      font-family: 'Lora', serif;\n      background: #F9FAFB;\n      color: #222;\n      line-height: 1.7;\n      padding: 0 20px;\n    }\n    header {\n      background: #2A3F54;\n      color: #FFF;\n      text-align: center;\n      padding: 60px 20px 40px 20px;\n      margin-bottom: 40px;\n      border-radius: 8px;\n      position: relative;\n    }\n    .logo {\n      display: block;\n      margin: 0 auto 18px auto;\n    }\n    .banner {\n      height: 80px;\n      background: url(\"project_assets/{{project_slug}}/banner.svg\") center/cover;\n      margin-bottom: 30px;\n      border-radius: 8px;\n    }\n    header h1 {\n      font-family: 'Montserrat', sans-serif;\n      font-weight: 700;\n      font-size: 2.3em;\n      letter-spacing: 2px;\n      margin-bottom: 10px;\n    }\n    header h2 {\n      font-family: 'Montserrat', sans-serif;\n      font-weight: 300;\n      font-size: 1.3em;\n      opacity: .92;\n      margin-bottom: 0;\n    }\n    section {\n      margin-bottom: 42px;\n    }\n    section h2 {\n      font-family: 'Montserrat', sans-serif;\n      font-weight: 500;\n      font-size: 1.5em;\n      color: #2A3F54;\n      margin-bottom: 15px;\n      position: relative;\n    }\n    section h2::after {\n      content: '';\n      width: 48px;\n      height: 3px;\n      background: #E9851B;\n      display: block;\n      margin-top: 5px;\n      border-radius: 2px;\n    }\n    .card {\n      background: #FFF;\n      padding: 22px;\n      border-radius: 8px;\n      box-shadow: 0 2px 6px rgba(0,0,0,0.08);\n      margin-top: 10px;\n    }\n    .card ul {\n      margin: 10px 0 0 20px;\n    }\n    .card ul li {\n      margin-bottom: 8px;\n    }\n    .card p {\n      margin-bottom: 12px;\n      color: #555;\n    }\n    figure {\n      margin: 32px auto 32px auto;\n      text-align: center;\n      max-width: 420px;\n    }\n    figure img {\n      width: 100%;\n      border-radius: 10px;\n      box-shadow: 0 2px 10px rgba(0,0,0,0.07);\n    }\n    figcaption {\n      font-size: 1em;\n      color: #666;\n      margin-top: 8px;\n      font-style: italic;\n    }\n    footer {\n      text-align: center;\n      font-size: 0.95em;\n      color: #888;\n      padding: 22px 0 10px 0;\n      border-top: 1px solid #EEE;\n      margin-top: 60px;\n    }\n  </style>\n</head>\n<body>\n  <header>\n    <img src=\"project_assets/{{project_slug}}/logo.svg\" alt=\"İsra Holding Logo\" class=\"logo\">\n    <div class=\"banner\"></div>\n    <h1>2024 Yılı Yatırımcı Raporu</h1>\n    <h2>İsra Holding Yatırım Portföyü – Kurumsal Yatırımcı Bilgilendirme</h2>\n  </header>\n\n  <figure>\n    <img src=\"finans-1750769809.webp\" alt=\"Elderly couple sharing a kiss under an umbrella\">\n    <figcaption>finans-1750769809.webp - Bir çiftin şemsiye altında paylaştığı sıcak bir an, sürdürülebilir ve uzun vadeli yatırımlarımızın simgesi.</figcaption>\n  </figure>\n\n  <figure>\n    <img src=\"i̇sletme-1750769805.jpg\" alt=\"Adult and child touching hands through glass, BlackRock report overlay\">\n    <figcaption>i̇sletme-1750769805.jpg - Nesiller arası güven ve sürdürülebilirlik, yatırım stratejimizin temel taşlarıdır.</figcaption>\n  </figure>\n\n  <section id=\"finansal-ozet\">\n    <h2>Finansal Özet ve Portföy Performansı</h2>\n    <div class=\"card\">\n      <p>2024 yılı itibarıyla İsra Holding Yatırım Portföyü, 12.500.000 TL net kâr elde etmiş olup, 2025 yılı için 18.000.000 TL kâr projeksiyonu ile güçlü bir büyüme ivmesi yakalamıştır. Gelir kaynaklarımız; AVM kiralamaları, tatil köyü gelirleri ve ticari işletmelerden oluşmaktadır. Bu çeşitlendirilmiş portföy, yatırımcılarımıza sürdürülebilir ve istikrarlı getiri sağlamaktadır.</p>\n    </div>\n  </section>\n\n  <section id=\"portfoy-varliklari\">\n    <h2>Portföy Varlıkları ve Proje Durumları</h2>\n    <div class=\"card\">\n      <ul>\n        <li><strong>V Mall İstanbul:</strong> 126.000 m² toplam yapı alanı ve 45.000 m² kiralanabilir alan ile inşaatın %75’i tamamlanmış olup, projenin 15 Mayıs 2025 tarihinde tamamlanması hedeflenmektedir.</li>\n        <li><strong>V Metroway:</strong> 25.000 m² kiralanabilir alan ve 81 mağaza kapasitesiyle, işletme yönetimi ECE Türkiye tarafından devralınacak ve açılış 20 Haziran 2025’te gerçekleştirilecektir.</li>\n        <li><strong>V Orman Resort:</strong> Doğa turizmi odaklı vizyonu ile Bolu’nun doğal güzelliklerini konforla buluşturan bir destinasyon olarak, tanıtım kampanyaları ve etkinliklerle marka bilinirliği artırılmıştır.</li>\n      </ul>\n    </div>\n  </section>\n\n  <section id=\"stratejik-inisiyatifler\">\n    <h2>Stratejik İnisiyatifler ve Operasyonel Gelişmeler</h2>\n    <div class=\"card\">\n      <p>2024 yılında, portföyümüzün değerini artırmak amacıyla; yeni kiralama anlaşmaları, operasyonel verimlilik projeleri ve müşteri deneyimini iyileştiren dijitalleşme adımları hayata geçirilmiştir. ECE Türkiye ile yapılan stratejik iş birliği, AVM yönetiminde uluslararası standartların uygulanmasını sağlamaktadır. Ayrıca, V Orman Resort’un pazarlama faaliyetleriyle doğa turizmi segmentinde önemli bir pazar payı hedeflenmektedir.</p>\n    </div>\n  </section>\n\n  <section id=\"surdurulebilirlik-ve-kurumsal-sosyal-sorumluluk\">\n    <h2>Sürdürülebilirlik ve Kurumsal Sosyal Sorumluluk</h2>\n    <div class=\"card\">\n      <p>İsra Holding olarak, yatırımlarımızda çevresel sürdürülebilirlik ve toplumsal faydayı ön planda tutuyoruz. V Orman Resort projesi, doğa ile uyumlu mimarisi ve çevre dostu uygulamaları ile örnek teşkil etmektedir. Ayrıca, portföyümüzdeki tüm projelerde enerji verimliliği ve sosyal sorumluluk ilkeleri titizlikle uygulanmaktadır.</p>\n    </div>\n  </section>\n\n  <footer>\n    © 2024 İsra Holding Yatırım Portföyü<br>\n    Tüm hakları saklıdır.\n  </footer>\n</body>\n</html>",
+    "pdf_path": "data/reports/V_Metroway/V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c.pdf",
+    "report_generated": true,
     "status": "completed",
-    "pdfFileName": null
+    "pdfFileName": "V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c.pdf"
   }
 }
