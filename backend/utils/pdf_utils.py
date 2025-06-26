@@ -435,41 +435,51 @@ def get_project_images_map(project_name: str) -> Dict[str, str]:
 
 def load_project_assets(project_name: str) -> Dict[str, str]:
     """
-    Load project assets (logo, banner) and convert them to base64.
-    
-    Args:
-        project_name: Name of the project
-        
-    Returns:
-        Dictionary mapping asset names to base64 data URIs
+    Load project assets (SVGs, logos) and convert them to base64.
+    Uses the manifest.json to know which assets to load.
     """
+    from pathlib import Path
+    import json
+    
     BASE_DIR = Path(__file__).resolve().parent.parent
     assets_map = {}
     
-    # Try to load from project_assets directory
-    project_slug = project_name.lower().replace(" ", "_")
-    assets_dir = BASE_DIR / "data" / "project_assets" / project_slug
+    # Load manifest to know which assets belong to this project
+    manifest_path = BASE_DIR / "data" / "project_assets" / "manifest.json"
+    if not manifest_path.exists():
+        logger.warning(f"Manifest file not found: {manifest_path}")
+        return assets_map
     
-    if assets_dir.exists():
-        for asset_path in assets_dir.glob("*"):
-            if asset_path.is_file() and asset_path.suffix.lower() in ['.svg', '.png', '.jpg', '.jpeg']:
-                asset_name = asset_path.stem  # Get filename without extension
-                base64_data = encode_image_to_base64(asset_path)
-                if base64_data:
-                    assets_map[asset_name] = base64_data
-                    logger.info(f"Loaded project asset: {asset_name}")
+    try:
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading manifest: {e}")
+        return assets_map
     
-    # Also check for common assets in the parent project_assets directory
-    common_assets_dir = BASE_DIR / "data" / "project_assets"
-    for asset_name in ['isra_logo', 'logo']:
-        for ext in ['.png', '.svg', '.jpg']:
-            asset_path = common_assets_dir / f"{asset_name}{ext}"
-            if asset_path.exists():
-                base64_data = encode_image_to_base64(asset_path)
-                if base64_data:
-                    assets_map[asset_name] = base64_data
-                    logger.info(f"Loaded common asset: {asset_name}")
-                break
+    # Check if project has assets defined
+    if project_name not in manifest:
+        logger.warning(f"No assets defined for project: {project_name}")
+        return assets_map
+    
+    project_assets = manifest[project_name]
+    
+    # Load each asset defined in manifest
+    for asset_name, asset_path in project_assets.items():
+        # Convert relative path to absolute
+        if asset_path.startswith("backend/"):
+            asset_path = asset_path.replace("backend/", "")
+        
+        full_path = BASE_DIR / asset_path
+        
+        if full_path.exists():
+            base64_data = encode_image_to_base64(full_path)
+            if base64_data:
+                # Use the asset name from manifest as the key
+                assets_map[asset_name] = base64_data
+                logger.info(f"Loaded project asset: {asset_name} from {full_path}")
+        else:
+            logger.warning(f"Asset file not found: {full_path}")
     
     return assets_map
 
@@ -576,117 +586,268 @@ def replace_image_placeholders_in_html(html_content: str, project_name: str) -> 
 # Example of how to integrate this into your existing generate_pdf_from_html function:
 def generate_pdf_from_html_with_images(html_content: str, project_name: str, report_id: str) -> Path:
     """
-    Enhanced version of generate_pdf_from_html that replaces image placeholders.
-    
-    Args:
-        html_content: The HTML content with image placeholders
-        project_name: The name of the project
-        report_id: The unique report ID
-        
-    Returns:
-        Path: The path to the generated PDF file
+    Enhanced version that better handles SVG and image replacement for WeasyPrint.
     """
     from weasyprint import HTML, CSS
     from weasyprint.text.fonts import FontConfiguration
+    import re
     
-    logger = logging.getLogger(__name__)
+    logger.info(f"[PDF] Starting PDF generation for project: {project_name}")
     
-    # First, replace image placeholders with base64 data
-    html_with_images = replace_image_placeholders_in_html(html_content, project_name)
+    # Get all available images and assets
+    images_map = get_project_images_map(project_name)
+    assets_map = load_project_assets(project_name)
+    all_images = {**images_map, **assets_map}
     
-    # Wrap the HTML content in a complete document with styling
-    full_html = f"""
-    <!DOCTYPE html>
-    <html lang="tr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{project_name} - Yatırımcı Raporu</title>
-        <style>
-            @page {{
-                size: A4;
-                margin: 2cm;
-            }}
-            body {{
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
+    logger.info(f"[PDF] Available assets: {list(all_images.keys())}")
+    
+    # Enhanced replacement function that handles img tags
+    def replace_all_image_references(html: str) -> str:
+        """Replace all image references with base64 data URIs"""
+        
+        # Pattern for img src attributes
+        img_pattern = r'<img\s+([^>]*?)src\s*=\s*["\']?([^"\'\s>]+)["\']?([^>]*?)>'
+        
+        def replace_img(match):
+            before = match.group(1) or ''
+            src = match.group(2)
+            after = match.group(3) or ''
+            
+            # Clean the src to get just the filename
+            filename = src.split('/')[-1].split('.')[0]
+            
+            if filename in all_images:
+                logger.info(f"[PDF] Replacing image: {filename}")
+                return f'<img {before}src="{all_images[filename]}"{after}>'
+            else:
+                logger.warning(f"[PDF] Image not found: {filename} (from src: {src})")
+                # Try to find a close match
+                for key in all_images.keys():
+                    if key.lower() in filename.lower() or filename.lower() in key.lower():
+                        logger.info(f"[PDF] Using close match: {key} for {filename}")
+                        return f'<img {before}src="{all_images[key]}"{after}>'
+                return match.group(0)
+        
+        html = re.sub(img_pattern, replace_img, html, flags=re.IGNORECASE | re.DOTALL)
+        
+        return html
+    
+    # Replace all image references
+    html_with_images = replace_all_image_references(html_content)
+    
+    # Additional CSS for better PDF rendering
+    additional_css = """
+    <style>
+        /* Ensure images don't break across pages */
+        img { 
+            page-break-inside: avoid; 
+            max-width: 100%;
+            height: auto;
+        }
+        .page { 
+            page-break-after: always;
+            page-break-inside: avoid;
+        }
+        /* Better print rendering */
+        @media print {
+            .page {
                 margin: 0;
                 padding: 0;
-            }}
-            h1, h2, h3 {{
-                color: #2c3e50;
-                margin-top: 1.5em;
-            }}
-            h1 {{
-                text-align: center;
-                border-bottom: 3px solid #3498db;
-                padding-bottom: 0.5em;
-            }}
-            section {{
-                margin-bottom: 2em;
-                page-break-inside: avoid;
-            }}
-            figure {{
-                margin: 1em 0;
-                text-align: center;
-            }}
-            img {{
-                max-width: 100%;
-                height: auto;
-            }}
-            figcaption {{
-                font-style: italic;
-                color: #666;
-                margin-top: 0.5em;
-            }}
-            .logo {{
-                height: 42px;
-            }}
-            .banner {{
-                height: 80px;
-                background-color: #f0f0f0;
-                margin-bottom: 2em;
-            }}
-            table {{
-                border-collapse: collapse;
-                width: 100%;
-                margin: 1em 0;
-            }}
-            th, td {{
-                border: 1px solid #ddd;
-                padding: 8px;
-                text-align: left;
-            }}
-            th {{
-                background-color: #f2f2f2;
-            }}
-        </style>
-    </head>
-    <body>
-        {html_with_images}
-    </body>
-    </html>
+            }
+        }
+    </style>
     """
     
-    # Get the PDF output path
+    # Insert additional CSS before closing head tag
+    if '</head>' in html_with_images:
+        html_with_images = html_with_images.replace('</head>', additional_css + '</head>')
+    
+    # Save debug HTML
+    debug_path = Path(f"debug_{project_name}_final.html")
+    with open(debug_path, 'w', encoding='utf-8') as f:
+        f.write(html_with_images)
+    logger.info(f"[PDF] Debug HTML saved to: {debug_path}")
+    
+    # Get PDF output path
     pdf_path = get_report_path(project_name, report_id)
-    
-    # Ensure the directory exists
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    logger.info(f"[PDF] Generating PDF at: {pdf_path}")
     
     try:
         # Configure fonts
         font_config = FontConfiguration()
         
-        # Create PDF from HTML
-        HTML(string=full_html).write_pdf(str(pdf_path), font_config=font_config)
+        # Create PDF with specific options for better rendering
+        HTML(
+            string=html_with_images,
+            base_url=str(Path(__file__).parent.parent)
+        ).write_pdf(
+            str(pdf_path),
+            font_config=font_config,
+            presentational_hints=True,  # Better CSS support
+            optimize_images=True,       # Optimize embedded images
+        )
         
         logger.info(f"[PDF] PDF generated successfully: {pdf_path}")
         return pdf_path
         
     except Exception as e:
-        logger.error(f"[PDF] Error generating PDF: {str(e)}")
+        logger.error(f"[PDF] Error generating PDF: {str(e)}", exc_info=True)
         raise Exception(f"Failed to generate PDF: {str(e)}")
+
+def replace_image_placeholders_in_html(html_content: str, project_name: str) -> str:
+    """
+    Replace image filename placeholders in HTML with base64 encoded images.
+    Handles both img src and CSS background-image properties.
+    """
+    import re
+    from pathlib import Path
+    
+    # Get uploaded images map
+    images_map = get_project_images_map(project_name)
+    
+    # Get project assets map (SVGs)
+    assets_map = load_project_assets(project_name)
+    
+    # Combine both maps
+    all_images = {**images_map, **assets_map}
+    
+    logger.info(f"[Replace] Available images for {project_name}: {list(all_images.keys())}")
+    
+    if not all_images:
+        logger.warning(f"No images or assets found for project: {project_name}")
+        return html_content
+    
+    # Pattern 1: Replace img src attributes (with or without quotes)
+    img_pattern = r'<img\s+([^>]*\s+)?src\s*=\s*["\']?([^"\'\s>]+)["\']?([^>]*)>'
+    
+    def replace_img_src(match):
+        before_src = match.group(1) or ''
+        src_value = match.group(2)
+        after_src = match.group(3) or ''
+        
+        # Clean the src value (remove any paths, extensions)
+        filename = src_value.split('/')[-1].split('.')[0]
+        
+        if filename in all_images:
+            logger.info(f"[Replace] Replacing img src: {filename}")
+            return f'<img {before_src}src="{all_images[filename]}"{after_src}>'
+        else:
+            logger.warning(f"[Replace] Image not found in assets: {filename}")
+            return match.group(0)
+    
+    # Replace all img tags
+    html_content = re.sub(img_pattern, replace_img_src, html_content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Pattern 2: Replace CSS background-image in style attributes
+    # Match both url('filename') and url(filename) formats
+    style_bg_pattern = r'style\s*=\s*["\']([^"\']*background-image:\s*url\(["\']?)([^"\'\)]+)(["\']?\)[^"\']*)["\']'
+    
+    def replace_style_bg(match):
+        style_before = match.group(1)
+        url_value = match.group(2)
+        style_after = match.group(3)
+        
+        # Clean the filename
+        filename = url_value.split('/')[-1].split('.')[0]
+        
+        if filename in all_images:
+            logger.info(f"[Replace] Replacing background-image: {filename}")
+            return f'style="{style_before}{all_images[filename]}{style_after}"'
+        else:
+            logger.warning(f"[Replace] Background image not found: {filename}")
+            return match.group(0)
+    
+    # Replace background-image in style attributes
+    html_content = re.sub(style_bg_pattern, replace_style_bg, html_content, flags=re.IGNORECASE)
+    
+    # Pattern 3: Replace background: url() in CSS styles
+    css_bg_pattern = r'background:\s*url\(["\']?([^"\'\)]+)["\']?\)([^;}]*)'
+    
+    def replace_css_bg(match):
+        url_value = match.group(1)
+        css_props = match.group(2)
+        
+        # Clean the filename
+        filename = url_value.split('/')[-1].split('.')[0]
+        
+        if filename in all_images:
+            logger.info(f"[Replace] Replacing CSS background: {filename}")
+            return f'background: url("{all_images[filename]}"){css_props}'
+        else:
+            logger.warning(f"[Replace] CSS background image not found: {filename}")
+            return match.group(0)
+    
+    # Replace CSS background
+    html_content = re.sub(css_bg_pattern, replace_css_bg, html_content, flags=re.IGNORECASE)
+    
+    # Pattern 4: Handle any remaining url() references in the CSS
+    remaining_url_pattern = r'url\(["\']?([^"\'\)]+)["\']?\)'
+    
+    def replace_remaining_urls(match):
+        url_value = match.group(1)
+        
+        # Skip if it's already a data URI
+        if url_value.startswith('data:'):
+            return match.group(0)
+            
+        # Clean the filename
+        filename = url_value.split('/')[-1].split('.')[0]
+        
+        if filename in all_images:
+            logger.info(f"[Replace] Replacing remaining URL: {filename}")
+            return f'url("{all_images[filename]}")'
+        else:
+            return match.group(0)
+    
+    # Replace remaining URLs
+    html_content = re.sub(remaining_url_pattern, replace_remaining_urls, html_content, flags=re.IGNORECASE)
+    
+    return html_content    
+    
+
+def debug_html_content(html_content: str, project_name: str):
+    """
+    Debug function to log all image/SVG references in the HTML
+    """
+    import re
+    
+    logger.info(f"[DEBUG] Analyzing HTML for project: {project_name}")
+    
+    # Find all img src references
+    img_srcs = re.findall(r'<img[^>]+src\s*=\s*["\']?([^"\'\s>]+)', html_content, re.IGNORECASE)
+    logger.info(f"[DEBUG] Found img src values: {img_srcs}")
+    
+    # Find all background-image references
+    bg_images = re.findall(r'background-image:\s*url\(["\']?([^"\'\)]+)', html_content, re.IGNORECASE)
+    logger.info(f"[DEBUG] Found background-image values: {bg_images}")
+    
+    # Find all background url references
+    bg_urls = re.findall(r'background:\s*url\(["\']?([^"\'\)]+)', html_content, re.IGNORECASE)
+    logger.info(f"[DEBUG] Found background url values: {bg_urls}")
+    
+    # Check what assets are available
+    assets_map = load_project_assets(project_name)
+    logger.info(f"[DEBUG] Available assets: {list(assets_map.keys())}")
+    
+    return    
+from playwright.sync_api import sync_playwright
+
+def generate_pdf_with_playwright(html_content: str, project_name: str, report_id: str) -> Path:
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        
+        # Load HTML with proper base path
+        page.set_content(html_content, base_url=f"file://{Path.cwd()}/")
+        
+        # Generate PDF
+        pdf_path = get_report_path(project_name, report_id)
+        page.pdf(
+            path=str(pdf_path),
+            format='A4',
+            print_background=True,
+            margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'}
+        )
+        
+        browser.close()
+        return pdf_path

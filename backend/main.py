@@ -778,10 +778,10 @@ async def generate_report(project_name: str):
         
         try:
             # Import the enhanced PDF generation function
-            from utils.pdf_utils import generate_pdf_from_html_with_images
+            from utils.pdf_utils import generate_pdf_with_playwright
             
             # Generate the PDF with images replaced
-            pdf_path = generate_pdf_from_html_with_images(html_content, project_name, report_id)
+            pdf_path = generate_pdf_with_playwright(html_content, project_name, report_id)
             pdf_filename = pdf_path.name
             
             logger.info(f"[REPORT] PDF created successfully: {pdf_filename}")
