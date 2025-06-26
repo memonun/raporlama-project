@@ -1,0 +1,20 @@
+{
+  "V_Metroway": {
+    "kapak_foto": "backend/data/project_assets/V_Metroway/kapak_foto.svg",
+    "metroway_foto": "backend/data/project_assets/V_Metroway/metroway_foto.jpg",
+    "metroway_frame": "backend/data/project_assets/V_Metroway/metroway_frame.svg",
+    "isra_logo": "backend/data/project_assets/isra_logo.png"
+  },
+  "V_Mall": {
+     "isra_logo": "backend/data/project_assets/isra_logo.png"
+    },
+  "V_Statu": {
+     "isra_logo": "backend/data/project_assets/isra_logo.png"
+    },
+  "V_Orman": {
+    "isra_logo": "backend/data/project_assets/isra_logo.png"
+    },
+  "V_Yesilada": {
+    "isra_logo": "backend/data/project_assets/isra_logo.png"
+    }
+}

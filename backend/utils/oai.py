@@ -118,14 +118,25 @@ def generate_full_html(project_name: str) -> str:
     upload_stats = upload_pdf_files_to_vector_store(vector_store["id"], dir_pdfs=pdf_folder, client=client)
     print(upload_stats)
     
+
+    metroway_prompt = BASE_DIR / "data" / "prompts" / "metroway_prompt.md"
+    generic_prompt = BASE_DIR / "data" / "prompts" / "htmlprompt.md"
     # Prepare the prompt for the response
-    def read_prompt_from_md() -> str:
-        """Placeholder: Reads prompt text from a markdown file."""
-        md_path = BASE_DIR / "data" / "prompts" / "htmlprompt.md"  # Change this path as needed
+    def read_prompt_from_md(md_path) -> str:
         with open(md_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    prompt = read_prompt_from_md()
+    if(project_name == "V_Metroway"):
+        prompt = read_prompt_from_md(metroway_prompt)
+        # Add the assets to the prompt
+        if assets:
+            prompt += "\n\nAssets:\n"
+            for key, value in assets.items():
+                prompt += f"{key}: {value}\n"
+    else:
+        prompt = read_prompt_from_md(generic_prompt) 
+
+    
     response = client.responses.create(
         model="gpt-4.1",
         input=prompt,

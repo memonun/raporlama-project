@@ -29,8 +29,7 @@ import base64
 import logging
 import sys
 import time
-from werkzeug.utils import secure_filename
-from flask import jsonify, request, send_file  # <-- Add this import
+
 
 from utils.oai import generate_full_html
 from utils.pdf_utils import (
@@ -725,8 +724,9 @@ async def generate_report(project_name: str):
     """
     Report generation endpoint that:
     1. Calls OpenAI to generate HTML content
-    2. Generates PDF from the HTML
-    3. Updates the project data
+    2. Replaces image placeholders with actual images
+    3. Generates PDF from the HTML
+    4. Updates the project data
     """
     try:
         logger.info(f"[REPORT] Starting report generation for project: {project_name}")
@@ -763,8 +763,8 @@ async def generate_report(project_name: str):
             
             # This returns HTML content as a string
             html_content = generate_full_html(project_name)
-            
-            logger.info(f"[REPORT] OpenAI response received, Response: {html_content} characters")
+            print(html_content)
+            logger.info(f"[REPORT] OpenAI response received, Response: {len(html_content)} characters")
             
         except FileNotFoundError as e:
             logger.error(f"[REPORT] File not found error: {str(e)}")
@@ -773,15 +773,15 @@ async def generate_report(project_name: str):
             logger.error(f"[REPORT] OpenAI generation error: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to generate HTML content: {str(e)}")
         
-        # STEP 2: Generate PDF from HTML
+        # STEP 2: Generate PDF from HTML (with image replacement)
         logger.info(f"[REPORT] Step 2: Converting HTML to PDF for project: {project_name}")
         
         try:
-            # Import the PDF generation function
-            from utils.pdf_utils import generate_pdf_from_html
+            # Import the enhanced PDF generation function
+            from utils.pdf_utils import generate_pdf_from_html_with_images
             
-            # Generate the PDF
-            pdf_path = generate_pdf_from_html(html_content, project_name, report_id)
+            # Generate the PDF with images replaced
+            pdf_path = generate_pdf_from_html_with_images(html_content, project_name, report_id)
             pdf_filename = pdf_path.name
             
             logger.info(f"[REPORT] PDF created successfully: {pdf_filename}")
@@ -834,8 +834,7 @@ async def generate_report(project_name: str):
     except Exception as e:
         logger.error(f"[REPORT] Unexpected error during report generation: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Unexpected error during report generation: {str(e)}")
-
-
+    
 # Backend route for PDF deletion
 @app.delete('/api/project/{project_name}/delete-pdf')
 async def delete_pdf(project_name: str, path: str):

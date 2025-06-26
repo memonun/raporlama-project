@@ -1,6 +1,7 @@
 import os
 import logging
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List , Dict 
+import base64
 from pathlib import Path
 from datetime import datetime
 import tempfile
@@ -354,12 +355,231 @@ def get_pdf_info(pdf_path: Path) -> Optional[dict]:
         return None 
     # Add this function to your existing pdf_utils.py file
 
-def generate_pdf_from_html(html_content: str, project_name: str, report_id: str) -> Path:
+logger = logging.getLogger(__name__)
+
+def encode_image_to_base64(image_path: Path) -> Optional[str]:
     """
-    Generate a PDF file from HTML content using WeasyPrint.
+    Encode an image file to base64 data URI.
     
     Args:
-        html_content: The HTML content to convert to PDF
+        image_path: Path to the image file
+        
+    Returns:
+        Base64 data URI string or None if error
+    """
+    try:
+        # Determine MIME type based on file extension
+        mime_types = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml',
+            '.webp': 'image/webp',
+            '.bmp': 'image/bmp',
+            '.tiff': 'image/tiff'
+        }
+        
+        suffix = image_path.suffix.lower()
+        mime_type = mime_types.get(suffix, 'image/jpeg')
+        
+        # Read and encode the image
+        with open(image_path, 'rb') as img_file:
+            encoded = base64.b64encode(img_file.read()).decode('utf-8')
+            
+        return f"data:{mime_type};base64,{encoded}"
+        
+    except Exception as e:
+        logger.error(f"Error encoding image {image_path}: {str(e)}")
+        return None
+
+def get_project_images_map(project_name: str) -> Dict[str, str]:
+    """
+    Create a mapping of image filenames to their base64 data URIs.
+    
+    Args:
+        project_name: Name of the project
+        
+    Returns:
+        Dictionary mapping filenames to base64 data URIs
+    """
+    from pathlib import Path
+    
+    # Define paths
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    ACTIVE_UPLOADS_PATH = BASE_DIR / "data" / "uploads" / "active_report"
+    
+    # Create slug from project name (matching the pattern in your code)
+    slug = project_name.lower().replace(" ", "_")
+    image_folder = ACTIVE_UPLOADS_PATH / slug / "images"
+    
+    images_map = {}
+    
+    if not image_folder.exists():
+        logger.warning(f"Image folder not found: {image_folder}")
+        return images_map
+    
+    # Process all images in the folder
+    for image_path in image_folder.glob("*"):
+        if image_path.is_file() and image_path.suffix.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp', '.tiff']:
+            filename = image_path.name
+            base64_data = encode_image_to_base64(image_path)
+            
+            if base64_data:
+                images_map[filename] = base64_data
+                logger.info(f"Encoded image: {filename}")
+            else:
+                logger.warning(f"Failed to encode image: {filename}")
+    
+    return images_map
+
+def load_project_assets(project_name: str) -> Dict[str, str]:
+    """
+    Load project assets (logo, banner) and convert them to base64.
+    
+    Args:
+        project_name: Name of the project
+        
+    Returns:
+        Dictionary mapping asset names to base64 data URIs
+    """
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    assets_map = {}
+    
+    # Try to load from project_assets directory
+    project_slug = project_name.lower().replace(" ", "_")
+    assets_dir = BASE_DIR / "data" / "project_assets" / project_slug
+    
+    if assets_dir.exists():
+        for asset_path in assets_dir.glob("*"):
+            if asset_path.is_file() and asset_path.suffix.lower() in ['.svg', '.png', '.jpg', '.jpeg']:
+                asset_name = asset_path.stem  # Get filename without extension
+                base64_data = encode_image_to_base64(asset_path)
+                if base64_data:
+                    assets_map[asset_name] = base64_data
+                    logger.info(f"Loaded project asset: {asset_name}")
+    
+    # Also check for common assets in the parent project_assets directory
+    common_assets_dir = BASE_DIR / "data" / "project_assets"
+    for asset_name in ['isra_logo', 'logo']:
+        for ext in ['.png', '.svg', '.jpg']:
+            asset_path = common_assets_dir / f"{asset_name}{ext}"
+            if asset_path.exists():
+                base64_data = encode_image_to_base64(asset_path)
+                if base64_data:
+                    assets_map[asset_name] = base64_data
+                    logger.info(f"Loaded common asset: {asset_name}")
+                break
+    
+    return assets_map
+
+def replace_image_placeholders_in_html(html_content: str, project_name: str) -> str:
+    """
+    Replace image filename placeholders and template variables in HTML with base64 encoded images.
+    
+    This function:
+    1. Replaces {{project_slug}} template variables
+    2. Replaces image filenames with base64 data URIs
+    3. Handles project assets (logo, banner)
+    4. Removes external stylesheet references
+    
+    Args:
+        html_content: The HTML content with placeholders
+        project_name: Name of the project
+        
+    Returns:
+        HTML content with images replaced by base64 data URIs
+    """
+    # First, replace template variables
+    project_slug = project_name.lower().replace(" ", "_")
+    html_content = html_content.replace("{{project_slug}}", project_slug)
+    
+    # Remove external stylesheet references as they cause issues with WeasyPrint
+    html_content = re.sub(r'<link\s+[^>]*href\s*=\s*["\']assets/styles\.css["\'][^>]*>', '', html_content)
+    
+    # Get uploaded images map
+    images_map = get_project_images_map(project_name)
+    
+    # Get project assets map
+    assets_map = load_project_assets(project_name)
+    
+    # Combine both maps
+    all_images = {**images_map, **assets_map}
+    
+    if not all_images:
+        logger.warning(f"No images or assets found for project: {project_name}")
+    
+    # Pattern to match img tags with src attributes
+    img_pattern = r'<img\s+([^>]*\s+)?src\s*=\s*["\']([^"\']+)["\']([^>]*)>'
+    
+    def replace_img_src(match):
+        """Replace function for regex substitution."""
+        before_src = match.group(1) or ''
+        src_value = match.group(2)
+        after_src = match.group(3) or ''
+        
+        # Extract just the filename from various path formats
+        filename = None
+        if 'project_assets/' in src_value:
+            # Handle project_assets/v_metroway/logo.svg format
+            parts = src_value.split('/')
+            if len(parts) >= 2:
+                filename = parts[-1].split('.')[0]  # Get filename without extension
+        elif '/' not in src_value and '\\' not in src_value and not src_value.startswith(('http://', 'https://', 'data:')):
+            # It's already just a filename
+            filename = src_value
+        
+        if filename:
+            # Try to find the image in our maps
+            # First try with extension
+            if filename in all_images:
+                logger.info(f"Replacing image placeholder: {filename}")
+                return f'<img {before_src}src="{all_images[filename]}"{after_src}>'
+            # Then try without extension
+            filename_no_ext = filename.split('.')[0]
+            if filename_no_ext in all_images:
+                logger.info(f"Replacing image placeholder: {filename_no_ext}")
+                return f'<img {before_src}src="{all_images[filename_no_ext]}"{after_src}>'
+            else:
+                logger.warning(f"Image not found: {filename}")
+        
+        # Return original if no replacement needed
+        return match.group(0)
+    
+    # Replace all img tags
+    modified_html = re.sub(img_pattern, replace_img_src, html_content, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Handle CSS background-image properties
+    css_pattern = r'background:\s*url\(["\']?([^"\')]+)["\']?\)([^;]*);'
+    
+    def replace_css_url(match):
+        """Replace function for CSS background images."""
+        url_value = match.group(1)
+        css_props = match.group(2)
+        
+        # Extract filename from path
+        if 'project_assets/' in url_value:
+            parts = url_value.split('/')
+            if len(parts) >= 2:
+                filename = parts[-1].split('.')[0]
+                if filename in all_images:
+                    logger.info(f"Replacing CSS background image: {filename}")
+                    return f'background: url("{all_images[filename]}"){css_props};'
+        
+        return match.group(0)
+    
+    # Replace CSS background images
+    modified_html = re.sub(css_pattern, replace_css_url, modified_html, flags=re.IGNORECASE)
+    
+    return modified_html
+
+# Example of how to integrate this into your existing generate_pdf_from_html function:
+def generate_pdf_from_html_with_images(html_content: str, project_name: str, report_id: str) -> Path:
+    """
+    Enhanced version of generate_pdf_from_html that replaces image placeholders.
+    
+    Args:
+        html_content: The HTML content with image placeholders
         project_name: The name of the project
         report_id: The unique report ID
         
@@ -368,9 +588,11 @@ def generate_pdf_from_html(html_content: str, project_name: str, report_id: str)
     """
     from weasyprint import HTML, CSS
     from weasyprint.text.fonts import FontConfiguration
-    import logging
     
     logger = logging.getLogger(__name__)
+    
+    # First, replace image placeholders with base64 data
+    html_with_images = replace_image_placeholders_in_html(html_content, project_name)
     
     # Wrap the HTML content in a complete document with styling
     full_html = f"""
@@ -442,7 +664,7 @@ def generate_pdf_from_html(html_content: str, project_name: str, report_id: str)
         </style>
     </head>
     <body>
-        {html_content}
+        {html_with_images}
     </body>
     </html>
     """
@@ -460,10 +682,7 @@ def generate_pdf_from_html(html_content: str, project_name: str, report_id: str)
         font_config = FontConfiguration()
         
         # Create PDF from HTML
-        HTML(string=full_html).write_pdf(
-            str(pdf_path),
-            font_config=font_config
-        )
+        HTML(string=full_html).write_pdf(str(pdf_path), font_config=font_config)
         
         logger.info(f"[PDF] PDF generated successfully: {pdf_path}")
         return pdf_path
