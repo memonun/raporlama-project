@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Q2 2025 Financial Report – [Your Company]</title>
+  <style>
+    :root {
+      --soft-blue:    #4A90E2;
+      --light-blue:   #AED6F1;
+      --bg-light:     #F4F8FB;
+      --text-dark:    #232323;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--text-dark);
+      background: var(--bg-light);
+      line-height: 1.6;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2.5rem 3rem;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2rem;
+      color: var(--soft-blue);
+    }
+    header nav a {
+      margin-left: 2rem;
+      color: var(--text-dark);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    header nav a:hover {
+      color: var(--soft-blue);
+      text-decoration: underline;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      max-width: 1200px;
+      margin: 3rem auto;
+      padding: 0 3rem;
+      gap: 3rem;
+    }
+    .hero-text h2 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--soft-blue);
+    }
+    .hero-text p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .btn {
+      display: inline-block;
+      margin-right: 1rem;
+      padding: 0.9rem 1.8rem;
+      border: 2px solid var(--soft-blue);
+      background: var(--soft-blue);
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .btn.outline {
+      background: transparent;
+      color: var(--soft-blue);
+    }
+    figure {
+      margin: 0 0 1rem;
+    }
+    figure img {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    figcaption {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+    section {
+      max-width: 1200px;
+      margin: 4rem auto;
+      padding: 0 3rem;
+    }
+    section h3 {
+      color: var(--soft-blue);
+      border-bottom: 2px solid var(--soft-blue);
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.5rem;
+      font-size: 1.75rem;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+    }
+    .card h4 {
+      margin: 1rem 0 0.5rem;
+      color: var(--soft-blue);
+      font-size: 1.25rem;
+    }
+    .card p {
+      margin: 0;
+      font-size: 1rem;
+      flex-grow: 1;
+    }
+    .leaderboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+      text-align: center;
+    }
+    .leader {
+      background: white;
+      padding: 2rem;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .leader img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 1rem;
+    }
+    .leader h5 {
+      margin: 0 0 0.5rem;
+      color: var(--soft-blue);
+      font-size: 1.1rem;
+    }
+    .leader span {
+      font-size: 0.95rem;
+      color: #555;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem 3rem;
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>[Your Company]</h1>
+    <nav>
+      <a href="#overview">Overview</a>
+      <a href="#highlights">Highlights</a>
+      <a href="#segments">Segments</a>
+      <a href="#metrics">Metrics</a>
+      <a href="#leadership">Leadership</a>
+      <a href="#ir">Investor Relations</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div class="hero-text">
+      <h2>Q2 2025 Financial Overview</h2>
+      <p>A concise summary of our results, strategy, and outlook for the next quarter.</p>
+      <a class="btn" href="#highlights">View Highlights</a>
+      <a class="btn outline" href="#ir">Download Full Report</a>
+    </div>
+    <figure>
+      <img src="placeholder-hero-chart.png" alt="Quarterly Revenue Chart" />
+      <figcaption>[Chart: Quarterly Revenue Trend]</figcaption>
+    </figure>
+  </div>
+
+  <section id="overview">
+    <h3>1. Company Overview</h3>
+    <figure>
+      <img src="placeholder-overview.png" alt="Company at a glance" />
+      <figcaption>[Image: Our global offices or logo]</figcaption>
+    </figure>
+    <p>[Brief narrative: who we are, what we do, key milestones this quarter]</p>
+  </section>
+
+  <section id="highlights">
+    <h3>2. Financial Highlights</h3>
+    <figure>
+      <img src="placeholder-highlights.png" alt="Key financial metrics" />
+      <figcaption>[Infographic: Revenue, EBITDA, Cash]</figcaption>
+    </figure>
+    <ul>
+      <li>Revenue grew <strong>12% YoY</strong> to <strong>$120 M</strong>.</li>
+      <li>Adjusted EBITDA margin expanded to <strong>22%</strong>.</li>
+      <li>Net cash balance reached <strong>$45 M</strong>, up <strong>8%</strong>.</li>
+    </ul>
+  </section>
+
+  <section id="segments">
+    <h3>3. Revenue by Segment</h3>
+    <div class="grid-3">
+      <div class="card">
+        <figure>
+          <img src="placeholder-segmentA.png" alt="Segment A performance" />
+          <figcaption>[Chart: Segment A Growth]</figcaption>
+        </figure>
+        <h4>Segment A</h4>
+        <p>$65 M (+10% YoY)</p>
+      </div>
+      <div class="card">
+        <figure>
+          <img src="placeholder-segmentB.png" alt="Segment B performance" />
+          <figcaption>[Chart: Segment B Growth]</figcaption>
+        </figure>
+        <h4>Segment B</h4>
+        <p>$35 M (+15% YoY)</p>
+      </div>
+      <div class="card">
+        <figure>
+          <img src="placeholder-segmentC.png" alt="Segment C performance" />
+          <figcaption>[Chart: Segment C Growth]</figcaption>
+        </figure>
+        <h4>Segment C</h4>
+        <p>$20 M (+8% YoY)</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="metrics">
+    <h3>4. Key Performance Metrics</h3>
+    <div class="grid-3">
+      <div class="card">
+        <h4>ARPU</h4>
+        <p>$120 (+5% QoQ)</p>
+      </div>
+      <div class="card">
+        <h4>Churn Rate</h4>
+        <p>3.2% (down 0.5pp)</p>
+      </div>
+      <div class="card">
+        <h4>New Customers</h4>
+        <p>8,500 (+18% YoY)</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="leadership">
+    <h3>5. Board & Leadership</h3>
+    <div class="leaderboard">
+      <div class="leader">
+        <img src="placeholder-ceo.jpg" alt="CEO Photo" />
+        <h5>Alex Morgan</h5>
+        <span>Chief Executive Officer</span>
+      </div>
+      <div class="leader">
+        <img src="placeholder-cfo.jpg" alt="CFO Photo" />
+        <h5>Jamie Lee</h5>
+        <span>Chief Financial Officer</span>
+      </div>
+      <div class="leader">
+        <img src="placeholder-coo.jpg" alt="COO Photo" />
+        <h5>Riley Chen</h5>
+        <span>Chief Operating Officer</span>
+      </div>
+      <div class="leader">
+        <img src="placeholder-cio.jpg" alt="CIO Photo" />
+        <h5>Taylor Patel</h5>
+        <span>Chief Information Officer</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="ir">
+    <h3>6. Investor Relations</h3>
+    <p>For questions or to request additional data, contact our IR team at <a href="mailto:ir@yourcompany.com">ir@yourcompany.com</a>.</p>
+  </section>
+
+  <footer>
+    &copy; <span id="year"></span> [Your Company] — All rights reserved.
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gazette-Style Investor Report – Q2 2025</title>
+  <style>
+    :root {
+      --primary-blue: #4A90E2;
+      --mat-black:    #1A1A1A;
+      --mat-gray:     #4A4A4A;
+      --light-gray:   #F5F5F5;
+      --bg-white:     #FFFFFF;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-white);
+      color: var(--mat-black);
+      font-family: Georgia, serif;
+      line-height: 1.5;
+    }
+    .page {
+      max-width: 1000px;
+      margin: 2rem auto;
+      padding: 2rem;
+      border-bottom: 1px solid var(--light-gray);
+    }
+    h1, h2, h3, h4 {
+      margin: 0 0 1rem;
+      color: var(--mat-black);
+      font-family: "Times New Roman", serif;
+    }
+    h1 { font-size: 3rem; text-align: center; }
+    h2 { font-size: 2rem; border-bottom: 2px solid var(--mat-gray); padding-bottom: 0.5rem; }
+    h3 { font-size: 1.5rem; color: var(--primary-blue); }
+    h4 { font-size: 1.25rem; margin-top: 1.5rem; }
+
+    .cover h2 {
+      font-style: italic;
+      color: var(--mat-gray);
+      margin-bottom: 2rem;
+    }
+    .cover .tagline {
+      text-align: center;
+      font-size: 1.1rem;
+      color: var(--mat-gray);
+      margin-bottom: 3rem;
+    }
+
+    .toc ol {
+      padding-left: 1.5rem;
+      color: var(--mat-gray);
+    }
+    .toc li {
+      margin-bottom: 0.5rem;
+    }
+
+    .columns {
+      column-count: 2;
+      column-gap: 2rem;
+      margin-top: 1rem;
+    }
+
+    figure {
+      margin: 1.5rem 0;
+      background: var(--light-gray);
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--mat-gray);
+      font-style: italic;
+    }
+    figcaption {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--mat-gray);
+      margin-top: 0.5rem;
+    }
+
+    .metrics {
+      display: flex;
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+    .metrics .metric {
+      flex: 1;
+      background: var(--light-gray);
+      padding: 1rem;
+      text-align: center;
+    }
+    .metrics .metric h4 {
+      margin: 0;
+      color: var(--primary-blue);
+      font-size: 1.5rem;
+    }
+    .metrics .metric p {
+      margin: 0.5rem 0 0;
+      color: var(--mat-gray);
+      font-size: 0.9rem;
+    }
+
+    .timeline {
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0 2rem 0;
+      border-left: 2px solid var(--light-gray);
+    }
+    .timeline li {
+      position: relative;
+      padding: 0.5rem 0 0.5rem 2rem;
+      font-size: 0.95rem;
+    }
+    .timeline li::before {
+      content: '';
+      position: absolute;
+      left: -7px;
+      top: 0.5rem;
+      width: 14px;
+      height: 14px;
+      background: var(--primary-blue);
+      border-radius: 50%;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--mat-gray);
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Page 1: Cover -->
+  <div class="page cover">
+    <h1>Gazette-style Investor Report</h1>
+    <h2>Q2 2025 / [Your Company]</h2>
+    <p class="tagline">An in-depth financial gazette for discerning investors</p>
+    <figure>Cover Image Placeholder</figure>
+  </div>
+
+  <!-- Page 2: Table of Contents -->
+  <div class="page toc">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li>Company Profile</li>
+      <li>Company Journey</li>
+      <li>Market Overview</li>
+      <li>Financial Highlights</li>
+      <li>Risk &amp; Mitigations</li>
+      <li>Leadership Team</li>
+      <li>Investor Relations</li>
+    </ol>
+  </div>
+
+  <!-- Page 3: Company Profile & Journey -->
+  <div class="page">
+    <h2>01. Company Profile</h2>
+    <div class="columns">
+      <p>[Intro text: mission, vision, values…]</p>
+      <figure>Profile Image Placeholder</figure>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <h4>2018</h4>
+        <p>Founded &amp; Seed Round</p>
+      </div>
+      <div class="metric">
+        <h4>2022</h4>
+        <p>$50 M Revenue Milestone</p>
+      </div>
+      <div class="metric">
+        <h4>2025</h4>
+        <p>Global Expansion</p>
+      </div>
+    </div>
+
+    <h2>02. Company Journey</h2>
+    <ul class="timeline">
+      <li><strong>2019:</strong> Launched flagship product &amp; Series A</li>
+      <li><strong>2020:</strong> Achieved profitability</li>
+      <li><strong>2023:</strong> Acquired TechCo</li>
+    </ul>
+    <div class="columns">
+      <p><strong>What We Do for Investors:</strong> [Business model, growth levers…]</p>
+      <p><strong>Who We Are:</strong> [Leadership bios, culture…]</p>
+    </div>
+  </div>
+
+  <!-- Page 4: Market & Segments -->
+  <div class="page">
+    <h2>03. Market Overview</h2>
+    <figure>Market Trend Chart Placeholder</figure>
+    <div class="columns">
+      <p>[Deep-dive text on TAM, trends, competitive landscape…]</p>
+    </div>
+
+    <h2>04. Revenue by Segment</h2>
+    <div class="metrics">
+      <div class="metric">
+        <h4>Segment A</h4>
+        <p>$65 M (+10% YoY)</p>
+      </div>
+      <div class="metric">
+        <h4>Segment B</h4>
+        <p>$35 M (+15% YoY)</p>
+      </div>
+      <div class="metric">
+        <h4>Segment C</h4>
+        <p>$20 M (+8% YoY)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 5: Financial Highlights & Risks -->
+  <div class="page">
+    <h2>05. Financial Highlights</h2>
+    <div class="columns">
+      <p>[Narrative on Revenue, ""EBITDA"", Cash flow…]</p>
+    </div>
+    <figure>Key Metrics Infographic Placeholder</figure>
+
+    <h2>06. Risks &amp; Mitigations</h2>
+    <ul>
+      <li><strong>Market Volatility:</strong> [Mitigation plan…]</li>
+      <li><strong>Supply Constraints:</strong> [Mitigation plan…]</li>
+      <li><strong>Regulatory Changes:</strong> [Mitigation plan…]</li>
+    </ul>
+  </div>
+
+  <!-- Page 6: Leadership & IR -->
+  <div class="page">
+    <h2>07. Leadership Team</h2>
+    <div class="columns">
+      <figure>CEO Photo Placeholder<br><figcaption>Alex Morgan, CEO</figcaption></figure>
+      <figure>CFO Photo Placeholder<br><figcaption>Jamie Lee, CFO</figcaption></figure>
+      <figure>COO Photo Placeholder<br><figcaption>Riley Chen, COO</figcaption></figure>
+      <figure>CIO Photo Placeholder<br><figcaption>Taylor Patel, CIO</figcaption></figure>
+    </div>
+
+    <h2>08. Investor Relations</h2>
+    <p>For inquiries, contact <a href="mailto:ir@yourcompany.com">ir@yourcompany.com</a></p>
+  </div>
+
+  <div class="footer">
+    &copy; <script>document.write(new Date().getFullYear())</script> [Your Company] — All rights reserved.
+  </div>
+
+</body>
+</html>"
