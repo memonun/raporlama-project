@@ -31,6 +31,7 @@ import sys
 import time
 
 
+from utils.report_utils import get_report_id_for_project
 from utils.oai import generate_full_html
 from utils.pdf_utils import (
     extract_text_from_pdf,
@@ -43,6 +44,7 @@ from utils.pdf_utils import (
     create_report_id,
     get_active_report_id,
     save_pdf_content,
+    generate_pdf_with_playwright
 )
 
 from models.basemodels import (
@@ -720,27 +722,8 @@ def reset_active_report_endpoint(project_name: str):
         raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
 
 @app.post("/project/{project_name}/generate-report")
-# In your main.py, update the generate_report function:
-
 async def generate_report(project_name: str, user_input: str = None):
-    """Your existing function, but with async PDF generation"""
-    try:
-        # ... existing code ...
-        
-        # Step 2: Convert HTML to PDF
-        logger.info(f"[REPORT] Step 2: Converting HTML to PDF for project: {project_name}")
-        
-        # Use await since we're in an async function
-        pdf_path = await generate_pdf_with_playwright(html_content, project_name, report_id)
-        
-        logger.info(f"[REPORT] PDF created successfully: {pdf_path.name}")
-        
-        # ... rest of your code ...
-        
-    except Exception as e:
-        logger.error(f"[REPORT] PDF generation error: {str(e)}")
-        raise
-async def generate_report(project_name: str):
+   
     """
     Report generation endpoint that:
     1. Calls OpenAI to generate HTML content
@@ -751,21 +734,7 @@ async def generate_report(project_name: str):
     try:
         logger.info(f"[REPORT] Starting report generation for project: {project_name}")
         
-        # Validate project exists
-        project_data = get_project_data(project_name)
-        if not project_data:
-            raise HTTPException(status_code=404, detail=f"Project not found: {project_name}")
-        
-        # Check for active report
-        active_report = project_data.get("active_report")
-        if not active_report:
-            raise HTTPException(status_code=400, detail="No active report found for this project")
-        
-        # Get report ID
-        report_id = active_report.get("report_id")
-        if not report_id:
-            raise HTTPException(status_code=400, detail="Active report missing report_id")
-        
+        report_id,project_data = get_report_id_for_project(project_name)
         # Validate that required files exist
         from utils.oai import slugify, ACTIVE_UPLOADS_PATH
         slug = slugify(project_name)
@@ -797,9 +766,6 @@ async def generate_report(project_name: str):
         logger.info(f"[REPORT] Step 2: Converting HTML to PDF for project: {project_name}")
         
         try:
-            # Import the enhanced PDF generation function
-            from utils.pdf_utils import generate_pdf_with_playwright
-            
             # Generate the PDF with images replaced
             pdf_path = await generate_pdf_with_playwright(html_content, project_name, report_id)
             pdf_filename = pdf_path.name

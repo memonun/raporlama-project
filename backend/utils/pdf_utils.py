@@ -472,20 +472,34 @@ def load_project_assets(project_name: str) -> Dict[str, str]:
     
     # Load each asset defined in manifest
     for asset_name, asset_path in project_assets.items():
-        # Convert relative path to absolute
-        if asset_path.startswith("backend/"):
-            asset_path = asset_path.replace("backend/", "")
+        # The manifest contains paths like "backend/data/project_assets/..."
+        # We need to convert these to absolute paths correctly
         
-        full_path = BASE_DIR / asset_path
+        if asset_path.startswith("backend/"):
+            # Remove "backend/" prefix since BASE_DIR already points to backend
+            relative_path = asset_path[8:]  # Remove "backend/"
+            full_path = BASE_DIR / relative_path
+        else:
+            # If it doesn't start with backend/, assume it's relative to backend
+            full_path = BASE_DIR / asset_path
         
         if full_path.exists():
             base64_data = encode_image_to_base64(full_path)
             if base64_data:
-                # Use the asset name from manifest as the key
-                assets_map[asset_name] = base64_data
+                # Store with the asset name (without extension) as the key
+                key = asset_name.split('.')[0] if '.' in asset_name else asset_name
+                assets_map[key] = base64_data
                 logger.info(f"Loaded project asset: {asset_name} from {full_path}")
         else:
             logger.warning(f"Asset file not found: {full_path}")
+            # Try alternative path resolution
+            alt_path = BASE_DIR.parent / asset_path  # Try from project root
+            if alt_path.exists():
+                base64_data = encode_image_to_base64(alt_path)
+                if base64_data:
+                    key = asset_name.split('.')[0] if '.' in asset_name else asset_name
+                    assets_map[key] = base64_data
+                    logger.info(f"Loaded project asset: {asset_name} from {alt_path}")
     
     return assets_map
 
@@ -954,27 +968,27 @@ async def generate_pdf_with_playwright(html_content: str, project_name: str, rep
     return pdf_path
 
 
-# Alternative: If your main function is sync, create a wrapper
-def generate_pdf_from_html_with_images(html_content: str, project_name: str, report_id: str) -> Path:
-    """
-    Sync wrapper for async Playwright PDF generation.
-    Use this if your calling code is synchronous.
-    """
-    # Check if we're already in an event loop
-    try:
-        loop = asyncio.get_running_loop()
-        # We're in an async context, create a new task
-        future = asyncio.create_task(
-            generate_pdf_with_playwright(html_content, project_name, report_id)
-        )
-        # This won't work in an already running loop, so we need a different approach
-        # The calling code should be async instead
-        raise RuntimeError(
-            "Cannot use sync wrapper in async context. "
-            "Please use 'await generate_pdf_with_playwright()' directly."
-        )
-    except RuntimeError:
-        # No event loop, we can create one
-        return asyncio.run(
-            generate_pdf_with_playwright(html_content, project_name, report_id)
-        )
+# # Alternative: If your main function is sync, create a wrapper
+# def generate_pdf_from_html_with_images(html_content: str, project_name: str, report_id: str) -> Path:
+#     """
+#     Sync wrapper for async Playwright PDF generation.
+#     Use this if your calling code is synchronous.
+#     """
+#     # Check if we're already in an event loop
+#     try:
+#         loop = asyncio.get_running_loop()
+#         # We're in an async context, create a new task
+#         future = asyncio.create_task(
+#             generate_pdf_with_playwright(html_content, project_name, report_id)
+#         )
+#         # This won't work in an already running loop, so we need a different approach
+#         # The calling code should be async instead
+#         raise RuntimeError(
+#             "Cannot use sync wrapper in async context. "
+#             "Please use 'await generate_pdf_with_playwright()' directly."
+#         )
+#     except RuntimeError:
+#         # No event loop, we can create one
+#         return asyncio.run(
+#             generate_pdf_with_playwright(html_content, project_name, report_id)
+#         )

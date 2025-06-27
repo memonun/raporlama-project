@@ -25,6 +25,11 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
   <meta charset="UTF-8">
   <title>V_Metroway Yatırımcı Raporu</title>
   <style>
+    @media print {
+      .page:empty {
+        display: none;
+      }
+    }
     @page {
       size: A4;
       margin: 0;
@@ -132,16 +137,12 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
       z-index: 2;
       height: 100%;
       display: flex;
-      align-items: center;
+      align-items: center;      /* <-- centers vertically */
       justify-content: center;
     }
     .divider-title {
       font-size: 3rem;
-      color: white;
-      font-weight: 700;
-      text-align: center;
-      text-transform: uppercase;
-      letter-spacing: 3px;
+      /* … */
       padding: 0 40px;
     }
     
@@ -176,19 +177,20 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
       font-size: 0.9rem;
       color: #666;
     }
-    .footer-logo {
-      height: 30px;
-      margin-bottom: 10px;
-    }
-    
-    /* Corner logo */
-    .corner-logo {
-      position: absolute;
-      bottom: 40px;
-      right: 40px;
-      height: 50px;
-      z-index: 3;
-    }
+        /* Footer logo */
+      .footer-logo {
+        height: 30px;
+        margin-bottom: 10px;
+      }
+
+      /* Corner logo */
+      .corner-logo {
+        position: absolute;
+        bottom: 40px;
+        right: 40px;
+        height: 50px;
+        z-index: 3;
+      }
   </style>
 </head>
 <body>
@@ -200,15 +202,17 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
     </div>
     <div class="content-wrapper">
       <header class="header">
-        <img src="isra_logo" alt="İsra Logo" class="header-logo">
+        <!-- header logo removed -->
       </header>
       <div class="main-content intro-content">
         <h1>V_Metroway Yatırımcı Raporu</h1>
         <p>1 Mart 2024 – 1 Mart 2025 Dönemi</p>
         <img src="metroway_foto" alt="V_Metroway Projesi" class="project-photo">
       </div>
+      <!-- single corner logo on every page -->
+      <img src="isra_logo" alt="İsra Logo" class="corner-logo">
       <footer class="footer">
-        <img src="isra_logo" alt="İsra Logo" class="footer-logo">
+        <!-- footer logo removed -->
         <div>© 2025 İsra Holding. Tüm hakları saklıdır.</div>
       </footer>
     </div>
@@ -222,6 +226,8 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
     <div class="divider-content">
       <div class="divider-title">[SECTION TITLE]</div>
     </div>
+    <!-- corner logo here, too -->
+    <img src="isra_logo" alt="İsra Logo" class="corner-logo">
   </div>
 
   <!-- CONTENT PAGE -->
@@ -231,7 +237,7 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
     </div>
     <div class="content-wrapper">
       <header class="header">
-        <img src="isra_logo" alt="İsra Logo" class="header-logo">
+        <!-- header logo removed -->
       </header>
       <div class="main-content">
         <h2>[Section Title]</h2>
@@ -242,9 +248,10 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
           <img src="[image-name]" alt="[Description]">
         </div>
       </div>
+      <!-- only this one logo now -->
       <img src="isra_logo" alt="İsra Logo" class="corner-logo">
       <footer class="footer">
-        <img src="isra_logo" alt="İsra Logo" class="footer-logo">
+        <!-- footer logo removed -->
         <div>© 2025 İsra Holding.</div>
       </footer>
     </div>
