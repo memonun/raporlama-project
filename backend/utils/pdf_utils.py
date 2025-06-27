@@ -10,7 +10,13 @@ import re
 import shutil
 import json
 from uuid import uuid4
+from playwright.async_api import async_playwright
+import asyncio
+
 logger = logging.getLogger(__name__)
+
+
+
 
 # Constants
 BASE_REPORTS_DIR = Path("data/reports")
@@ -584,115 +590,115 @@ def replace_image_placeholders_in_html(html_content: str, project_name: str) -> 
     return modified_html
 
 # Example of how to integrate this into your existing generate_pdf_from_html function:
-def generate_pdf_from_html_with_images(html_content: str, project_name: str, report_id: str) -> Path:
-    """
-    Enhanced version that better handles SVG and image replacement for WeasyPrint.
-    """
-    from weasyprint import HTML, CSS
-    from weasyprint.text.fonts import FontConfiguration
-    import re
+# def generate_pdf_from_html_with_images(html_content: str, project_name: str, report_id: str) -> Path:
+#     """
+#     Enhanced version that better handles SVG and image replacement for WeasyPrint.
+#     """
+#     from weasyprint import HTML, CSS
+#     from weasyprint.text.fonts import FontConfiguration
+#     import re
     
-    logger.info(f"[PDF] Starting PDF generation for project: {project_name}")
+#     logger.info(f"[PDF] Starting PDF generation for project: {project_name}")
     
-    # Get all available images and assets
-    images_map = get_project_images_map(project_name)
-    assets_map = load_project_assets(project_name)
-    all_images = {**images_map, **assets_map}
+#     # Get all available images and assets
+#     images_map = get_project_images_map(project_name)
+#     assets_map = load_project_assets(project_name)
+#     all_images = {**images_map, **assets_map}
     
-    logger.info(f"[PDF] Available assets: {list(all_images.keys())}")
+#     logger.info(f"[PDF] Available assets: {list(all_images.keys())}")
     
-    # Enhanced replacement function that handles img tags
-    def replace_all_image_references(html: str) -> str:
-        """Replace all image references with base64 data URIs"""
+#     # Enhanced replacement function that handles img tags
+#     def replace_all_image_references(html: str) -> str:
+#         """Replace all image references with base64 data URIs"""
         
-        # Pattern for img src attributes
-        img_pattern = r'<img\s+([^>]*?)src\s*=\s*["\']?([^"\'\s>]+)["\']?([^>]*?)>'
+#         # Pattern for img src attributes
+#         img_pattern = r'<img\s+([^>]*?)src\s*=\s*["\']?([^"\'\s>]+)["\']?([^>]*?)>'
         
-        def replace_img(match):
-            before = match.group(1) or ''
-            src = match.group(2)
-            after = match.group(3) or ''
+#         def replace_img(match):
+#             before = match.group(1) or ''
+#             src = match.group(2)
+#             after = match.group(3) or ''
             
-            # Clean the src to get just the filename
-            filename = src.split('/')[-1].split('.')[0]
+#             # Clean the src to get just the filename
+#             filename = src.split('/')[-1].split('.')[0]
             
-            if filename in all_images:
-                logger.info(f"[PDF] Replacing image: {filename}")
-                return f'<img {before}src="{all_images[filename]}"{after}>'
-            else:
-                logger.warning(f"[PDF] Image not found: {filename} (from src: {src})")
-                # Try to find a close match
-                for key in all_images.keys():
-                    if key.lower() in filename.lower() or filename.lower() in key.lower():
-                        logger.info(f"[PDF] Using close match: {key} for {filename}")
-                        return f'<img {before}src="{all_images[key]}"{after}>'
-                return match.group(0)
+#             if filename in all_images:
+#                 logger.info(f"[PDF] Replacing image: {filename}")
+#                 return f'<img {before}src="{all_images[filename]}"{after}>'
+#             else:
+#                 logger.warning(f"[PDF] Image not found: {filename} (from src: {src})")
+#                 # Try to find a close match
+#                 for key in all_images.keys():
+#                     if key.lower() in filename.lower() or filename.lower() in key.lower():
+#                         logger.info(f"[PDF] Using close match: {key} for {filename}")
+#                         return f'<img {before}src="{all_images[key]}"{after}>'
+#                 return match.group(0)
         
-        html = re.sub(img_pattern, replace_img, html, flags=re.IGNORECASE | re.DOTALL)
+#         html = re.sub(img_pattern, replace_img, html, flags=re.IGNORECASE | re.DOTALL)
         
-        return html
+#         return html
     
-    # Replace all image references
-    html_with_images = replace_all_image_references(html_content)
+#     # Replace all image references
+#     html_with_images = replace_all_image_references(html_content)
     
-    # Additional CSS for better PDF rendering
-    additional_css = """
-    <style>
-        /* Ensure images don't break across pages */
-        img { 
-            page-break-inside: avoid; 
-            max-width: 100%;
-            height: auto;
-        }
-        .page { 
-            page-break-after: always;
-            page-break-inside: avoid;
-        }
-        /* Better print rendering */
-        @media print {
-            .page {
-                margin: 0;
-                padding: 0;
-            }
-        }
-    </style>
-    """
+#     # Additional CSS for better PDF rendering
+#     additional_css = """
+#     <style>
+#         /* Ensure images don't break across pages */
+#         img { 
+#             page-break-inside: avoid; 
+#             max-width: 100%;
+#             height: auto;
+#         }
+#         .page { 
+#             page-break-after: always;
+#             page-break-inside: avoid;
+#         }
+#         /* Better print rendering */
+#         @media print {
+#             .page {
+#                 margin: 0;
+#                 padding: 0;
+#             }
+#         }
+#     </style>
+#     """
     
-    # Insert additional CSS before closing head tag
-    if '</head>' in html_with_images:
-        html_with_images = html_with_images.replace('</head>', additional_css + '</head>')
+#     # Insert additional CSS before closing head tag
+#     if '</head>' in html_with_images:
+#         html_with_images = html_with_images.replace('</head>', additional_css + '</head>')
     
-    # Save debug HTML
-    debug_path = Path(f"debug_{project_name}_final.html")
-    with open(debug_path, 'w', encoding='utf-8') as f:
-        f.write(html_with_images)
-    logger.info(f"[PDF] Debug HTML saved to: {debug_path}")
+#     # Save debug HTML
+#     debug_path = Path(f"debug_{project_name}_final.html")
+#     with open(debug_path, 'w', encoding='utf-8') as f:
+#         f.write(html_with_images)
+#     logger.info(f"[PDF] Debug HTML saved to: {debug_path}")
     
-    # Get PDF output path
-    pdf_path = get_report_path(project_name, report_id)
-    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+#     # Get PDF output path
+#     pdf_path = get_report_path(project_name, report_id)
+#     pdf_path.parent.mkdir(parents=True, exist_ok=True)
     
-    try:
-        # Configure fonts
-        font_config = FontConfiguration()
+#     try:
+#         # Configure fonts
+#         font_config = FontConfiguration()
         
-        # Create PDF with specific options for better rendering
-        HTML(
-            string=html_with_images,
-            base_url=str(Path(__file__).parent.parent)
-        ).write_pdf(
-            str(pdf_path),
-            font_config=font_config,
-            presentational_hints=True,  # Better CSS support
-            optimize_images=True,       # Optimize embedded images
-        )
+#         # Create PDF with specific options for better rendering
+#         HTML(
+#             string=html_with_images,
+#             base_url=str(Path(__file__).parent.parent)
+#         ).write_pdf(
+#             str(pdf_path),
+#             font_config=font_config,
+#             presentational_hints=True,  # Better CSS support
+#             optimize_images=True,       # Optimize embedded images
+#         )
         
-        logger.info(f"[PDF] PDF generated successfully: {pdf_path}")
-        return pdf_path
+#         logger.info(f"[PDF] PDF generated successfully: {pdf_path}")
+#         return pdf_path
         
-    except Exception as e:
-        logger.error(f"[PDF] Error generating PDF: {str(e)}", exc_info=True)
-        raise Exception(f"Failed to generate PDF: {str(e)}")
+#     except Exception as e:
+#         logger.error(f"[PDF] Error generating PDF: {str(e)}", exc_info=True)
+#         raise Exception(f"Failed to generate PDF: {str(e)}")
 
 def replace_image_placeholders_in_html(html_content: str, project_name: str) -> str:
     """
@@ -830,24 +836,145 @@ def debug_html_content(html_content: str, project_name: str):
     logger.info(f"[DEBUG] Available assets: {list(assets_map.keys())}")
     
     return    
-from playwright.sync_api import sync_playwright
 
-def generate_pdf_with_playwright(html_content: str, project_name: str, report_id: str) -> Path:
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
+logger = logging.getLogger(__name__)
+
+async def generate_pdf_with_playwright(html_content: str, project_name: str, report_id: str) -> Path:
+    """
+    Generate PDF using Playwright with async API.
+    This will render the HTML exactly as a browser would see it.
+    """
+    logger.info(f"[PDF] Starting Playwright PDF generation for project: {project_name}")
+    
+    # Get all available images and assets
+    images_map = get_project_images_map(project_name)
+    assets_map = load_project_assets(project_name)
+    all_images = {**images_map, **assets_map}
+    
+    # Function to replace image references with base64
+    def replace_image_references(html: str) -> str:
+        # Handle img src
+        img_pattern = r'<img\s+([^>]*?)src\s*=\s*["\']?([^"\'\s>]+)["\']?([^>]*?)>'
         
-        # Load HTML with proper base path
-        page.set_content(html_content, base_url=f"file://{Path.cwd()}/")
+        def replace_img(match):
+            before = match.group(1) or ''
+            src = match.group(2)
+            after = match.group(3) or ''
+            
+            # Clean the src to get just the filename
+            filename = src.split('/')[-1].split('.')[0]
+            
+            # Try to find the image with various normalizations
+            for key in all_images.keys():
+                if (key == filename or 
+                    key.split('.')[0] == filename or
+                    key.lower() == filename.lower() or
+                    key.replace('İ', 'I').replace('ı', 'i').replace('ş', 's').replace('ğ', 'g') == filename):
+                    logger.info(f"[PDF] Replacing image: {filename} -> {key}")
+                    return f'<img {before}src="{all_images[key]}"{after}>'
+            
+            logger.warning(f"[PDF] Image not found: {filename}")
+            return match.group(0)
         
-        # Generate PDF
-        pdf_path = get_report_path(project_name, report_id)
-        page.pdf(
-            path=str(pdf_path),
-            format='A4',
-            print_background=True,
-            margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'}
+        html = re.sub(img_pattern, replace_img, html, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Handle CSS background-image
+        bg_pattern = r'background-image:\s*url\(["\']?([^"\')]+)["\']?\)'
+        
+        def replace_bg(match):
+            bg_url = match.group(1)
+            filename = bg_url.split('/')[-1].split('.')[0]
+            
+            for key in all_images.keys():
+                if (key == filename or 
+                    key.split('.')[0] == filename or
+                    key.lower() == filename.lower()):
+                    logger.info(f"[PDF] Replacing background: {filename} -> {key}")
+                    return f'background-image: url({all_images[key]})'
+            
+            logger.warning(f"[PDF] Background image not found: {filename}")
+            return match.group(0)
+        
+        html = re.sub(bg_pattern, replace_bg, html, flags=re.IGNORECASE)
+        
+        return html
+    
+    # Replace all image references with base64
+    html_with_images = replace_image_references(html_content)
+    
+    # Save debug HTML
+    debug_path = Path(f"debug_{project_name}_playwright.html")
+    with open(debug_path, 'w', encoding='utf-8') as f:
+        f.write(html_with_images)
+    logger.info(f"[PDF] Debug HTML saved to: {debug_path}")
+    
+    # Generate PDF with Playwright
+    pdf_path = get_report_path(project_name, report_id)
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    async with async_playwright() as p:
+        # Launch browser
+        browser = await p.chromium.launch(
+            headless=True,
+            args=['--disable-dev-shm-usage']  # Helps with Docker/limited memory
         )
         
-        browser.close()
-        return pdf_path
+        try:
+            # Create page
+            page = await browser.new_page()
+            
+            # Set viewport to A4 size
+            await page.set_viewport_size({"width": 794, "height": 1123})
+            
+            # Load the HTML content
+            await page.set_content(html_with_images, wait_until='networkidle')
+            
+            # Wait a bit for any async rendering
+            await page.wait_for_timeout(1000)
+            
+            # Generate PDF
+            await page.pdf(
+                path=str(pdf_path),
+                format='A4',
+                print_background=True,
+                margin={
+                    'top': '0',
+                    'right': '0',
+                    'bottom': '0',
+                    'left': '0'
+                },
+                prefer_css_page_size=True
+            )
+            
+            logger.info(f"[PDF] PDF generated successfully: {pdf_path}")
+            
+        finally:
+            await browser.close()
+    
+    return pdf_path
+
+
+# Alternative: If your main function is sync, create a wrapper
+def generate_pdf_from_html_with_images(html_content: str, project_name: str, report_id: str) -> Path:
+    """
+    Sync wrapper for async Playwright PDF generation.
+    Use this if your calling code is synchronous.
+    """
+    # Check if we're already in an event loop
+    try:
+        loop = asyncio.get_running_loop()
+        # We're in an async context, create a new task
+        future = asyncio.create_task(
+            generate_pdf_with_playwright(html_content, project_name, report_id)
+        )
+        # This won't work in an already running loop, so we need a different approach
+        # The calling code should be async instead
+        raise RuntimeError(
+            "Cannot use sync wrapper in async context. "
+            "Please use 'await generate_pdf_with_playwright()' directly."
+        )
+    except RuntimeError:
+        # No event loop, we can create one
+        return asyncio.run(
+            generate_pdf_with_playwright(html_content, project_name, report_id)
+        )

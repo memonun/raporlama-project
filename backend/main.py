@@ -720,6 +720,26 @@ def reset_active_report_endpoint(project_name: str):
         raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
 
 @app.post("/project/{project_name}/generate-report")
+# In your main.py, update the generate_report function:
+
+async def generate_report(project_name: str, user_input: str = None):
+    """Your existing function, but with async PDF generation"""
+    try:
+        # ... existing code ...
+        
+        # Step 2: Convert HTML to PDF
+        logger.info(f"[REPORT] Step 2: Converting HTML to PDF for project: {project_name}")
+        
+        # Use await since we're in an async function
+        pdf_path = await generate_pdf_with_playwright(html_content, project_name, report_id)
+        
+        logger.info(f"[REPORT] PDF created successfully: {pdf_path.name}")
+        
+        # ... rest of your code ...
+        
+    except Exception as e:
+        logger.error(f"[REPORT] PDF generation error: {str(e)}")
+        raise
 async def generate_report(project_name: str):
     """
     Report generation endpoint that:
@@ -781,7 +801,7 @@ async def generate_report(project_name: str):
             from utils.pdf_utils import generate_pdf_with_playwright
             
             # Generate the PDF with images replaced
-            pdf_path = generate_pdf_with_playwright(html_content, project_name, report_id)
+            pdf_path = await generate_pdf_with_playwright(html_content, project_name, report_id)
             pdf_filename = pdf_path.name
             
             logger.info(f"[REPORT] PDF created successfully: {pdf_filename}")
