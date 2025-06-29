@@ -22,240 +22,79 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>V_Metroway Yatırımcı Raporu</title>
-  <style>
-    @media print {
-      .page:empty {
-        display: none;
-      }
-    }
-    @page {
-      size: A4;
-      margin: 0;
-    }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: Arial, sans-serif;
-      color: #333;
-    }
-    
-    /* Page container - exactly A4 size */
-    .page {
-      width: 210mm;
-      height: 297mm;
-      position: relative;
-      page-break-after: always;
-      overflow: hidden;
-    }
-    
-    /* Background wrapper for pattern pages */
-    .bg-pattern {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    }
-    .bg-pattern img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    
-    /* Content wrapper - above background */
-    .content-wrapper {
-      position: relative;
-      z-index: 2;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    /* Header */
-    .header {
-      background: rgba(255,255,255,0.9);
-      text-align: center;
-      padding: 20px;
-    }
-    .header-logo {
-      height: 50px;
-    }
-    
-    /* Main content area */
-    .main-content {
-      flex: 1;
-      padding: 40px 60px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    
-    /* Intro page specific */
-    .intro-content {
-      text-align: center;
-      color: #1B3A6B;
-    }
-    .intro-content h1 {
-      font-size: 3rem;
-      margin-bottom: 20px;
-    }
-    .intro-content p {
-      font-size: 1.3rem;
-      margin-bottom: 40px;
-    }
-    .project-photo {
-      width: 80%;
-      max-width: 600px;
-      height: auto;
-      border-radius: 12px;
-      margin: 0 auto;
-      display: block;
-    }
-    
-    /* Section divider specific */
-    .divider-bg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    .divider-bg img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .divider-content {
-      position: relative;
-      z-index: 2;
-      height: 100%;
-      display: flex;
-      align-items: center;      /* <-- centers vertically */
-      justify-content: center;
-    }
-    .divider-title {
-      font-size: 3rem;
-      /* … */
-      padding: 0 40px;
-    }
-    
-    /* Content section specific */
-    .content-section h2 {
-      color: #1B3A6B;
-      font-size: 2.5rem;
-      margin-bottom: 30px;
-    }
-    .content-text {
-      background: rgba(255,255,255,0.95);
-      padding: 30px;
-      border-radius: 8px;
-      line-height: 1.8;
-      font-size: 1.1rem;
-    }
-    .content-figure {
-      margin: 30px 0;
-      text-align: center;
-    }
-    .content-figure img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-    }
-    
-    /* Footer */
-    .footer {
-      background: rgba(255,255,255,0.9);
-      text-align: center;
-      padding: 20px;
-      font-size: 0.9rem;
-      color: #666;
-    }
-        /* Footer logo */
-      .footer-logo {
-        height: 30px;
-        margin-bottom: 10px;
-      }
+<meta charset="UTF-8">
+<title>V_Metroway Yatırımcı Raporu</title>
+<style>
+  /* --- GLOBAL --- */
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#F5F5F5;font-family:Arial,sans-serif;color:#333}
+  .page{width:100%;min-height:100vh;position:relative;page-break-after:always;overflow:hidden}
 
-      /* Corner logo */
-      .corner-logo {
-        position: absolute;
-        bottom: 40px;
-        right: 40px;
-        height: 50px;
-        z-index: 3;
-      }
-  </style>
+  /* header & footer (repeat) */
+  .header,.footer{background:#fff;text-align:center}
+  .header{padding:1.5rem 0 1rem;border-bottom:1px solid #ddd}
+  .header-logo{height:50px}
+  .footer{position:absolute;bottom:1rem;width:100%;font-size:.85rem;color:#666}
+  .footer-logo{height:40px;margin-bottom:.5rem}
+
+  /* intro */
+  .intro-page{background:url('metroway_frame.svg') center/cover no-repeat;color:#1B3A6B;text-align:center;padding-top:6rem}
+  .intro-page h1{font-size:2.5rem;margin-bottom:.5rem}
+  .intro-page p{font-size:1.2rem}
+  .main-photo{display:block;width:80%;max-width:900px;margin:2rem auto 0;border-radius:12px;box-shadow:0 2px 12px rgba(27,58,107,.08)}
+
+  /* divider */
+  .section-divider{background:url('kapak_foto.svg') center/cover no-repeat;min-height:100vh;position:relative}
+  .section-divider .header{background:transparent;border:none;padding-top:2rem}
+  .divider-title{
+      position:absolute;left:0;right:0;top:60%;                /* ← 2/5 of page height */
+      transform:translateY(-50%);
+      font-size:2.2rem;color:#fff;text-align:center;font-weight:700;
+      letter-spacing:2px;text-transform:uppercase;
+      text-shadow:0 2px 8px rgba(27,58,107,.25)
+  }
+    .header {display: none !important;}
+  /* content */
+  .content-section{
+      margin:2rem auto;padding:2.5rem 2rem 4rem;max-width:900px;
+      border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);min-height:80vh
+  }
+  .content-section h2{color:#1B3A6B;font-size:2rem;margin-bottom:1.2rem}
+  .content-section p{line-height:1.7;margin-bottom:1.2rem}
+  .section-logo { display: none !important;}/* only used in content pages */
+
+  /* images */
+  figure{margin:2rem auto;text-align:center}
+  figure img{display:block;margin:0 auto;max-width:95%;border-radius:8px;box-shadow:0 2px 8px rgba(27,58,107,.1)}
+</style>
 </head>
 <body>
 
-  <!-- INTRO PAGE -->
-  <div class="page">
-    <div class="bg-pattern">
-      <img src="metroway_frame" alt="">
-    </div>
-    <div class="content-wrapper">
-      <header class="header">
-        <!-- header logo removed -->
-      </header>
-      <div class="main-content intro-content">
-        <h1>V_Metroway Yatırımcı Raporu</h1>
-        <p>1 Mart 2024 – 1 Mart 2025 Dönemi</p>
-        <img src="metroway_foto" alt="V_Metroway Projesi" class="project-photo">
-      </div>
-      <!-- single corner logo on every page -->
-      <img src="isra_logo" alt="İsra Logo" class="corner-logo">
-      <footer class="footer">
-        <!-- footer logo removed -->
-        <div>© 2025 İsra Holding. Tüm hakları saklıdır.</div>
-      </footer>
-    </div>
-  </div>
+<!-- PAGE 1 – INTRO -->
+<section class="page intro-page">
+  <header class="header"><img src="isra_logo.png" alt="İsra Logo" class="header-logo"></header>
+  <h1>V_Metroway Yatırımcı Raporu</h1>
+  <p>1 Mart 2024 – 1 Mart 2025 Dönemi</p>
+  <figure><img src="metroway_foto.jpg" alt="Proje Fotoğrafı" class="main-photo"></figure>
+  <footer class="footer"><img src="isra_logo.png" class="footer-logo" alt=""><br>© 2025 İsra Holding.</footer>
+</section>
 
-  <!-- SECTION DIVIDER PAGE -->
-  <div class="page">
-    <div class="divider-bg">
-      <img src="kapak_foto" alt="">
-    </div>
-    <div class="divider-content">
-      <div class="divider-title">[SECTION TITLE]</div>
-    </div>
-    <!-- corner logo here, too -->
-    <img src="isra_logo" alt="İsra Logo" class="corner-logo">
-  </div>
+<!-- PAGE 2 – DIVIDER -->
+<section class="page section-divider">
+  <h2 class="divider-title">Proje Genel Bakış</h2>
+</section>
 
-  <!-- CONTENT PAGE -->
-  <div class="page">
-    <div class="bg-pattern">
-      <img src="metroway_frame" alt="">
-    </div>
-    <div class="content-wrapper">
-      <header class="header">
-        <!-- header logo removed -->
-      </header>
-      <div class="main-content">
-        <h2>[Section Title]</h2>
-        <div class="content-text">
-          <p>[Content from PDF search]</p>
-        </div>
-        <div class="content-figure">
-          <img src="[image-name]" alt="[Description]">
-        </div>
-      </div>
-      <!-- only this one logo now -->
-      <img src="isra_logo" alt="İsra Logo" class="corner-logo">
-      <footer class="footer">
-        <!-- footer logo removed -->
-        <div>© 2025 İsra Holding.</div>
-      </footer>
-    </div>
-  </div>
+<!-- PAGE 3 – CONTENT -->
+<section class="page content-section">
+  <header class="header"><img src="isra_logo.png" class="header-logo" alt=""></header>
+  <h2>Finansal Durum</h2>
+  <p>2024 net kâr: 12 500 000 TL &nbsp;•&nbsp; 2025 projeksiyonu: 18 000 000 TL.</p>
+  <figure><img src="finans-1750769809.webp" alt=""></figure>
+  <img src="isra_logo.png" class="section-logo" alt="">
+  <footer class="footer"><img src="isra_logo.png" class="footer-logo" alt=""><br>© 2025 İsra Holding.</footer>
+</section>
+
+<!-- …devam eden sayfalar… -->
 
 </body>
 </html>
@@ -268,6 +107,10 @@ The PDF generator has limitations. You MUST follow this exact structure for prop
 3. **Fixed dimensions** - Use exact A4 dimensions (210mm x 297mm)
 4. **No CSS background-image** - Always use img elements
 5. **Structure each page as a complete unit** with the .page class
+6. **Always include the images that are sent with the previous response**
+7. **Do not create any <section class="page"> element** unless it contains visible content (intro, divider, or content block).
+8. **Divider pages (.page.section-divider)** must omit the entire <header> element.
+
 
 ## Content Structure:
 

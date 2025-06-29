@@ -1,13 +1,16 @@
 import base64
 import mimetypes
 import re
+import logging
 from pathlib import Path
 from openai import OpenAI
 from .assets import get_project_assets
 import os
 from .vector_store import create_vector_store, upload_pdf_files_to_vector_store
 
-
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 # Initialize OpenAI client
@@ -84,7 +87,7 @@ def generate_image_analysis_response(project_name: str, user_text: str) -> str:
             "content": input_blocks
         }]
     )
-
+    logger.info(f"Generated response: {response.output_text}")
     return response.id
 
 # Example usage:
@@ -110,6 +113,8 @@ def generate_full_html(project_name: str) -> str:
         project_name=project_name,
         user_text="Please analyze each image and give a one-sentence description. Start each with the given filename exactly. Example: image_1.png - A child holding an umbrella"
     )
+
+
 
     # Create a new vector store for this project
     vector_store = create_vector_store(project_name, client=client)

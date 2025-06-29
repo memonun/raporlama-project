@@ -18,7 +18,6 @@ const initialState = {
   imageLoadingStates: {}, // Görsel yüklemeleri için loading state'leri
   error: null, // Mevcut useState: error
   activeReport: null, // Mevcut useState: activeReport
-  activeSection: '', // Mevcut useState: activeSection
 };
 
 // Reducer fonksiyonu
@@ -32,7 +31,6 @@ function reportBuilderReducer(state, action) {
         components: action.payload.components,
         componentData: action.payload.componentData,
         activeReport: action.payload.activeReport,
-        activeSection: action.payload.components.length > 0 ? action.payload.components[0] : '',
         loading: false,
         error: null,
       };
@@ -70,8 +68,6 @@ function reportBuilderReducer(state, action) {
       };
     case 'SET_ACTIVE_REPORT':
          return { ...state, activeReport: action.payload };
-    case 'SET_ACTIVE_SECTION':
-         return { ...state, activeSection: action.payload };
     // Diğer action type'ları buraya eklenebilir (örn: SET_COMPONENTS, ADD_PDF_CONTENT vb.)
     default:
       return state;
@@ -127,7 +123,6 @@ const ReportBuilder = () => {
     imageLoadingStates,
     error, // error state'i reducer'dan alınacak
     activeReport,
-    activeSection,
    } = state;
 
   // Mevcut useState hook'ları (henüz reducer'a taşınmayanlar)
@@ -137,7 +132,6 @@ const ReportBuilder = () => {
   const [savingReport, setSavingReport] = useState(false);
   // const [activeReport, setActiveReport] = useState(null); // Reducer'a taşındı
   const [emailSending, setEmailSending] = useState(false);
-  // const [activeSection, setActiveSection] = useState(''); // Reducer'a taşındı
 
   // const [pdfLoading, setPdfLoading] = useState(false); // pdfLoadingStates ile değiştirildi
 
@@ -298,84 +292,6 @@ const ReportBuilder = () => {
     fetchData();
   }, []);
 
-  // Scroll takibini basitleştir ve daha güvenilir hale getir
-  const determineActiveSection = useCallback(() => {
-    if (loading || components.length === 0) return;
-    
-    // Ekranın orta noktasını bul
-    const viewportHeight = window.innerHeight;
-    const viewportMiddle = viewportHeight / 2;
-    
-    // En yakın bileşeni bul (ekranın ortasına göre)
-    let closestComponent = null;
-    let closestDistance = Infinity;
-    
-    for (const component of components) {
-      const element = componentRefs.current[component];
-      if (!element) continue;
-      
-      const rect = element.getBoundingClientRect();
-      
-      // Bileşenin ortasının ekranın ortasına olan uzaklığı
-      const componentMiddle = (rect.top + rect.bottom) / 2;
-      const distance = Math.abs(componentMiddle - viewportMiddle);
-      
-      // Daha yakınsa, bu bileşeni seç
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestComponent = component;
-      }
-    }
-    
-    // En yakın bileşen varsa ve aktif bileşenden farklıysa güncelle
-    if (closestComponent && closestComponent !== activeSection) {
-      dispatch({ type: 'SET_ACTIVE_SECTION', payload: closestComponent });
-    }
-  }, [loading, components, activeSection]);
-  
-  // Throttled scroll handler - performans için
-  const handleScroll = useCallback(() => {
-    // Mevcut zamanlayıcıyı temizle
-    if (scrollTimerRef.current) {
-      clearTimeout(scrollTimerRef.current);
-    }
-    
-    // 50ms gecikmeyle aktif bölümü belirle (throttling)
-    scrollTimerRef.current = setTimeout(() => {
-      determineActiveSection();
-    }, 50);
-  }, [determineActiveSection]);
-  
-  // Scroll olayını dinle
-  useEffect(() => {
-    if (loading) return;
-    
-    // Her scroll olayında throttled handler'ı çağır
-    window.addEventListener('scroll', handleScroll);
-    
-    // İlk yüklemede aktif bölümü belirle
-    determineActiveSection();
-    
-    // Temizlik
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (scrollTimerRef.current) {
-        clearTimeout(scrollTimerRef.current);
-      }
-    };
-  }, [loading, handleScroll, determineActiveSection]);
-
-  // Bileşene scroll işlemi
-  const scrollToComponent = (component) => {
-    dispatch({ type: 'SET_ACTIVE_SECTION', payload: component });
-    if (componentRefs.current[component]) {
-      componentRefs.current[component].scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }
-  };
-  
   // Validasyon durumları için state
   const [validationStates, setValidationStates] = useState({});
   const [savingStates, setSavingStates] = useState({});
@@ -1107,9 +1023,9 @@ const handleGenerateReport = async () => {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row">
+      <div>
         {/* Ana İçerik - Bileşenler */}
-        <div className="flex-1 max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto"> {/* Increased max-width since we have more space now */}
           <div className="space-y-8 mb-8">
             {components.map((component, index) => (
               <div
@@ -1349,28 +1265,7 @@ const handleGenerateReport = async () => {
             ))}
           </div>
             </div>
-            
-        {/* Sağ Panel - Bileşenler Listesi */}
-        <div className="w-64 ml-8 hidden lg:block">
-          <div className="bg-white rounded-lg shadow-lg p-4 sticky top-8">
-            <ul className="space-y-2">
-              {components.map(component => (
-                <li key={`toc-${component}`}>
-                    <button
-                    onClick={() => scrollToComponent(component)}
-                    className={`w-full text-left px-3 py-2 rounded-md transition-all duration-200 ${
-                      activeSection === component
-                        ? 'bg-blue-100 text-blue-700 font-medium text-lg'
-                        : 'text-gray-700 hover:bg-gray-100 text-sm'
-                    }`}
-                  >
-                    {component}
-                    </button>
-                </li>
-              ))}
-            </ul>
-                  </div>
-            </div>
+        
           </div>
 
           {/* Rapor İşlemleri ve Sonuç Bölümü */}
