@@ -432,15 +432,21 @@ def archive_project(request: ArchiveProjectRequest):
 @app.post("/send-email")
 def send_email(request: EmailRequest):
     """Eksik bilgiler için talep e-postası gönderir."""
+    logger.info(f"[API] Received email request - Component: {request.component_name}, Project: {request.project_name}")
+    
     try:
         # Bileşene göre departman e-postasını al
         to_email = get_department_email(request.component_name)
+        logger.info(f"[API] Department email resolved to: {to_email}")
         
+        # E-posta gönder
         result = send_missing_info_request(to_email, request.project_name, request.component_name)
+        logger.info(f"[API] Email sent successfully: {result}")
+        
         return {"message": result}
     except Exception as e:
+        logger.error(f"[API] Email sending failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"E-posta gönderilirken bir hata oluştu: {str(e)}")
-
 @app.post("/project/finalize-report", response_model=Dict[str, Any])
 def finalize_project_report(request: ProjectRequest):
     """Bir raporu sonlandırır ve vitrinde kilitli olarak işaretler."""
