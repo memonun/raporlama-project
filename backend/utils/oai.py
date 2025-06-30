@@ -114,6 +114,8 @@ def generate_full_html(project_name: str,user_input:str) -> str:
         user_text="Please analyze each image and give a one-sentence description. Start each with the given filename exactly. Example: image_1.png - A child holding an umbrella"
     )
 
+    logger.info(f"user prompt: {user_input}")
+
 
 
     # Create a new vector store for this project

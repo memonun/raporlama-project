@@ -543,7 +543,7 @@ export const reportService = {
   // Add this simplified function to reportService in api.js
 
 // Simplified report generation - only needs project name
-generateReportSimplified: async (projectName) => {
+generateReportSimplified: async (projectName,userPrompt) => {
   if (!projectName) {
     console.error("reportService.generateReportSimplified: Project name not provided");
     throw new Error("Project name is required");
@@ -552,7 +552,7 @@ generateReportSimplified: async (projectName) => {
   try {
     console.log(`reportService.generateReportSimplified: Generating report for ${projectName}`);
     
-
+    console.log("User prompt for report generation:", userPrompt);
     const requestBody = userPrompt ? { user_input: userPrompt } : {};
     // Simple POST request with just the project name in the URL
     const response = await axiosInstance.post(

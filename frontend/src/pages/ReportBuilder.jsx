@@ -708,6 +708,7 @@ const handleGenerateReport = async () => {
     console.log('Calling simplified report generation...');
     
     try {
+      console.log('AI Prompt:', aiPrompt);
       const result = await reportService.generateReportSimplified(projectName,aiPrompt || null);
       
       // Update the active report state

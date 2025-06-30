@@ -730,6 +730,7 @@ async def generate_report(project_name: str, user_input: str = None):
     """
     try:
         logger.info(f"[REPORT] Starting report generation for project: {project_name}")
+        logger.info(f"[REPORT] User input for report generation: {user_input}")
         
         # Validate project exists
         project_data = get_project_data(project_name)
@@ -762,7 +763,7 @@ async def generate_report(project_name: str, user_input: str = None):
             from utils.oai import generate_full_html
             
             # This returns HTML content as a string
-            html_content = generate_full_html(project_name)
+            html_content = generate_full_html(project_name,user_input)
             print(html_content)
             logger.info(f"[REPORT] OpenAI response received, Response: {len(html_content)} characters")
             
