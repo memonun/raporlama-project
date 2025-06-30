@@ -1,47 +1,32 @@
-# test_outlook_connection.py
-import os
-import socket
-import smtplib
-import ssl
+import smtplib, ssl
+from email.message import EmailMessage
 
-HOST = os.getenv("SMTP_SERVER", "smtp.office365.com")  # veya ortam değişkeninize bak
-USER = os.getenv("EMAIL_SENDER")
-PASS = os.getenv("EMAIL_PASSWORD")
+SMTP_SERVER = "smtp.office365.com"       # veya "smtp.office365.com"
+SMTP_PORT   = 587
+EMAIL_SENDER   = "report@israholding.com.tr"
+EMAIL_PASSWORD = "Isra020150!"
 
-def test_dns(host, port):
-    try:
-        infos = socket.getaddrinfo(host, port)
-        print(f"✅ DNS çözümlemesi başarılı: {host}:{port} → {infos[0][4]}")
-    except Exception as e:
-        print(f"❌ DNS çözümlemesi başarısız: {e}")
+RECIPIENT = "ozdassuleyman123@gmail.com"
+SUBJECT   = "Arbitrary Subject"
+CONTENT   = "This is the arbitrary content of the email."
 
-def test_smtp_ssl(host, port):
-    context = ssl.create_default_context()
-    try:
-        with smtplib.SMTP_SSL(host, port, context=context, timeout=10) as server:
-            server.login(USER, PASS)
-        print("✅ SMTPS (SSL) bağlantısı başarılı")
-    except Exception as e:
-        print(f"❌ SMTPS (SSL) bağlantısı başarısız: {e}")
+context = ssl.create_default_context()
 
-def test_smtp_starttls(host, port):
-    context = ssl.create_default_context()
-    try:
-        with smtplib.SMTP(host, port, timeout=10) as server:
-            server.ehlo()
-            server.starttls(context=context)
-            server.ehlo()
-            server.login(USER, PASS)
-        print("✅ SMTP (STARTTLS) bağlantısı başarılı")
-    except Exception as e:
-        print(f"❌ SMTP (STARTTLS) bağlantısı başarısız: {e}")
-
-if __name__ == "__main__":
-    print("→ DNS testi (587):")
-    test_dns(HOST, 587)  # STARTTLS port
-    print("\n→ DNS testi (465):")
-    test_dns(HOST, 465)  # SMTPS port
-    print("\n→ SMTPS (SSL) testi:")
-    test_smtp_ssl(HOST, 465)
-    print("\n→ SMTP (STARTTLS) testi:")
-    test_smtp_starttls(HOST, 587)
+try:
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.ehlo()
+        server.starttls(context=context)
+        server.ehlo()
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        # Prepare and send the email
+        msg = EmailMessage()
+        msg["From"] = EMAIL_SENDER
+        msg["To"]   = RECIPIENT
+        msg["Subject"] = SUBJECT
+        msg.set_content(CONTENT)
+        server.send_message(msg)
+        print("✉️ E-posta gönderildi!")
+except smtplib.SMTPAuthenticationError as e:
+    print("❌ Auth hatası:", e)
+except Exception as e:
+    print("⚠️ Başka bir hata:", type(e), e)

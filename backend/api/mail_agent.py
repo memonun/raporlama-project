@@ -1,4 +1,4 @@
-import smtplib
+import smtplib, ssl
 from email.message import EmailMessage
 import os
 from config import SMTP_SERVER, SMTP_PORT, EMAIL_SENDER, EMAIL_PASSWORD, DEPARTMENT_EMAILS
@@ -70,10 +70,14 @@ def send_missing_info_request(to_email: str, project_name: str = None, component
     # Logo ve kapak resimlerini ekle
     add_images_to_email(msg, logo_cid, cover_cid)
     
+    context = ssl.create_default_context()
+
     try:
         # SMTP bağlantısı kur ve mail gönder
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
+            server.ehlo()
+            server.starttls(context=context)
+            server.ehlo()
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
             server.send_message(msg)
         

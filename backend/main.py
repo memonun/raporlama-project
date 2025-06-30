@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, List, Optional, Any
 import uvicorn
@@ -720,7 +720,7 @@ def reset_active_report_endpoint(project_name: str):
         raise HTTPException(status_code=500, detail=f"Aktif rapor sıfırlanırken beklenmeyen bir hata oluştu: {str(e)}")
 
 @app.post("/project/{project_name}/generate-report")
-async def generate_report(project_name: str, user_input: str = None):
+async def generate_report(project_name: str, user_input: str = Body(None, embed=True)):
     """
     Report generation endpoint that:
     1. Calls OpenAI to generate HTML content
