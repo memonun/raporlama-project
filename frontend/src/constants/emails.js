@@ -3,7 +3,7 @@
  */
 
 // Şirket domain adı - E-posta oluşturma için kullanılır
-export const COMPANY_DOMAIN = 'm.eminyilmaz2003@gmail.com';
+export const COMPANY_DOMAIN = 'report@israholding.com';
 
 // Departman e-posta adresleri - İletişim için kullanılır
 export const DEPARTMENT_EMAILS = {

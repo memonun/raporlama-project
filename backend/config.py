@@ -83,7 +83,7 @@ PROJECT_PALETTES = load_project_palettes()
 # E-posta ayarları
 EMAIL_SENDER = os.getenv("EMAIL_SENDER", "seninemail@gmail.com")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.office365.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 
 # Departman e-postaları

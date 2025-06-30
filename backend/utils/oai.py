@@ -92,7 +92,7 @@ def generate_image_analysis_response(project_name: str, user_text: str) -> str:
 
 # Example usage:
 
-def generate_full_html(project_name: str) -> str:
+def generate_full_html(project_name: str,user_input:str) -> str:
     """Generates a full HTML response for the given project."""
     slug = slugify(project_name)
     
@@ -145,6 +145,7 @@ def generate_full_html(project_name: str) -> str:
     response = client.responses.create(
         model="gpt-4.1",
         input=prompt,
+        instructions=user_input,
         tools=[{
             "type": "file_search",
             "vector_store_ids": [vector_store['id']],

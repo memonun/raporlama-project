@@ -110,7 +110,7 @@ def add_images_to_email(msg, logo_cid, cover_cid):
     
     # Logo dosyası yoksa placeholder kullan
     if not os.path.exists(logo_path):
-        logo_path = os.path.join(base_dir, "static", "assets", "placeholder_logo.png")
+        logo_path = os.path.join(base_dir, "data", "project_assets", "isra_logo.png")
         # Placeholder da yoksa ekleme
         if not os.path.exists(logo_path):
             print(f"Uyarı: Logo dosyası bulunamadı: {logo_path}")

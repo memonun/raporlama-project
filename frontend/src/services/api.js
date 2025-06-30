@@ -552,9 +552,11 @@ generateReportSimplified: async (projectName) => {
   try {
     console.log(`reportService.generateReportSimplified: Generating report for ${projectName}`);
     
+
+    const requestBody = userPrompt ? { user_input: userPrompt } : {};
     // Simple POST request with just the project name in the URL
     const response = await axiosInstance.post(
-      `/project/${encodeURIComponent(projectName)}/generate-report`
+      `/project/${encodeURIComponent(projectName)}/generate-report`,requestBody
     );
 
     console.log("Report generation response:", response.data);

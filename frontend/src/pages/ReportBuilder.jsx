@@ -97,6 +97,7 @@ const useDebounce = (callback, delay) => {
   }, [callback, delay]);
 };
 
+
 // helper: always return an array for rendering
 const ensureArray = (val) => {
   if (!val) return [];
@@ -135,7 +136,21 @@ const ReportBuilder = () => {
 
   // const [pdfLoading, setPdfLoading] = useState(false); // pdfLoadingStates ile değiştirildi
 
+  // New states for AI prompt section
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [showAiSection, setShowAiSection] = useState(false);
+  const [isAiPromptExpanded, setIsAiPromptExpanded] = useState(false);
+  const [charCount, setCharCount] = useState(0);
+  const MAX_CHAR_COUNT = 2000;
 
+  // AI prompt suggestions
+  const promptSuggestions = [
+    "Raporumu daha kurumsal ve profesyonel bir dilde oluştur",
+    "Finansal verilere daha çok odaklan ve detaylı analiz yap",
+    "Yatırımcılar için özet bilgiler ve önemli noktaları vurgula",
+    "Görsellerle metinler arasında daha iyi bağlantı kur",
+    "Projenin gelecek dönem beklentilerini daha detaylı açıkla"
+  ];
   const componentRefs = useRef({});
   const scrollTimerRef = useRef(null);
   const hasFetchedData = useRef(false); // Fetch kontrolü için Ref
@@ -693,7 +708,7 @@ const handleGenerateReport = async () => {
     console.log('Calling simplified report generation...');
     
     try {
-      const result = await reportService.generateReportSimplified(projectName);
+      const result = await reportService.generateReportSimplified(projectName,aiPrompt || null);
       
       // Update the active report state
       const updatedReport = await projectService.getActiveReport(projectName);
@@ -1263,6 +1278,84 @@ const handleGenerateReport = async () => {
                 </div>
               </div>
             ))}
+            <div className="mt-8 mb-8">
+            <div className="max-w-4xl mx-auto">
+              <button
+                onClick={() => setShowAiSection(!showAiSection)}
+                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200 hover:border-purple-300 transition-all duration-300"
+              >
+                <div className="flex items-center">
+                  <svg className="w-6 h-6 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  <span className="text-lg font-semibold text-purple-700">AI İle Raporu Özelleştir</span>
+                </div>
+                <svg 
+                  className={`w-5 h-5 text-purple-600 transform transition-transform duration-300 ${showAiSection ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showAiSection && (
+                <div className="mt-4 p-6 bg-white rounded-lg shadow-lg border border-gray-200 animate-fade-in">
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Raporunuz için özel talimatlar
+                    </label>
+                    <div className="relative">
+                      <textarea
+                        value={aiPrompt}
+                        onChange={(e) => {
+                          setAiPrompt(e.target.value);
+                          setCharCount(e.target.value.length);
+                        }}
+                        placeholder="Raporunuzun nasıl oluşturulmasını istediğinizi detaylı bir şekilde açıklayın..."
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 ${
+                          isAiPromptExpanded ? 'h-48' : 'h-32'
+                        }`}
+                        maxLength={MAX_CHAR_COUNT}
+                        onFocus={() => setIsAiPromptExpanded(true)}
+                        onBlur={() => setIsAiPromptExpanded(false)}
+                      />
+                      <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                        {charCount}/{MAX_CHAR_COUNT}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">Örnek talimatlar:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {promptSuggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setAiPrompt(suggestion);
+                            setCharCount(suggestion.length);
+                          }}
+                          className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors duration-200"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {aiPrompt && (
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-sm text-purple-700">
+                        <span className="font-semibold">Seçilen talimat:</span> {aiPrompt}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
           </div>
             </div>
         
