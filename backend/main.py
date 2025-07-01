@@ -69,15 +69,20 @@ if project_root_str not in sys.path:
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
-# CORS ayarları
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Geliştirme için. Prodüksiyonda spesifik origin belirtin
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://192.168.0.166:3000",  # Your network IP
+    "http://localhost:5173",  # Vite's default port
+    "http://192.168.0.166:5173",
+]
 
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=allowed_origins,
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

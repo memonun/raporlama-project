@@ -2,7 +2,8 @@ import axios from "axios";
 
 
 // Development mode için API URL'ini düzenle
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
