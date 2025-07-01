@@ -143,11 +143,11 @@ def generate_full_html(project_name: str,user_input:str) -> str:
     else:
         prompt = read_prompt_from_md(generic_prompt) 
 
-    
+    input_text = f"I would like you to create a good report for the {project_name}. It would be great if you could pay special attention to the following points while preparing the report:{user_input}"
     response = client.responses.create(
         model="gpt-4.1",
         input=prompt,
-        instructions=user_input,
+        instructions=prompt,
         tools=[{
             "type": "file_search",
             "vector_store_ids": [vector_store['id']],

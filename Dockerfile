@@ -44,18 +44,19 @@ FROM python:3.12-slim
 # Create non-root user
 RUN useradd --create-home appuser
 USER appuser
-WORKDIR /home/appuser/app
+WORKDIR /home/appuser/app/backend
 
 # Copy installed Python packages and scripts
 COPY --from=builder-backend /usr/local/lib/python3.12 /usr/local/lib/python3.12
 COPY --from=builder-backend /usr/local/bin /usr/local/bin
 
-# Copy backend code
-COPY --from=builder-backend /app/backend ./backend
+# +# Copy *all* of backend/ into this cwd (which is now backend/)
+COPY --from=builder-backend /app/backend .
 
 # Copy built frontend into backend static folder
-COPY --from=builder-frontend /app/frontend/dist ./backend/static
+# +# Copy your Vite build into ./static (next to main.py & api/)
+COPY --from=builder-frontend /app/frontend/dist ./static
 
 # Expose and run
 EXPOSE 8000
-CMD uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
