@@ -157,7 +157,7 @@ def generate_full_html(project_name: str,user_input:str) -> str:
             "vector_store_ids": [vector_store['id']],
         }],
         previous_response_id=previous_response_id,
-        temperature=0.2,
+        temperature=0.7,
         top_p=0.9,
     )
 

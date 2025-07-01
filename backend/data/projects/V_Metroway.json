@@ -1,45 +1,73 @@
 {
   "project_name": "V Mertroway",
   "created_at": "2025-03-24T15:16:27.646702",
-  "last_updated": "2025-07-01T14:03:39.096159",
+  "last_updated": "2025-07-01T14:45:11.134680",
   "active_report": {
     "report_id": "V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c",
     "report_date": "2025-06-24",
     "created_at": "2025-06-24T15:56:32.344787",
-    "last_updated": "2025-07-01T14:03:39.096159",
+    "last_updated": "2025-07-01T14:45:11.134089",
     "components": {
       "İşletme": {
         "answers": {
           "image_upload": [],
-          "pdf_upload": []
+          "pdf_upload": [
+            {
+              "filename": "Receipt-2154-0159.pdf",
+              "path": "active_report/v_metroway/pdfs/i̇şletme-1751368022.pdf",
+              "type": "pdf",
+              "uploaded_at": "2025-07-01T14:07:02.332428"
+            }
+          ]
         },
-        "last_updated": "2025-07-01T14:00:06.927968"
+        "last_updated": "2025-07-01T14:43:32.490576"
       },
       "Finans": {
         "answers": {
-          "image_upload": [],
-          "pdf_upload": []
+          "image_upload": "[]",
+          "pdf_upload": [
+            {
+              "filename": "question2_solution.pdf",
+              "path": "active_report/v_metroway/pdfs/finans-1751368498.pdf",
+              "type": "pdf",
+              "uploaded_at": "2025-07-01T14:14:59.263253"
+            }
+          ]
         },
-        "last_updated": "2025-07-01T14:00:06.949118"
+        "last_updated": "2025-07-01T14:43:32.527336"
       },
       "İnşaat": {
         "answers": {
-          "pdf_upload": [],
-          "image_upload": []
+          "pdf_upload": [
+            {
+              "filename": "invoice_1181-11066_Zixflow.pdf",
+              "path": "active_report/v_metroway/pdfs/i̇nşaat-1751368526.pdf",
+              "type": "pdf",
+              "uploaded_at": "2025-07-01T14:15:26.648086"
+            }
+          ],
+          "image_upload": "[]"
         },
-        "last_updated": "2025-07-01T14:00:06.966288"
+        "last_updated": "2025-07-01T14:43:32.553616"
       },
       "Kurumsal İletişim": {
         "answers": {
-          "pdf_upload": []
+          "pdf_upload": [
+            {
+              "filename": "quizresults_1234.pdf",
+              "path": "active_report/v_metroway/pdfs/kurumsal_i̇letişim-1751368565.pdf",
+              "type": "pdf",
+              "uploaded_at": "2025-07-01T14:16:06.019812"
+            }
+          ]
         },
-        "last_updated": "2025-07-01T14:00:06.986551"
+        "last_updated": "2025-07-01T14:43:32.593741"
       }
     },
-    "report_content": "<!DOCTYPE html>\n<html lang=\"tr\">\n<head>\n<meta charset=\"UTF-8\">\n<title>V_Metroway Yatırımcı Raporu</title>\n<style>\n  body { margin: 0; padding: 0; }\n  @page { size: A4; margin: 0; }\n  .page { width: 210mm; height: 297mm; position: relative; overflow: hidden; page-break-after: always; }\n  .bg-full { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }\n  .corner-logo { position: absolute; right: 60px; bottom: 80px; height: 48px; opacity: .85; z-index: 10; }\n  .intro-page { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; }\n  .section-divider { position: relative; }\n  .divider-bg-full { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; }\n  .divider-bg-full img { width: 100%; height: 100%; object-fit: cover; }\n  .divider-title { position: absolute; left: 0; right: 0; bottom: 25%; font: 700 42px/1 Arial, sans-serif; letter-spacing: 2px; text-transform: uppercase; color: #fff; text-align: center; text-shadow: 0 3px 10px rgba(0,0,0,.3); z-index: 1; }\n  .content-page { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0; position: relative; }\n  .content-inner { max-width: 900px; width: 100%; padding: 120px 40px; box-sizing: border-box; }\n  .content-page h2 { font: 700 32px/1 Arial, sans-serif; color: #1B3A6B; margin-bottom: 25px; }\n  .content-page p { font-size: 16px; line-height: 1.7; color: #444; margin-bottom: 20px; text-align: justify; }\n  .content-row { display: flex; flex-direction: row; gap: 40px; }\n  .content-col { flex: 1; }\n  .content-page figure { margin: 30px auto; text-align: center; width: 100%; }\n  .content-page figure img { max-width: 90%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.1); display: block; margin: 0 auto; }\n  .content-page header, .content-page footer, .section-divider header, .section-divider footer { display: none !important; }\n</style>\n</head>\n<body>\n\n<!-- Intro page structure -->\n<section class=\"page intro-page\">\n  <header><img src=\"isra_logo\" alt=\"İsra Logo\" style=\"height:52px;margin-bottom:20px;\"></header>\n  <h1 style=\"font:700 38px/1 Arial,sans-serif;color:#1B3A6B;margin-bottom:20px;\">V_Metroway Yatırımcı Raporu</h1>\n  <p style=\"font-size:18px;color:#444;margin-bottom:30px;\">1 Mart 2024 – 1 Mart 2025 Dönemi</p>\n  <figure><img src=\"metroway_foto\" alt=\"Proje\" style=\"max-width:85%;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.1);\"></figure>\n  <footer style=\"position:absolute;bottom:30px;left:0;right:0;text-align:center;font-size:13px;color:#888;\">\n    <img src=\"isra_logo\" style=\"height:48px;margin-bottom:10px;\"><br>© 2025 İsra Holding.\n  </footer>\n</section>\n\n<!-- Divider page -->\n<section class=\"page section-divider\">\n  <div class=\"divider-bg-full\">\n    <img src=\"kapak_foto\" alt=\"\">\n  </div>\n  <h2 class=\"divider-title\">Finansal Durum & İnşaat İlerlemesi & İşletme Bilgileri</h2>\n</section>\n\n<!-- Finansal Durum & İnşaat İlerlemesi Yan Yana -->\n<section class=\"page content-page\">\n  <img src=\"metroway_frame\" alt=\"\" class=\"bg-full\">\n  <div class=\"content-inner\">\n    <div class=\"content-row\">\n      <div class=\"content-col\">\n        <h2>Finansal Durum</h2>\n        <p>\n          2024 yılı için İsra Holding Yatırım Portföyü'nün karı 12.500.000 TL olarak gerçekleşmiştir. 2025 yılı için ise 18.000.000 TL kar projeksiyonu yapılmaktadır. Gelir kaynakları arasında AVM kiralamaları, tatil köyü gelirleri ve ticari işletmeler yer almaktadır.\n        </p>\n        <figure>\n          <img src=\"finans-1751260090.png\" alt=\"Financial chart\">\n        </figure>\n      </div>\n      <div class=\"content-col\">\n        <h2>İnşaat İlerlemesi</h2>\n        <p>\n          V Mall İstanbul projesinin inşaatı %75 oranında tamamlanmıştır. Toplam yapı alanı 126.000 m² olup, 45.000 m² kiralanabilir alan sunulacaktır. Projenin tamamlanma tarihi 15 Mayıs 2025 olarak planlanmıştır.\n        </p>\n        <figure>\n          <img src=\"i̇nsaat-1751260101.png\" alt=\"İnşaat durumu ekran görüntüsü\">\n        </figure>\n      </div>\n    </div>\n  </div>\n  <img src=\"isra_logo\" alt=\"\" class=\"corner-logo\">\n</section>\n\n<!-- İşletme Bilgileri -->\n<section class=\"page content-page\">\n  <img src=\"metroway_frame\" alt=\"\" class=\"bg-full\">\n  <div class=\"content-inner\">\n    <div class=\"content-row\">\n      <div class=\"content-col\">\n        <h2>İşletme Bilgileri</h2>\n        <p>\n          V Metroway projesinin kiralanabilir alanı 25.000 m² olup, toplam 81 mağaza yer alacaktır. Projenin yönetimi ECE Türkiye tarafından devralınacak ve beklenen açılış tarihi 20 Haziran 2025'tir.\n        </p>\n        <figure>\n          <img src=\"i̇sletme-1750769805.jpg\" alt=\"İşletme raporu kapak görseli\">\n        </figure>\n      </div>\n    </div>\n  </div>\n  <img src=\"isra_logo\" alt=\"\" class=\"corner-logo\">\n</section>\n\n</body>\n</html>",
-    "pdf_path": null,
-    "report_generated": false,
+    "report_content": "<!DOCTYPE html>\n<html lang=\"tr\">\n<head>\n<meta charset=\"UTF-8\">\n<title>V_Metroway Yatırımcı Raporu</title>\n<style>\n  body { margin: 0; padding: 0; }\n  @page { size: A4; margin: 0; }\n  .page {\n    width: 210mm;\n    height: 297mm;\n    position: relative;\n    overflow: hidden;\n    page-break-after: always;\n  }\n  .bg-full {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n    z-index: -1;\n  }\n  .corner-logo {\n    position: absolute;\n    right: 60px;\n    bottom: 80px;\n    height: 48px;\n    opacity: .85;\n    z-index: 10;\n  }\n  .intro-page {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    justify-content: center;\n    text-align: center;\n    position: relative;\n  }\n  .section-divider { position: relative; }\n  .divider-bg-full {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n  }\n  .divider-bg-full img {\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n  }\n  .divider-title {\n    position: absolute;\n    left: 0;\n    right: 0;\n    bottom: 25%;\n    font: 700 42px/1 Arial, sans-serif;\n    letter-spacing: 2px;\n    text-transform: uppercase;\n    color: #fff;\n    text-align: center;\n    text-shadow: 0 3px 10px rgba(0,0,0,.3);\n    z-index: 1;\n  }\n  .content-page {\n    display: flex;\n    flex-direction: column;\n    justify-content: center;\n    align-items: center;\n    padding: 0;\n    position: relative;\n  }\n  .content-inner {\n    max-width: 900px;\n    width: 100%;\n    padding: 120px 40px;\n    box-sizing: border-box;\n  }\n  .content-page h2 {\n    font: 700 32px/1 Arial, sans-serif;\n    color: #1B3A6B;\n    margin-bottom: 25px;\n  }\n  .two-column {\n    display: flex;\n    flex-direction: row;\n    gap: 40px;\n    width: 100%;\n    align-items: flex-start;\n  }\n  .two-column .text-col {\n    flex: 1 1 0;\n    min-width: 0;\n    max-width: 50%;\n  }\n  .two-column figure {\n    flex: 1 1 0;\n    min-width: 0;\n    max-width: 50%;\n    margin: 0;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n  .two-column figure img {\n    max-width: 95%;\n    height: auto;\n    border-radius: 8px;\n    box-shadow: 0 2px 8px rgba(0,0,0,.1);\n    display: block;\n  }\n  .content-page p {\n    font-size: 16px;\n    line-height: 1.7;\n    color: #444;\n    margin-bottom: 20px;\n    text-align: justify;\n  }\n  .content-page figure {\n    margin: 30px auto;\n    text-align: center;\n    width: 100%;\n  }\n  .content-page figure img {\n    max-width: 90%;\n    height: auto;\n    border-radius: 8px;\n    box-shadow: 0 2px 8px rgba(0,0,0,.1);\n    display: block;\n    margin: 0 auto;\n  }\n  .content-page header,\n  .content-page footer,\n  .section-divider header,\n  .section-divider footer {\n    display: none !important;\n  }\n</style>\n</head>\n<body>\n\n<!-- Intro page structure -->\n<section class=\"page intro-page\">\n  <header><img src=\"isra_logo\" alt=\"İsra Logo\" style=\"height:52px;margin-bottom:20px;\"></header>\n  <h1 style=\"font:700 38px/1 Arial,sans-serif;color:#1B3A6B;margin-bottom:20px;\">V_Metroway Yatırımcı Raporu</h1>\n  <p style=\"font-size:18px;color:#444;margin-bottom:30px;\">1 Mart 2024 – 1 Mart 2025 Dönemi</p>\n  <figure><img src=\"metroway_foto\" alt=\"Proje\" style=\"max-width:85%;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.1);\"></figure>\n  <footer style=\"position:absolute;bottom:30px;left:0;right:0;text-align:center;font-size:13px;color:#888;\">\n    <img src=\"isra_logo\" style=\"height:48px;margin-bottom:10px;\"><br>© 2025 İsra Holding.\n  </footer>\n</section>\n\n<!-- Divider page - MUST have this exact structure -->\n<section class=\"page section-divider\">\n  <div class=\"divider-bg-full\">\n    <img src=\"kapak_foto\" alt=\"\">\n  </div>\n  <h2 class=\"divider-title\">Finansal Durum & İnşaat İlerlemesi</h2>\n</section>\n\n<!-- Finansal Durum Content Page -->\n<section class=\"page content-page\">\n  <img src=\"metroway_frame\" alt=\"\" class=\"bg-full\">\n  <div class=\"content-inner\">\n    <h2>Finansal Durum</h2>\n    <div class=\"two-column\">\n      <div class=\"text-col\">\n        <p>V_Metroway projesinin finansal değerlendirmesi, belirlenen hedefler ve mevcut kaynaklar doğrultusunda kapsamlı bir analiz sunmaktadır. Üretim saatleri, üretim miktarları ve kârlılık hedefleri arasında denge kurmak amacıyla yapılan planlamada; 60 adet çekiş batarya paketi ve 60 adet güç inverteri üretilmiş, ancak kontrolör üretimi 24 adet ile sınırlı kalmıştır. Toplamda 270 saatlik üretim süresi kullanılmış ve bu, belirlenen 240 saatlik hedefin üzerinde gerçekleşmiştir. Buna rağmen, toplam kâr hedefi olan 3500 $'ın üzerinde, 4440 $ kâr elde edilmiştir. Bu sonuçlar, üretim kapasitesinin artırılması veya üretim hedeflerinin yeniden düzenlenmesi gerekliliğine işaret etmektedir. Finansal tablolar, projenin güçlü kârlılık potansiyelini ve mevcut kaynakların etkin kullanımını ortaya koymaktadır.</p>\n      </div>\n      <figure>\n        <img src=\"finans-1751370059.png\" alt=\"Financial chart\">\n      </figure>\n    </div>\n  </div>\n  <img src=\"isra_logo\" alt=\"\" class=\"corner-logo\">\n</section>\n\n<!-- İnşaat İlerlemesi Content Page -->\n<section class=\"page content-page\">\n  <img src=\"metroway_frame\" alt=\"\" class=\"bg-full\">\n  <div class=\"content-inner\">\n    <h2>İnşaat İlerlemesi</h2>\n    <div class=\"two-column\">\n      <div class=\"text-col\">\n        <p>V_Metroway projesinin inşaat süreci, planlanan takvime uygun şekilde ilerlemektedir. Son rapora göre, ana yükleniciyle yapılan sözleşmeler ve ödemeler düzenli olarak gerçekleştirilmiştir. Pazarlama ve saha yönetimi için ayrılan bütçeler zamanında kullanılmış, bu da projenin finansal sürdürülebilirliğine katkı sağlamıştır. İnşaatta kullanılan kaynaklar ve iş gücü, kalite standartlarına uygun şekilde yönetilmiş olup, ilerleme raporları düzenli olarak güncellenmiştir. Bu süreçte karşılaşılan zorluklar etkin bir şekilde aşılmış ve proje takvimiyle uyumlu bir ilerleme kaydedilmiştir.</p>\n      </div>\n      <figure>\n        <img src=\"i̇nşaat-1751370059.png\" alt=\"Construction Invoice\">\n      </figure>\n    </div>\n  </div>\n  <img src=\"isra_logo\" alt=\"\" class=\"corner-logo\">\n</section>\n\n<!-- İşletme Giderleri Content Page -->\n<section class=\"page content-page\">\n  <img src=\"metroway_frame\" alt=\"\" class=\"bg-full\">\n  <div class=\"content-inner\">\n    <h2>İşletme Giderleri</h2>\n    <div class=\"two-column\">\n      <div class=\"text-col\">\n        <p>Proje kapsamında gerçekleştirilen işletme giderleri, finansal yönetimin şeffaflığı ve sürdürülebilirliği açısından detaylı şekilde raporlanmıştır. 2025 yılı Haziran ayı itibarıyla yapılan ödemeler, uluslararası hizmet sağlayıcılar ve teknoloji altyapısı için ayrılan bütçelerin etkin şekilde kullanıldığını göstermektedir. Tüm giderler, proje finansman planına uygun şekilde kaydedilmiş ve ilgili muhasebe standartları doğrultusunda denetlenmiştir. Bu yaklaşım, V_Metroway projesinin uzun vadeli operasyonel başarısına katkı sağlamaktadır.</p>\n      </div>\n      <figure>\n        <img src=\"i̇şletme-1751370059.png\" alt=\"Operating Expenses Screenshot\">\n      </figure>\n    </div>\n  </div>\n  <img src=\"isra_logo\" alt=\"\" class=\"corner-logo\">\n</section>\n\n</body>\n</html>\n",
+    "pdf_path": "data/reports/V_Metroway/V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c.pdf",
+    "report_generated": true,
     "status": "completed",
-    "pdfFileName": null
+    "pdfFileName": "V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c.pdf"
   }
 }
