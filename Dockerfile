@@ -44,15 +44,14 @@ FROM python:3.12-slim
 # Create non-root user
 RUN useradd --create-home appuser
 USER appuser
-WORKDIR /home/appuser/app/backend
+WORKDIR /home/appuser/app/
 
 # Copy installed Python packages and scripts
 COPY --from=builder-backend /usr/local/lib/python3.12 /usr/local/lib/python3.12
 COPY --from=builder-backend /usr/local/bin /usr/local/bin
 
 # +# Copy *all* of backend/ into this cwd (which is now backend/)
-COPY --from=builder-backend /app/backend .
-
+COPY --from=builder-backend /app/backend/. .
 # Copy built frontend into backend static folder
 # +# Copy your Vite build into ./static (next to main.py & api/)
 COPY --from=builder-frontend /app/frontend/dist ./static
