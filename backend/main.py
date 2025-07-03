@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Any
 import uvicorn
 from fastapi.responses import FileResponse
 import os
+import socket
 from pathlib import Path
 import smtplib
 from api.mail_agent import send_missing_info_request, get_department_email, send_report_email as mail_agent_send_report
@@ -69,19 +70,45 @@ if project_root_str not in sys.path:
 
 app = FastAPI(title="Yatırımcı Raporu API")
 
-allowed_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://192.168.0.130:3000",  # Your network IP
-    "http://localhost:5173",  # Vite's default port
-    "http://192.168.0.130:5173",
-]
+
+
+def get_allowed_origins():
+    """Generate allowed origins based on current network configuration"""
+    origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+    
+    # Add current machine's IP
+    try:
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        origins.extend([
+            f"http://{local_ip}:3000",
+            f"http://{local_ip}:5173"
+        ])
+    except:
+        pass
+    
+    # Add common local network ranges
+    for i in range(1, 255):
+        origins.extend([
+            f"http://192.168.1.{i}:3000",
+            f"http://192.168.1.{i}:5173",
+            f"http://192.168.0.{i}:3000",
+            f"http://192.168.0.{i}:5173",
+        ])
+    
+    return origins
 
 app.add_middleware(
-  CORSMiddleware,
-  allow_origins=allowed_origins,
-  allow_methods=["*"],
-  allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=get_allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
