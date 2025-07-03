@@ -72,9 +72,9 @@ app = FastAPI(title="Yatırımcı Raporu API")
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://192.168.0.166:3000",  # Your network IP
+    "http://192.168.0.130:3000",  # Your network IP
     "http://localhost:5173",  # Vite's default port
-    "http://192.168.0.166:5173",
+    "http://192.168.0.130:5173",
 ]
 
 app.add_middleware(
