@@ -218,11 +218,18 @@ const ProjectDetail = () => {
     event.stopPropagation();
   }
 
-  const reportIdToDelete = report?.report_id;
+  // Debug logging
+  console.log('[DELETE] Report object:', report);
+  console.log('[DELETE] Report keys:', Object.keys(report || {}));
+  console.log('[DELETE] Report ID:', report?.report_id);
+  console.log('[DELETE] Report name:', report?.name);
+  console.log('[DELETE] Is finalized:', report?.is_finalized);
+
+  const reportIdToDelete = report?.report_id || report?.id || report?.name;
 
   if (!reportIdToDelete) {
-    toast.error("Silinecek rapor ID'si bulunamadı.");
-    console.error("handleFinalizedReportDelete: reportId is missing in report object:", report);
+    console.error('[DELETE] No report identifier found:', report);
+    toast.error("Silinecek rapor ID'si bulunamadı. Debug bilgisi konsola yazdırıldı.");
     return;
   }
   
@@ -232,20 +239,40 @@ const ProjectDetail = () => {
   
   try {
     setLoading(true);
+    console.log('[DELETE] Attempting to delete report:', {
+      projectName,
+      reportId: reportIdToDelete,
+      report: report
+    });
     
     await reportService.deleteFinalizedReport(projectName, reportIdToDelete); 
     
-    // Update state - use report_id for filtering
-    setReports(prev => prev.filter(r => r.report_id !== reportIdToDelete));
+    // Update state - use multiple possible ID fields for filtering
+    setReports(prev => prev.filter(r => 
+      r.report_id !== reportIdToDelete && 
+      r.id !== reportIdToDelete && 
+      r.name !== reportIdToDelete
+    ));
     
     toast.success('Sonlandırılmış rapor başarıyla silindi.', {
       duration: 3000
     });
     
     setOpenMenuId(null);
+    
   } catch (error) {
-    console.error('handleFinalizedReportDelete - Detaylı Hata:', error);
-    toast.error(error.message || 'Sonlandırılmış rapor silinirken bir hata oluştu.', {
+    console.error('[DELETE] Detailed error:', error);
+    console.error('[DELETE] Error response:', error.response?.data);
+    
+    let errorMessage = 'Sonlandırılmış rapor silinirken bir hata oluştu.';
+    
+    if (error.response?.data?.detail) {
+      errorMessage = error.response.data.detail;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    toast.error(errorMessage, {
       duration: 4000
     });
     setOpenMenuId(null);
