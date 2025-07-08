@@ -1,73 +1,27 @@
 {
   "project_name": "V Mertroway",
   "created_at": "2025-03-24T15:16:27.646702",
-  "last_updated": "2025-07-01T16:51:46.505910",
+  "last_updated": "2025-07-03T17:17:58.406418",
   "active_report": {
-    "report_id": "V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c",
-    "report_date": "2025-06-24",
-    "created_at": "2025-06-24T15:56:32.344787",
-    "last_updated": "2025-07-01T16:51:46.505233",
+    "report_id": "V_Metroway_0b6f6961-e082-4a56-924f-14dbab412f45",
+    "report_date": "2025-07-03",
+    "created_at": "2025-07-03T17:17:58.406418",
+    "last_updated": "2025-07-03T17:17:58.406418",
     "components": {
       "İşletme": {
         "answers": {
-          "image_upload": "[]",
           "pdf_upload": [
             {
-              "filename": "Ek-UDS.pdf",
-              "path": "active_report/v_metroway/pdfs/i̇şletme-1751377566.pdf",
+              "filename": "Evalution Study Report_ VMALL (5).pdf",
+              "path": "active_report/v_metroway/pdfs/i̇şletme-1751552336.pdf",
               "type": "pdf",
-              "uploaded_at": "2025-07-01T16:46:06.768154"
+              "uploaded_at": "2025-07-03T17:18:56.975824"
             }
           ]
-        },
-        "last_updated": "2025-07-01T16:50:19.095762"
-      },
-      "Finans": {
-        "answers": {
-          "image_upload": "[]",
-          "pdf_upload": [
-            {
-              "filename": "Ek-UDS.pdf",
-              "path": "active_report/v_metroway/pdfs/finans-1751377590.pdf",
-              "type": "pdf",
-              "uploaded_at": "2025-07-01T16:46:30.622724"
-            }
-          ]
-        },
-        "last_updated": "2025-07-01T16:50:19.101925"
-      },
-      "İnşaat": {
-        "answers": {
-          "pdf_upload": [
-            {
-              "filename": "Ek-UDS.pdf",
-              "path": "active_report/v_metroway/pdfs/i̇nşaat-1751377593.pdf",
-              "type": "pdf",
-              "uploaded_at": "2025-07-01T16:46:33.171572"
-            }
-          ],
-          "image_upload": "[]"
-        },
-        "last_updated": "2025-07-01T16:50:19.105785"
-      },
-      "Kurumsal İletişim": {
-        "answers": {
-          "pdf_upload": [
-            {
-              "filename": "Ek-UDS.pdf",
-              "path": "active_report/v_metroway/pdfs/kurumsal_i̇letişim-1751377596.pdf",
-              "type": "pdf",
-              "uploaded_at": "2025-07-01T16:46:36.961745"
-            }
-          ]
-        },
-        "last_updated": "2025-07-01T16:50:19.116896"
+        }
       }
     },
-    "report_content": "<!DOCTYPE html>\n<html lang=\"ar\">\n<head>\n<meta charset=\"UTF-8\">\n<title>تقرير المستثمرين لمشروع V_Metroway</title>\n<style>\n  body { margin: 0; padding: 0; direction: rtl; }\n\n  @page {\n      size: A4;\n      margin: 0;\n    }\n\n  .page {\n    width: 210mm;\n    height: 297mm;\n    position: relative;\n    overflow: hidden;\n    page-break-after: always;\n  }\n\n  .bg-full {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n    z-index: -1;\n  }\n\n  .corner-logo {\n    position: absolute;\n    left: 60px;\n    bottom: 80px;\n    height: 48px;\n    opacity: .85;\n    z-index: 10;\n  }\n\n  .intro-page {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    justify-content: center;\n    text-align: center;\n    position: relative;\n  }\n\n  .section-divider {\n    position: relative;\n  }\n\n  .divider-bg-full {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n  }\n\n  .divider-bg-full img {\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n  }\n\n  .divider-title {\n    position: absolute;\n    left: 0;\n    right: 0;\n    bottom: 25%;\n    font: 700 42px/1 Arial, sans-serif;\n    letter-spacing: 2px;\n    text-transform: uppercase;\n    color: #fff;\n    text-align: center;\n    text-shadow: 0 3px 10px rgba(0,0,0,.3);\n    z-index: 1;\n  }\n\n  .content-page {\n    display: flex;\n    flex-direction: column;\n    justify-content: center;\n    align-items: center;\n    padding: 0;\n    position: relative;\n  }\n\n  .content-inner {\n    max-width: 900px;\n    width: 100%;\n    padding: 120px 40px;\n    box-sizing: border-box;\n  }\n\n  .content-page h2 {\n    font: 700 32px/1 Arial, sans-serif;\n    color: #1B3A6B;\n    margin-bottom: 25px;\n    text-align: right;\n  }\n\n  .content-page p {\n    font-size: 16px;\n    line-height: 1.7;\n    color: #444;\n    margin-bottom: 20px;\n    text-align: justify;\n  }\n\n  .content-page figure {\n    margin: 30px auto;\n    text-align: center;\n    width: 100%;\n  }\n\n  .content-page figure img {\n    max-width: 90%;\n    height: auto;\n    border-radius: 8px;\n    box-shadow: 0 2px 8px rgba(0,0,0,.1);\n    display: block;\n    margin: 0 auto;\n  }\n\n  .content-page header,\n  .content-page footer,\n  .section-divider header,\n  .section-divider footer {\n    display: none !important;\n  }\n</style>\n</head>\n<body>\n\n<!-- Intro page structure -->\n<section class=\"page intro-page\">\n  <header><img src=\"isra_logo\" alt=\"İsra Logo\" style=\"height:52px;margin-bottom:20px;\"></header>\n  <h1 style=\"font:700 38px/1 Arial,sans-serif;color:#1B3A6B;margin-bottom:20px;\">تقرير المستثمرين لمشروع V_Metroway</h1>\n  <p style=\"font-size:18px;color:#444;margin-bottom:30px;\">الفترة من 1 مارس 2024 حتى 1 مارس 2025</p>\n  <figure><img src=\"metroway_foto\" alt=\"مشروع V_Metroway\" style=\"max-width:85%;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.1);\"></figure>\n  <footer style=\"position:absolute;bottom:30px;left:0;right:0;text-align:center;font-size:13px;color:#888;\">\n    <img src=\"isra_logo\" style=\"height:48px;margin-bottom:10px;\"><br>© 2025 شركة إسرا القابضة.\n  </footer>\n</section>\n\n<!-- Divider page -->\n<section class=\"page section-divider\">\n  <div class=\"divider-bg-full\">\n    <img src=\"kapak_foto\" alt=\"\">\n  </div>\n  <h2 class=\"divider-title\">نظرة عامة - الوضع المالي - الوضع الإنشائي</h2>\n</section>\n\n<!-- Financial Overview Content Page -->\n<section class=\"page content-page\" >\n  <img src=\"metroway_frame\" alt=\"\" class=\"bg-full\">\n  <div class=\"content-inner\">\n  <h2>النظرة المالية</h2>\n  <p>\nتتطلب عملية التقييم المالي لمشروع V_Metroway تحليل التدفقات النقدية المتوقعة بناءً على خصائص الأصل والدورة النقدية والبيانات المتوفرة وفترة التوقعات المناسبة (أسبوعية، شهرية، ربع سنوية أو سنوية). يجب أن تشمل التدفقات النقدية المخططة جميع المدخلات والمخرجات المالية المستقبلية المتعلقة بالأصل من منظور قيمة التقييم. عادةً ما تعكس التدفقات النقدية المخططة إما تدفقات نقدية تعاقدية، أو سلسلة التدفق النقدي الأكثر احتمالاً، أو التدفقات النقدية المتوقعة المرجحة بالاحتمالات، أو سيناريوهات مختلفة للتدفقات النقدية المستقبلية. تختلف أنواع التدفقات النقدية في مستوى المخاطرة وتتطلب استخدام معدلات خصم مختلفة. تشمل الاعتبارات الرئيسية نوع التدفق النقدي (لكل الأصل أو لجزء من الحقوق)، واحتساب الضرائب، والنظر في تأثير التضخم (حقيقي أو اسمي)، واختيار العملة المستخدمة بما يتماشى مع ظروف السوق والمخاطر. يجب أن تتوافق معدلات الخصم والمدخلات الأخرى مع نوع التدفق النقدي المختار، ويجب أن يكون كل ذلك متسقًا مع منظور المشاركين في السوق.\n  </p>\n  <figure>\n    <img src=\"finans-1750.webp\" alt=\"الرسم البياني المالي\">\n  </figure>\n  </div>\n  <img src=\"isra_logo\" alt=\"\" class=\"corner-logo\">\n</section>\n\n<!-- Construction Status Content Page -->\n<section class=\"page content-page\" >\n  <img src=\"metroway_frame\" alt=\"\" class=\"bg-full\">\n  <div class=\"content-inner\">\n  <h2>الوضع الإنشائي</h2>\n  <p>\nتتسم عملية تقييم العقارات المخصصة للتطوير بحساسية عالية تجاه التغييرات في الافتراضات أو التوقعات المتعلقة بالإيرادات أو التكاليف التطويرية. يجب على المُقيّم أن يأخذ في الحسبان التغيرات المحتملة في قيمة الأصل خلال فترة المشروع، خاصةً عند استخدام التقييم كضمان للتمويل أو لتحديد جدوى المشروع. غالبًا ما تتضمن تقييمات العقارات الافتراضات حول ظروف المشروع عند اكتماله أو تأجير العقار بالكامل. على المُقيّم أن يوضح الافتراضات الجوهرية والخاصة لجميع الأطراف ذات العلاقة، وأن يتحقق من جميع الخصائص المؤثرة في إمكانات التطوير المستقبلية للأصل كلما أمكن ذلك. في حال عدم إمكانية الفحص الكامل، يجب توثيق الافتراضات المستخدمة بشكل واضح.\n  </p>\n  <figure>\n    <img src=\"metroway_foto\" alt=\"صورة موقع المشروع\">\n  </figure>\n  </div>\n  <img src=\"isra_logo\" alt=\"\" class=\"corner-logo\">\n</section>\n\n<!-- Corporate Communication Content Page -->\n<section class=\"page content-page\" >\n  <img src=\"metroway_frame\" alt=\"\" class=\"bg-full\">\n  <div class=\"content-inner\">\n  <h2>نظرة عامة على المشروع والتواصل المؤسسي</h2>\n  <p>\nيستلزم تقييم الشركات أو حصص الشركات الاستناد إلى معلومات من الإدارة أو ممثلي الإدارة أو خبراء آخرين. يجب على المُقيّم تقييم مدى ملاءمة هذه المعلومات ومدى توافقها مع هدف التقييم. كما أن التطورات الاقتصادية العامة واتجاهات القطاع لها تأثيرات كبيرة على نتائج التقييم، بما في ذلك السياسات الحكومية، أسعار الصرف، التضخم، أسعار الفائدة، وحركة السوق. يجب أن يكون المُقيّم على دراية بهذه المتغيرات وأخذها في الاعتبار عند تحليل القيمة النهائية للمشروع.\n  </p>\n  </div>\n  <img src=\"isra_logo\" alt=\"\" class=\"corner-logo\">\n</section>\n\n</body>\n</html>",
-    "pdf_path": "data/reports/V_Metroway/V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c.pdf",
-    "report_generated": true,
-    "status": "completed",
-    "pdfFileName": "V_Metroway_0fed4b0d-421c-4531-bbc1-f89ff0876e8c.pdf"
+    "status": "in_progress",
+    "report_generated": false
   }
 }

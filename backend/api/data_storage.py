@@ -457,14 +457,12 @@ def finalize_report(project_name: str) -> Dict[str, Any]:
     """
     Raporu sonlandırır ve düzenlemeye kapatır.
     Sonlandırılan rapor vitrinde görüntülenir ve düzenlenemez.
-    
-    Args:
-        project_name: Projenin adı
-        
-    Returns:
-        Sonlandırılan rapor verisi
     """
-    project_data = get_project_data(project_name)
+    project_path = get_project_path(project_name)
+    
+    # Read current project data
+    with open(project_path, 'r', encoding='utf-8') as f:
+        project_data = json.load(f)
     
     active_report = project_data.get("active_report")
     if not active_report:
@@ -473,12 +471,23 @@ def finalize_report(project_name: str) -> Dict[str, Any]:
     if not active_report.get("report_generated"):
         raise ValueError(f"Rapor henüz oluşturulmadı")
     
-    # Raporu sonlandır
+    # Finalize the report
     active_report["is_finalized"] = True
     active_report["finalized_at"] = datetime.datetime.now().isoformat()
     
-    # Projeyi kaydet
-    with open(get_project_path(project_name), 'w', encoding='utf-8') as f:
+    # Initialize reports array if it doesn't exist
+    if "reports" not in project_data:
+        project_data["reports"] = []
+    
+    # Move finalized report to reports array
+    project_data["reports"].insert(0, active_report.copy())
+    
+    # Clear active report
+    project_data["active_report"] = None
+    project_data["last_updated"] = datetime.datetime.now().isoformat()
+    
+    # Save updated project data
+    with open(project_path, 'w', encoding='utf-8') as f:
         json.dump(project_data, f, ensure_ascii=False, indent=2)
     
     return active_report

@@ -23,14 +23,9 @@ import json
 import datetime
 import tempfile
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML, CSS
-from weasyprint.text.fonts import FontConfiguration
 from openai import OpenAI
-import base64
 import logging
 import sys
-import time
-
 
 from utils.oai import generate_full_html
 from utils.pdf_utils import (
@@ -42,8 +37,6 @@ from utils.pdf_utils import (
 from utils.pdf_utils import (
     get_report_path,
     create_report_id,
-    get_active_report_id,
-    save_pdf_content,
 )
 
 from models.basemodels import (

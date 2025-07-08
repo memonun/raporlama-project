@@ -39,7 +39,8 @@ class ShareReportRequest(BaseModel):
     email_addresses: List[str]
 
 class DeleteFinalizedReportRequest(BaseModel):
-  project_name: str
+    project_name: str
+    file_name: str
 
 
 class DeleteProjectRequest(BaseModel):
